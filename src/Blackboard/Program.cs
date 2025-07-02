@@ -21,7 +21,7 @@ class Program
         try
         {
             // Initialize configuration
-            var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config", "blackboard.yml");
+            var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "blackboard.yml");
             _configManager = new ConfigurationManager(configPath, Log.Logger);
 
             // Initialize logging

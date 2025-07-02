@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using Dapper;
 using Serilog;
 using Blackboard.Data.Configuration;
 
@@ -6,6 +7,26 @@ namespace Blackboard.Data;
 
 public class DatabaseManager
 {
+    /// <summary>
+    /// Executes a query and maps the result to a list of type T using Dapper.
+    /// </summary>
+    public async Task<IEnumerable<T>> QueryAsync<T>(string sql, object? param = null)
+    {
+        if (_connection == null)
+            throw new InvalidOperationException("Database not initialized");
+        return await _connection.QueryAsync<T>(sql, param);
+    }
+
+    /// <summary>
+    /// Executes a command (INSERT, UPDATE, DELETE) using Dapper.
+    /// </summary>
+    public async Task<int> ExecuteAsync(string sql, object? param = null)
+    {
+        if (_connection == null)
+            throw new InvalidOperationException("Database not initialized");
+        return await _connection.ExecuteAsync(sql, param);
+    }
+
     private readonly ILogger _logger;
     private readonly IDatabaseConfiguration _config;
     private SqliteConnection? _connection;
