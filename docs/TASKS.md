@@ -15,12 +15,12 @@ This checklist is based on the Product Requirements Document (PRD) and is organi
 ---
 
 ## Phase 2: User Management & Security
-- [ ] Implement user registration and login (with pre-enter code option)
-- [ ] Develop user profile management (handle, location, stats, preferences)
-- [ ] Enforce permission levels and access control
-- [ ] Implement password security (BCrypt+salt, complexity, expiration, lockouts)
-- [ ] Add session management (tokens, timeouts, IP tracking)
-- [ ] Implement audit logging for admin actions
+- [x] Implement user registration and login (with pre-enter code option)
+- [x] Develop user profile management (handle, location, stats, preferences)
+- [x] Enforce permission levels and access control
+- [x] Implement password security (BCrypt+salt, complexity, expiration, lockouts)
+- [x] Add session management (tokens, timeouts, IP tracking)
+- [x] Implement audit logging for admin actions
 
 ---
 

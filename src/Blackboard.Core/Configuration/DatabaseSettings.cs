@@ -1,6 +1,8 @@
+using Blackboard.Data.Configuration;
+
 namespace Blackboard.Core.Configuration;
 
-public class DatabaseSettings
+public class DatabaseSettings : IDatabaseConfiguration
 {
     public string ConnectionString { get; set; } = "Data Source=blackboard.db";
     public bool EnableWalMode { get; set; } = true;

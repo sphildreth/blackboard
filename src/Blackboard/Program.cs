@@ -1,9 +1,13 @@
 using Serilog;
+using Blackboard.Core;
 using Blackboard.Core.Configuration;
+using Blackboard.Core.Examples;
 using Blackboard.Core.Logging;
 using Blackboard.Core.Network;
 using Blackboard.Data;
 using Blackboard.UI;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Blackboard;
 
@@ -96,6 +100,14 @@ class Program
 
             var initTime = DateTime.UtcNow - startTime;
             _logger.Information("Blackboard initialized in {InitTime:F2} seconds", initTime.TotalSeconds);
+
+            // Demo Phase 2 functionality if requested
+            if (args.Contains("--demo-phase2"))
+            {
+                _logger.Information("Running Phase 2 User Management Demo...");
+                await UserManagementExample.RunExampleAsync();
+                return;
+            }
 
             // Run the Terminal.Gui application
             mainApp.Run();

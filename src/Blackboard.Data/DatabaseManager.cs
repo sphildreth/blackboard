@@ -18,6 +18,26 @@ public class DatabaseManager
     }
 
     /// <summary>
+    /// Executes a query and returns the first result using Dapper.
+    /// </summary>
+    public async Task<T> QueryFirstAsync<T>(string sql, object? param = null)
+    {
+        if (_connection == null)
+            throw new InvalidOperationException("Database not initialized");
+        return await _connection.QueryFirstAsync<T>(sql, param);
+    }
+
+    /// <summary>
+    /// Executes a query and returns the first result or default using Dapper.
+    /// </summary>
+    public async Task<T?> QueryFirstOrDefaultAsync<T>(string sql, object? param = null)
+    {
+        if (_connection == null)
+            throw new InvalidOperationException("Database not initialized");
+        return await _connection.QueryFirstOrDefaultAsync<T>(sql, param);
+    }
+
+    /// <summary>
     /// Executes a command (INSERT, UPDATE, DELETE) using Dapper.
     /// </summary>
     public async Task<int> ExecuteAsync(string sql, object? param = null)

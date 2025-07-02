@@ -1,0 +1,68 @@
+using Blackboard.Core.Configuration;
+using Blackboard.Core.Services;
+using Blackboard.Data;
+using Blackboard.Data.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Serilog;
+
+namespace Blackboard.Core;
+
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddBlackboardCore(this IServiceCollection services, 
+        SystemConfiguration systemConfig)
+    {
+        // Configuration
+        services.AddSingleton(systemConfig);
+        services.AddSingleton<IDatabaseConfiguration>(systemConfig.Database);
+        services.AddSingleton(systemConfig.Security);
+        services.AddSingleton(systemConfig.Network);
+        services.AddSingleton(systemConfig.Logging);
+
+        // Database
+        services.AddSingleton<DatabaseManager>();
+
+        // Core Services
+        services.AddTransient<IPasswordService, PasswordService>();
+        services.AddTransient<ISessionService, SessionService>();
+        services.AddTransient<IAuditService, AuditService>();
+        services.AddTransient<IUserService, UserService>();
+        services.AddTransient<IAuthorizationService, AuthorizationService>();
+
+        // Background Services
+        services.AddHostedService<SessionCleanupService>();
+
+        // Logging
+        services.AddSingleton<ILogger>(Log.Logger);
+
+        return services;
+    }
+}
+
+public class ServiceManager
+{
+    private readonly IServiceProvider _serviceProvider;
+
+    public ServiceManager(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
+
+    public T GetService<T>() where T : notnull
+    {
+        return _serviceProvider.GetRequiredService<T>();
+    }
+
+    public T? GetOptionalService<T>()
+    {
+        return _serviceProvider.GetService<T>();
+    }
+
+    public IUserService UserService => GetService<IUserService>();
+    public ISessionService SessionService => GetService<ISessionService>();
+    public IAuditService AuditService => GetService<IAuditService>();
+    public IPasswordService PasswordService => GetService<IPasswordService>();
+    public IAuthorizationService AuthorizationService => GetService<IAuthorizationService>();
+    public DatabaseManager DatabaseManager => GetService<DatabaseManager>();
+    public SystemConfiguration SystemConfiguration => GetService<SystemConfiguration>();
+}
