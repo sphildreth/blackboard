@@ -5,7 +5,10 @@ using Terminal.Gui.ViewBase;
 using Serilog;
 using Blackboard.Core.Configuration;
 using Blackboard.Core.Network;
+using Blackboard.Core.Services;
 using Blackboard.Data;
+using Blackboard.Data.Configuration;
+using Blackboard.UI.Admin;
 
 namespace Blackboard.UI;
 
@@ -15,6 +18,11 @@ public class MainApplication
     private readonly ConfigurationManager _configManager;
     private readonly DatabaseManager _databaseManager;
     private readonly TelnetServer _telnetServer;
+    
+    // Core services for admin functionality
+    private readonly IUserService _userService;
+    private readonly IAuditService _auditService;
+    private readonly ISystemStatisticsService _statisticsService;
     
     private Window? _mainWindow;
     private Label? _statusLabel;
@@ -32,6 +40,14 @@ public class MainApplication
         _configManager = configManager;
         _databaseManager = databaseManager;
         _telnetServer = telnetServer;
+        
+        // Initialize core services for admin functionality
+        var passwordService = new PasswordService();
+        var sessionService = new SessionService(databaseManager, logger);
+        _auditService = new AuditService(databaseManager, logger);
+        _userService = new UserService(databaseManager, passwordService, sessionService, _auditService, 
+            configManager.Configuration.Security, logger);
+        _statisticsService = new SystemStatisticsService(databaseManager, configManager.Configuration.Database, logger);
     }
 
     public void Run()
@@ -43,7 +59,7 @@ public class MainApplication
             SetupEventHandlers();
             UpdateDisplay();
             Application.AddTimeout(TimeSpan.FromSeconds(1), () => { UpdateDisplay(); return true; });
-            Application.Run(_mainWindow);
+            Application.Run(_mainWindow!);
         }
         catch (Exception ex)
         {
@@ -138,7 +154,8 @@ public class MainApplication
             }),
             new MenuBarItemv2("_Tools", new MenuItemv2[]
             {
-                new MenuItemv2("_User Management", "", () => ShowNotImplemented("User Management")),
+                new MenuItemv2("_Admin Dashboard", "", () => OnAdminDashboardClicked()),
+                new MenuItemv2("_User Management", "", () => OnUserManagementClicked()),
                 new MenuItemv2("_Log Viewer", "", () => ShowNotImplemented("Log Viewer")),
                 new MenuItemv2("_Database Backup", "", () => OnDatabaseBackupClicked())
             }),
@@ -186,9 +203,46 @@ public class MainApplication
         });
     }
 
+    private void OnAdminDashboardClicked()
+    {
+        try
+        {
+            var dashboard = new AdminDashboard(_statisticsService, _logger);
+            Application.Run(dashboard);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error opening admin dashboard");
+            MessageBox.ErrorQuery("Error", $"Failed to open admin dashboard: {ex.Message}", "OK");
+        }
+    }
+
+    private void OnUserManagementClicked()
+    {
+        try
+        {
+            var userManagement = new UserManagementWindow(_userService, _auditService, _logger);
+            Application.Run(userManagement);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error opening user management");
+            MessageBox.ErrorQuery("Error", $"Failed to open user management: {ex.Message}", "OK");
+        }
+    }
+
     private void OnConfigurationClicked()
     {
-        ShowNotImplemented("Configuration Editor");
+        try
+        {
+            var configWindow = new ConfigurationWindow(_configManager, _logger);
+            Application.Run(configWindow);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error opening configuration window");
+            MessageBox.ErrorQuery("Error", $"Failed to open configuration: {ex.Message}", "OK");
+        }
     }
 
     private void OnExitClicked()

@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Blackboard.Core", "src\Blac
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Blackboard.Data", "src\Blackboard.Data\Blackboard.Data.csproj", "{C3D4E5F6-7890-ABCD-EF12-345678901234}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Blackboard.Core.Tests", "tests\Blackboard.Core.Tests\Blackboard.Core.Tests.csproj", "{B1129DB7-1011-4ADF-BB0F-937254C8727B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,5 +28,9 @@ Global
 		{C3D4E5F6-7890-ABCD-EF12-345678901234}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C3D4E5F6-7890-ABCD-EF12-345678901234}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C3D4E5F6-7890-ABCD-EF12-345678901234}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1129DB7-1011-4ADF-BB0F-937254C8727B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1129DB7-1011-4ADF-BB0F-937254C8727B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1129DB7-1011-4ADF-BB0F-937254C8727B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1129DB7-1011-4ADF-BB0F-937254C8727B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
