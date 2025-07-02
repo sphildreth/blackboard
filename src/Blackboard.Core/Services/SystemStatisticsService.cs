@@ -9,12 +9,12 @@ namespace Blackboard.Core.Services;
 
 public class SystemStatisticsService : ISystemStatisticsService
 {
-    private readonly DatabaseManager _database;
+    private readonly IDatabaseManager _database;
     private readonly IDatabaseConfiguration _config;
     private readonly ILogger _logger;
     private readonly DateTime _systemStartTime;
 
-    public SystemStatisticsService(DatabaseManager database, IDatabaseConfiguration config, ILogger logger)
+    public SystemStatisticsService(IDatabaseManager database, IDatabaseConfiguration config, ILogger logger)
     {
         _database = database;
         _config = config;
@@ -143,12 +143,12 @@ public class SystemStatisticsService : ISystemStatisticsService
                 RealName = !string.IsNullOrWhiteSpace(s.RealName) && s.RealName.Trim() != " " ? s.RealName.Trim() : null,
                 Location = s.Location,
                 IpAddress = s.IpAddress,
-                LoginTime = s.LoginTime,
-                LastActivity = s.LastActivity,
+                LoginTime = DateTime.Parse(s.LoginTime.ToString()),
+                LastActivity = DateTime.Parse(s.LastActivity.ToString()),
                 CurrentActivity = "Online", // TODO: Track actual activity when implemented
                 UserAgent = s.UserAgent,
-                SessionDuration = now - s.LoginTime,
-                IsActive = s.IsActive
+                SessionDuration = now - DateTime.Parse(s.LoginTime.ToString()),
+                IsActive = Convert.ToBoolean(s.IsActive)
             });
         }
         catch (Exception ex)

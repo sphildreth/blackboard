@@ -2,11 +2,14 @@ using Xunit;
 using Microsoft.Data.Sqlite;
 using Blackboard.Core.Services;
 using Blackboard.Core.Configuration;
+using Blackboard.Core.DTOs;
+using Blackboard.Core.Models;
 using Blackboard.Data;
 using Blackboard.Data.Configuration;
 using Serilog;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Blackboard.Core.Tests.Integration;
@@ -149,7 +152,7 @@ public class AdminServicesIntegrationTests : IDisposable
         // Assert
         Assert.NotNull(auditLogs);
         Assert.True(auditLogs.Count() >= 2); // At least registration, lock, unlock
-        Assert.Contains(auditLogs, log => log.Action == "USER_REGISTRATION");
+        Assert.Contains(auditLogs, log => log.Action == "USER_REGISTERED");
         Assert.Contains(auditLogs, log => log.Action == "USER_LOCKED");
         Assert.Contains(auditLogs, log => log.Action == "USER_UNLOCKED");
     }

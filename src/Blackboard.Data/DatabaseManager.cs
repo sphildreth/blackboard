@@ -5,7 +5,7 @@ using Blackboard.Data.Configuration;
 
 namespace Blackboard.Data;
 
-public class DatabaseManager
+public class DatabaseManager : IDatabaseManager
 {
     /// <summary>
     /// Executes a query and maps the result to a list of type T using Dapper.
