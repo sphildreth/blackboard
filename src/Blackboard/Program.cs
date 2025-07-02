@@ -80,11 +80,15 @@ class Program
             // Initialize telnet server
             _telnetServer = new TelnetServer(_logger, _configManager);
 
-            // Check if we should auto-start the server
-            if (_configManager.Configuration.System.SystemOnline)
+            // Check if we should auto-start the terminal server
+            if (_configManager.Configuration.System.TerminalServerAutoStart)
             {
-                _logger.Information("System configured to start online, starting telnet server...");
+                _logger.Information("Terminal server auto-start is enabled, starting telnet server...");
                 await _telnetServer.StartAsync();
+            }
+            else
+            {
+                _logger.Information("Terminal server auto-start is disabled by configuration.");
             }
 
             // Create and run the main application UI

@@ -40,3 +40,4 @@ logging:
   retainedLogFiles: 7
   enableConsoleLogging: true
   enableFileLogging: true
+

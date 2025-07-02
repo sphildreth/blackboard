@@ -14,4 +14,5 @@ public class SystemSettings
     /// The root folder for the application's main storage point (menus, doors, etc.)
     /// </summary>
     public string RootPath { get; set; } = "data";
+    public bool TerminalServerAutoStart { get; set; } = true;
 }
