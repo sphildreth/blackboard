@@ -206,7 +206,14 @@ public class MainApplication
         {
             try
             {
-                var backupPath = Path.Combine("backups", $"blackboard-{DateTime.Now:yyyyMMdd-HHmmss}.db");
+                string rootPath = _configManager.Configuration.System.RootPath;
+                string backupDir = Blackboard.Core.Configuration.PathResolver.ResolvePath(
+                    _configManager.Configuration.Database.BackupPath, 
+                    rootPath);
+                
+                string backupFileName = $"blackboard-{DateTime.Now:yyyyMMdd-HHmmss}.db";
+                string backupPath = Path.Combine(backupDir, backupFileName);
+                
                 await _databaseManager.BackupDatabaseAsync(backupPath);
                 
                 Application.Invoke(() =>

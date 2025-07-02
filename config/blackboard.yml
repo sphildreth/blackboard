@@ -7,7 +7,7 @@ system:
   preEnterCode: ""
   maxUsers: 100
   timeZone: "UTC"
-  rootPath: "/opt/blackboard"  # Main storage point for menus, doors, etc. e.g. "C:\bbs" or "/opt/blackboard"
+  rootPath: "/opt/blackboard"  # Main folder for system e.g. "C:\bbs" or "/opt/bbs"
 
 network:
   telnetBindAddress: "127.0.0.1"
@@ -27,15 +27,15 @@ security:
   enableEncryption: true
 
 database:
-  connectionString: "Data Source=data/blackboard.db"
+  connectionString: "Data Source={RootPath}/data/blackboard.db"
   enableWalMode: true
   connectionTimeoutSeconds: 30
   enableBackup: true
-  backupPath: "backups"
+  backupPath: "{RootPath}/backups"
 
 logging:
   logLevel: "Information"
-  logPath: "logs"
+  logPath: "{RootPath}/logs"
   maxLogFileSizeMB: 100
   retainedLogFiles: 7
   enableConsoleLogging: true

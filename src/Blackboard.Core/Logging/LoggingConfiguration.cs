@@ -10,6 +10,7 @@ public static class LoggingConfiguration
     public static ILogger CreateLogger(SystemConfiguration configuration)
     {
         var loggingConfig = configuration.Logging;
+        string rootPath = configuration.System.RootPath;
         
         var loggerConfig = new LoggerConfiguration()
             .MinimumLevel.Is(ParseLogLevel(loggingConfig.LogLevel))
@@ -31,13 +32,14 @@ public static class LoggingConfiguration
         // Configure file logging
         if (loggingConfig.EnableFileLogging)
         {
-            // Ensure log directory exists
-            if (!Directory.Exists(loggingConfig.LogPath))
+            // Resolve and ensure log directory exists
+            string resolvedLogPath = PathResolver.ResolvePath(loggingConfig.LogPath, rootPath);
+            if (!Directory.Exists(resolvedLogPath))
             {
-                Directory.CreateDirectory(loggingConfig.LogPath);
+                Directory.CreateDirectory(resolvedLogPath);
             }
 
-            var logFilePath = Path.Combine(loggingConfig.LogPath, "blackboard-.log");
+            var logFilePath = Path.Combine(resolvedLogPath, "blackboard-.log");
             
             loggerConfig = loggerConfig.WriteTo.File(
                 path: logFilePath,

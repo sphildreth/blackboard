@@ -32,17 +32,51 @@ class Program
             _logger.Information("Configuration loaded from {ConfigPath}", configPath);
 
             // Initialize database
+            string rootPath = _configManager.Configuration.System.RootPath;
+            
+            // Ensure the rootPath directory exists
+            if (!Directory.Exists(rootPath))
+            {
+                _logger.Information("Creating root directory at {RootPath}", rootPath);
+                Directory.CreateDirectory(rootPath);
+            }
+            
             var databaseConfig = new Blackboard.Data.Configuration.DatabaseConfiguration
             {
-                ConnectionString = _configManager.Configuration.Database.ConnectionString,
+                ConnectionString = PathResolver.ResolveConnectionString(
+                    _configManager.Configuration.Database.ConnectionString, 
+                    rootPath),
                 EnableWalMode = _configManager.Configuration.Database.EnableWalMode,
                 ConnectionTimeoutSeconds = _configManager.Configuration.Database.ConnectionTimeoutSeconds,
                 EnableBackup = _configManager.Configuration.Database.EnableBackup,
-                BackupPath = _configManager.Configuration.Database.BackupPath
+                BackupPath = PathResolver.ResolvePath(
+                    _configManager.Configuration.Database.BackupPath,
+                    rootPath)
             };
+            
+            // Ensure database directory exists
+            string dataSourcePath = databaseConfig.ConnectionString.Replace("Data Source=", "");
+            string? dbPath = Path.GetDirectoryName(dataSourcePath);
+            if (!string.IsNullOrEmpty(dbPath) && !Directory.Exists(dbPath))
+            {
+                _logger.Information("Creating database directory at {DbPath}", dbPath);
+                Directory.CreateDirectory(dbPath);
+            }
+            
             _databaseManager = new DatabaseManager(_logger, databaseConfig);
             await _databaseManager.InitializeAsync();
 
+            // Set up backup directory if backup is enabled
+            if (_configManager.Configuration.Database.EnableBackup)
+            {
+                string backupDir = PathResolver.ResolvePath(_configManager.Configuration.Database.BackupPath, rootPath);
+                if (!Directory.Exists(backupDir))
+                {
+                    _logger.Information("Creating backup directory at {BackupDir}", backupDir);
+                    Directory.CreateDirectory(backupDir);
+                }
+            }
+            
             // Initialize telnet server
             _telnetServer = new TelnetServer(_logger, _configManager);
 
