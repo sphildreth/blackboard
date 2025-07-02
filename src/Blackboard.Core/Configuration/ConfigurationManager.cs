@@ -33,13 +33,31 @@ public class ConfigurationManager
                 return;
             }
 
+            _logger.Information("Loading configuration from {FilePath}", _configFilePath);
             var yaml = File.ReadAllText(_configFilePath);
+            _logger.Debug("YAML file content:\n{YamlContent}", yaml);
+
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)
+                .IgnoreUnmatchedProperties()
                 .Build();
 
-            _configuration = deserializer.Deserialize<SystemConfiguration>(yaml);
+            var config = deserializer.Deserialize<SystemConfiguration>(yaml);
+            if (config == null)
+            {
+                _logger.Warning("Deserialized configuration is null, using default configuration");
+                _configuration = new SystemConfiguration();
+            }
+            else
+            {
+                _configuration = config;
+            }
             _logger.Information("Configuration loaded successfully from {FilePath}", _configFilePath);
+        }
+        catch (YamlDotNet.Core.YamlException yamlEx)
+        {
+            _logger.Error(yamlEx, "YAML parsing error in {FilePath}", _configFilePath);
+            _configuration = new SystemConfiguration();
         }
         catch (Exception ex)
         {

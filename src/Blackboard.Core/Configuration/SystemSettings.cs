@@ -1,0 +1,17 @@
+namespace Blackboard.Core.Configuration;
+
+public class SystemSettings
+{
+    public string BoardName { get; set; } = "Blackboard";
+    public string SysopName { get; set; } = "System Operator";
+    public string Location { get; set; } = "Somewhere, USA";
+    public bool SystemOnline { get; set; } = false;
+    public bool RequirePreEnterCode { get; set; } = false;
+    public string PreEnterCode { get; set; } = string.Empty;
+    public int MaxUsers { get; set; } = 100;
+    public string TimeZone { get; set; } = "UTC";
+    /// <summary>
+    /// The root folder for the application's main storage point (menus, doors, etc.)
+    /// </summary>
+    public string RootPath { get; set; } = "data";
+}

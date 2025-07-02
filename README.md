@@ -13,7 +13,7 @@ This implementation covers the foundational components of the Blackboard system:
 - **✅ Terminal.Gui integration** - Full terminal-based UI for system administration
 - **✅ SQLite database schema** - Complete database schema with tables for users, sessions, logs, and messages
 - **✅ YAML-based configuration** - Hot-reloadable configuration system with file watching
-- **✅ Serilog logging** - Comprehensive logging to console and files with configurable levels
+- **✅ Serilog logging** - Comprehensive logging to consol~~~~e and files with configurable levels
 
 ### Project Structure
 
@@ -31,12 +31,11 @@ Blackboard/
 │   │   └── Blackboard.Core.csproj
 │   └── Blackboard.Data/           # Data access layer
 │       ├── DatabaseManager.cs    # SQLite database management
-│       └── Blackboard.Data.csproj
-├── config/
-│   └── blackboard.yml            # Default configuration
+│       └── Blackboard.Data.csproj  
 ├── docs/
 │   ├── PRD.md                    # Product Requirements Document
 │   └── TASKS.md                  # Task checklist
+├── blackboard.yml            # Default configuration
 └── Blackboard.sln               # Solution file
 ```
 
