@@ -22,7 +22,7 @@ public class User
 
     public bool IsLocked => LockedUntil.HasValue && LockedUntil > DateTime.UtcNow;
     public bool IsPasswordExpired => PasswordExpiresAt.HasValue && PasswordExpiresAt < DateTime.UtcNow;
-    public string DisplayName => $"{FirstName} {LastName}".Trim();
+    public string DisplayName => $"{FirstName?.Trim()} {LastName?.Trim()}".Trim();
 }
 
 public enum SecurityLevel
