@@ -19,6 +19,10 @@ public class SystemSettings
     public string PreEnterCode { get; set; } = string.Empty;
     public int MaxUsers { get; set; } = 100;
     public string TimeZone { get; set; } = "UTC";
+    /// <summary>
+    /// The root folder for the application's main storage point (menus, doors, etc.)
+    /// </summary>
+    public string RootPath { get; set; } = "data";
 }
 
 public class NetworkSettings

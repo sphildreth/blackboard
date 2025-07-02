@@ -7,6 +7,7 @@ system:
   preEnterCode: ""
   maxUsers: 100
   timeZone: "UTC"
+  rootPath: "data"  # Main storage point for menus, doors, etc.
 
 network:
   telnetBindAddress: "127.0.0.1"

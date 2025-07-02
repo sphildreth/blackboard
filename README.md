@@ -1,6 +1,6 @@
-# Blackboard BBS
+# Blackboard
 
-A modern terminal-based BBS application built with .NET 8, inspired by classic BBS systems like Telegard, Mystic, and Renegade.
+A modern terminal-based BBS built with .NET 8, inspired by classic BBS systems like Telegard, Mystic, and Renegade.
 
 ## Phase 1 Implementation
 
