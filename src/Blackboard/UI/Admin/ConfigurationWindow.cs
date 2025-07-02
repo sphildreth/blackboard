@@ -56,27 +56,27 @@ public class ConfigurationWindow : Window
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Fill() - 3
+            Height = Dim.Fill(margin: 3)
         };
 
         // System Settings Tab
-        var systemTab = new TabViewItem
+        var systemTab = new Tab()
         {
             Text = "System",
             View = CreateSystemSettingsView()
         };
 
-        // Network Settings Tab
-        var networkTab = new TabViewItem
+        // Network Settings Tab  
+        var networkTab = new Tab()
         {
             Text = "Network",
             View = CreateNetworkSettingsView()
         };
 
         // Security Settings Tab
-        var securityTab = new TabViewItem
+        var securityTab = new Tab()
         {
-            Text = "Security", 
+            Text = "Security",
             View = CreateSecuritySettingsView()
         };
 
@@ -325,8 +325,8 @@ public class ConfigurationWindow : Window
             if (_sysopNameField != null) _sysopNameField.Text = config.System.SysopName;
             if (_locationField != null) _locationField.Text = config.System.Location;
             if (_maxUsersField != null) _maxUsersField.Text = config.System.MaxUsers.ToString();
-            if (_systemOnlineCheck != null) _systemOnlineCheck.Checked = config.System.SystemOnline;
-            if (_requirePreEnterCodeCheck != null) _requirePreEnterCodeCheck.Checked = config.System.RequirePreEnterCode;
+            if (_systemOnlineCheck != null) _systemOnlineCheck.CheckedState = config.System.SystemOnline ? CheckState.Checked : CheckState.UnChecked;
+            if (_requirePreEnterCodeCheck != null) _requirePreEnterCodeCheck.CheckedState = config.System.RequirePreEnterCode ? CheckState.Checked : CheckState.UnChecked;
             if (_preEnterCodeField != null) _preEnterCodeField.Text = config.System.PreEnterCode;
 
             // Network settings
@@ -339,7 +339,7 @@ public class ConfigurationWindow : Window
             if (_maxLoginAttemptsField != null) _maxLoginAttemptsField.Text = config.Security.MaxLoginAttempts.ToString();
             if (_lockoutDurationField != null) _lockoutDurationField.Text = config.Security.LockoutDurationMinutes.ToString();
             if (_passwordMinLengthField != null) _passwordMinLengthField.Text = config.Security.PasswordMinLength.ToString();
-            if (_requirePasswordComplexityCheck != null) _requirePasswordComplexityCheck.Checked = config.Security.RequirePasswordComplexity;
+            if (_requirePasswordComplexityCheck != null) _requirePasswordComplexityCheck.CheckedState = config.Security.RequirePasswordComplexity ? CheckState.Checked : CheckState.UnChecked;
             if (_passwordExpirationField != null) _passwordExpirationField.Text = config.Security.PasswordExpirationDays.ToString();
 
             if (_statusLabel != null) _statusLabel.Text = "Configuration loaded successfully";
@@ -351,7 +351,7 @@ public class ConfigurationWindow : Window
         }
     }
 
-    private async void SaveConfiguration()
+    private void SaveConfiguration()
     {
         try
         {
@@ -367,8 +367,8 @@ public class ConfigurationWindow : Window
             if (int.TryParse(_maxUsersField?.Text?.ToString(), out int maxUsers))
                 config.System.MaxUsers = maxUsers;
             
-            config.System.SystemOnline = _systemOnlineCheck?.Checked ?? config.System.SystemOnline;
-            config.System.RequirePreEnterCode = _requirePreEnterCodeCheck?.Checked ?? config.System.RequirePreEnterCode;
+            config.System.SystemOnline = _systemOnlineCheck?.CheckedState == CheckState.Checked;
+            config.System.RequirePreEnterCode = _requirePreEnterCodeCheck?.CheckedState == CheckState.Checked;
             config.System.PreEnterCode = _preEnterCodeField?.Text?.ToString() ?? config.System.PreEnterCode;
 
             // Update network settings
@@ -393,13 +393,13 @@ public class ConfigurationWindow : Window
             if (int.TryParse(_passwordMinLengthField?.Text?.ToString(), out int passwordMinLength))
                 config.Security.PasswordMinLength = passwordMinLength;
             
-            config.Security.RequirePasswordComplexity = _requirePasswordComplexityCheck?.Checked ?? config.Security.RequirePasswordComplexity;
+            config.Security.RequirePasswordComplexity = _requirePasswordComplexityCheck?.CheckedState == CheckState.Checked;
             
             if (int.TryParse(_passwordExpirationField?.Text?.ToString(), out int passwordExpiration))
                 config.Security.PasswordExpirationDays = passwordExpiration;
 
             // Save the configuration
-            await _configManager.SaveConfigurationAsync();
+            _configManager.SaveConfiguration();
 
             if (_statusLabel != null) _statusLabel.Text = "Configuration saved successfully";
         }

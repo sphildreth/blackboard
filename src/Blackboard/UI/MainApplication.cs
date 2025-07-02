@@ -190,6 +190,7 @@ public class MainApplication
                 {
                     await _telnetServer.StartAsync();
                     _isServerRunning = true;
+                    _serverStartTime = DateTime.UtcNow;
                     _logger.Information("Telnet server started by user");
                 }
 
@@ -328,8 +329,9 @@ public class MainApplication
 
         if (_uptimeLabel != null && _isServerRunning)
         {
-            // Calculate uptime (simplified)
-            _uptimeLabel.Text = $"Uptime: {DateTime.UtcNow.TimeOfDay:hh\\:mm\\:ss}";
+            // Calculate actual uptime since server start
+            var uptime = DateTime.UtcNow - _serverStartTime;
+            _uptimeLabel.Text = $"Uptime: {uptime:hh\\:mm\\:ss}";
         }
 
         if (_startStopButton != null)

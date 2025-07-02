@@ -220,7 +220,7 @@ public class UserManagementWindow : Window
         }
     }
 
-    private void OnSearchTextChanged(Terminal.Gui.ViewBase.TextChangedEventArgs args)
+    private void OnSearchTextChanged(object? sender, EventArgs e)
     {
         // Auto-search after a delay could be implemented here
     }
@@ -243,7 +243,7 @@ public class UserManagementWindow : Window
         }
     }
 
-    private void OnUserSelected(ListViewItemEventArgs args)
+    private void OnUserSelected(object? sender, ListViewItemEventArgs args)
     {
         if (args.Item >= 0 && args.Item < _users.Count)
         {
@@ -374,10 +374,13 @@ public class UserEditDialog : Dialog
     
     public event EventHandler? UserUpdated;
 
-    public UserEditDialog(UserProfileDto user, IUserService userService, ILogger logger) : base("Edit User")
+    public UserEditDialog(UserProfileDto user, IUserService userService, ILogger logger) : base()
     {
         _user = user;
         _userService = userService;
+        _logger = logger;
+        
+        Title = "Edit User";
         _logger = logger;
         
         Width = 60;
@@ -453,7 +456,9 @@ public class UserEditDialog : Dialog
             Height = 5
         };
         
-        var securityLevels = Enum.GetValues<SecurityLevel>().Select(sl => sl.ToString()).ToArray();
+        var securityLevels = new ObservableCollection<string>(
+            Enum.GetValues<SecurityLevel>().Select(sl => sl.ToString())
+        );
         _securityLevelCombo.SetSource(securityLevels);
         _securityLevelCombo.SelectedItem = (int)_user.SecurityLevel + 1; // Adjust for Banned = -1
         Add(_securityLevelCombo);
@@ -531,10 +536,13 @@ public class UserAuditDialog : Dialog
     
     private ListView? _auditList;
 
-    public UserAuditDialog(UserProfileDto user, IAuditService auditService, ILogger logger) : base($"Audit Log - {user.Handle}")
+    public UserAuditDialog(UserProfileDto user, IAuditService auditService, ILogger logger) : base()
     {
         _user = user;
         _auditService = auditService;
+        _logger = logger;
+        
+        Title = $"Audit Log - {user.Handle}";
         _logger = logger;
         
         Width = 70;
