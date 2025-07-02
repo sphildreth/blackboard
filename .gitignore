@@ -1,0 +1,44 @@
+# .gitignore for Blackboard (.NET, C#, SQLite, ANSI Art)
+
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# SQLite database
+*.db
+*.sqlite
+*.sqlite3
+
+# YAML config backups
+*.yml~
+*.yaml~
+
+# ANSI art tools
+*.ans.bak
+*.ans~
+
+# Other
+*.tmp
+*.bak
+*.swp
+
+# Ignore secrets/configs
+secrets.yml
+config.local.yml

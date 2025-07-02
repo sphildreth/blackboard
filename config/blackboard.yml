@@ -1,0 +1,41 @@
+system:
+  boardName: "Blackboard BBS"
+  sysopName: "System Operator"
+  location: "Somewhere, USA"
+  systemOnline: false
+  requirePreEnterCode: false
+  preEnterCode: ""
+  maxUsers: 100
+  timeZone: "UTC"
+
+network:
+  telnetBindAddress: "127.0.0.1"
+  telnetPort: 2323
+  maxConcurrentConnections: 10
+  connectionTimeoutSeconds: 300
+  enableSsh: false
+  sshPort: 2222
+
+security:
+  maxLoginAttempts: 3
+  lockoutDurationMinutes: 30
+  passwordMinLength: 8
+  requirePasswordComplexity: true
+  passwordExpirationDays: 90
+  enableAuditLogging: true
+  enableEncryption: true
+
+database:
+  connectionString: "Data Source=data/blackboard.db"
+  enableWalMode: true
+  connectionTimeoutSeconds: 30
+  enableBackup: true
+  backupPath: "backups"
+
+logging:
+  logLevel: "Information"
+  logPath: "logs"
+  maxLogFileSizeMB: 100
+  retainedLogFiles: 7
+  enableConsoleLogging: true
+  enableFileLogging: true
