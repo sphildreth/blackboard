@@ -3,6 +3,7 @@ using Blackboard.Core;
 using Blackboard.Core.Configuration;
 using Blackboard.Core.Logging;
 using Blackboard.Core.Network;
+using Blackboard.Core.Services;
 using Blackboard.Data;
 using Blackboard.UI;
 using Microsoft.Extensions.DependencyInjection;
@@ -80,8 +81,15 @@ class Program
                 }
             }
             
+            // Initialize core services required for telnet server
+            var passwordService = new PasswordService();
+            var sessionService = new SessionService(_databaseManager, _logger);
+            var auditService = new AuditService(_databaseManager, _logger);
+            var userService = new UserService(_databaseManager, passwordService, sessionService, auditService, 
+                _configManager.Configuration.Security, _logger);
+            
             // Initialize telnet server
-            _telnetServer = new TelnetServer(_logger, _configManager);
+            _telnetServer = new TelnetServer(_logger, _configManager, userService, sessionService);
 
             // Check if we should auto-start the terminal server
             if (_configManager.Configuration.System.TerminalServerAutoStart)

@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using Serilog;
 using Blackboard.Core.Configuration;
+using Blackboard.Core.Services;
 
 namespace Blackboard.Core.Network;
 
@@ -10,6 +11,8 @@ public class TelnetServer
 {
     private readonly ILogger _logger;
     private readonly ConfigurationManager _configManager;
+    private readonly IUserService _userService;
+    private readonly ISessionService _sessionService;
     private TcpListener? _listener;
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly List<TelnetConnection> _activeConnections;
@@ -21,10 +24,12 @@ public class TelnetServer
     public IReadOnlyList<TelnetConnection> ActiveConnections => _activeConnections.AsReadOnly();
     public bool IsRunning => _isRunning;
 
-    public TelnetServer(ILogger logger, ConfigurationManager configManager)
+    public TelnetServer(ILogger logger, ConfigurationManager configManager, IUserService userService, ISessionService sessionService)
     {
         _logger = logger;
         _configManager = configManager;
+        _userService = userService;
+        _sessionService = sessionService;
         _activeConnections = new List<TelnetConnection>();
     }
 
@@ -156,9 +161,7 @@ public class TelnetServer
 
     private async Task HandleSessionAsync(TelnetConnection connection, CancellationToken cancellationToken)
     {
-        // Basic session handling - will be expanded in Phase 2
-        await connection.SendLineAsync("Session handling not yet implemented.");
-        await connection.SendLineAsync("Press any key to disconnect...");
-        await connection.ReadLineAsync();
+        var sessionHandler = new BbsSessionHandler(_userService, _sessionService, _logger);
+        await sessionHandler.HandleSessionAsync(connection, cancellationToken);
     }
 }
