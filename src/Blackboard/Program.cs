@@ -55,10 +55,10 @@ class Program
 
             // Create and run the main application UI
             var mainApp = new MainApplication(_logger, _configManager, _databaseManager, _telnetServer);
-            
+
             var initTime = DateTime.UtcNow - startTime;
             _logger.Information("Blackboard BBS initialized in {InitTime:F2} seconds", initTime.TotalSeconds);
-            
+
             // Run the Terminal.Gui application
             mainApp.Run();
         }
@@ -72,12 +72,12 @@ class Program
             {
                 Console.WriteLine($"Fatal error during startup: {ex}");
             }
-            
+
             Environment.ExitCode = 1;
         }
         finally
         {
-            await Shutdown();
+            await Shutdown().ConfigureAwait(false);
         }
     }
 

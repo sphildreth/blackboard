@@ -1,4 +1,7 @@
-using Terminal.Gui;
+using System.Collections.ObjectModel;
+using Terminal.Gui.App;
+using Terminal.Gui.Views;
+using Terminal.Gui.ViewBase;
 using Serilog;
 using Blackboard.Core.Configuration;
 using Blackboard.Core.Network;
@@ -20,6 +23,7 @@ public class MainApplication
     private ListView? _connectionsListView;
     private Button? _startStopButton;
     private bool _isServerRunning;
+    private DateTime _serverStartTime;
 
     public MainApplication(ILogger logger, ConfigurationManager configManager, 
         DatabaseManager databaseManager, TelnetServer telnetServer)
@@ -38,7 +42,7 @@ public class MainApplication
             CreateMainWindow();
             SetupEventHandlers();
             UpdateDisplay();
-            Application.MainLoop.AddTimeout(TimeSpan.FromSeconds(1), _ => { UpdateDisplay(); return true; });
+            Application.AddTimeout(TimeSpan.FromSeconds(1), () => { UpdateDisplay(); return true; });
             Application.Run(_mainWindow);
         }
         catch (Exception ex)
@@ -65,16 +69,17 @@ public class MainApplication
 
     private void CreateMainWindow()
     {
-        _mainWindow = new Window("Blackboard BBS - System Console")
+        _mainWindow = new Window()
         {
             X = 0,
             Y = 0,
             Width = 80,
-            Height = 25
+            Height = 25,
+            Title = "Blackboard BBS - System Console"
         };
 
         // System status panel
-        var statusPanel = new View()
+        var statusPanel = new FrameView()
         {
             X = 1,
             Y = 1,
@@ -90,7 +95,7 @@ public class MainApplication
         statusPanel.Add(_statusLabel, _uptimeLabel, boardNameLabel, sysopLabel, portLabel);
 
         // Server control panel
-        var controlPanel = new View()
+        var controlPanel = new FrameView()
         {
             X = 41,
             Y = 1,
@@ -99,15 +104,15 @@ public class MainApplication
         };
         controlPanel.Add(new Label { X = 0, Y = 0, Text = "Server Control" });
         _startStopButton = new Button { X = 1, Y = 1, Text = "Start Server" };
-        _startStopButton.Clicked += OnStartStopClicked;
+        _startStopButton.MouseClick += (sender, args) => OnStartStopClicked();
         var configButton = new Button { X = 1, Y = 3, Text = "Configuration" };
-        configButton.Clicked += OnConfigurationClicked;
+        configButton.MouseClick += (sender, args) => OnConfigurationClicked();
         var exitButton = new Button { X = 1, Y = 5, Text = "Exit" };
-        exitButton.Clicked += OnExitClicked;
+        exitButton.MouseClick += (sender, args) => OnExitClicked();
         controlPanel.Add(_startStopButton, configButton, exitButton);
 
         // Active connections panel
-        var connectionsPanel = new View()
+        var connectionsPanel = new FrameView()
         {
             X = 1,
             Y = 10,
@@ -122,24 +127,24 @@ public class MainApplication
         _mainWindow.Add(statusPanel, controlPanel, connectionsPanel);
 
         // Menu bar
-        var menu = new MenuBar(new MenuBarItem[]
+        var menu = new MenuBarv2(new MenuBarItemv2[]
         {
-            new MenuBarItem("_System", new MenuItem[]
+            new MenuBarItemv2("_System", new MenuItemv2[]
             {
-                new MenuItem("_Start Server", "", OnStartStopClicked),
-                new MenuItem("_Configuration", "", OnConfigurationClicked),
+                new MenuItemv2("_Start Server", "", () => OnStartStopClicked()),
+                new MenuItemv2("_Configuration", "", () => OnConfigurationClicked()),
                 null!,
-                new MenuItem("E_xit", "", OnExitClicked)
+                new MenuItemv2("E_xit", "", () => OnExitClicked())
             }),
-            new MenuBarItem("_Tools", new MenuItem[]
+            new MenuBarItemv2("_Tools", new MenuItemv2[]
             {
-                new MenuItem("_User Management", "", () => ShowNotImplemented("User Management")),
-                new MenuItem("_Log Viewer", "", () => ShowNotImplemented("Log Viewer")),
-                new MenuItem("_Database Backup", "", OnDatabaseBackupClicked)
+                new MenuItemv2("_User Management", "", () => ShowNotImplemented("User Management")),
+                new MenuItemv2("_Log Viewer", "", () => ShowNotImplemented("Log Viewer")),
+                new MenuItemv2("_Database Backup", "", () => OnDatabaseBackupClicked())
             }),
-            new MenuBarItem("_Help", new MenuItem[]
+            new MenuBarItemv2("_Help", new MenuItemv2[]
             {
-                new MenuItem("_About", "", OnAboutClicked)
+                new MenuItemv2("_About", "", () => OnAboutClicked())
             })
         });
         _mainWindow.Add(menu);
@@ -171,12 +176,11 @@ public class MainApplication
                     _logger.Information("Telnet server started by user");
                 }
 
-                Application.MainLoop.Invoke(UpdateDisplay);
+                Application.Invoke(UpdateDisplay);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error toggling server state");
-                Application.MainLoop.Invoke(() => 
+                _logger.Error(ex, "Error toggling server state");                Application.Invoke(() =>
                     MessageBox.ErrorQuery("Error", $"Failed to toggle server: {ex.Message}", "OK"));
             }
         });
@@ -205,13 +209,13 @@ public class MainApplication
                 var backupPath = Path.Combine("backups", $"blackboard-{DateTime.Now:yyyyMMdd-HHmmss}.db");
                 await _databaseManager.BackupDatabaseAsync(backupPath);
                 
-                Application.MainLoop.Invoke(() =>
+                Application.Invoke(() =>
                     MessageBox.Query("Backup Complete", $"Database backed up to:\n{backupPath}", "OK"));
             }
             catch (Exception ex)
             {
                 _logger.Error(ex, "Database backup failed");
-                Application.MainLoop.Invoke(() =>
+                Application.Invoke(() =>
                     MessageBox.ErrorQuery("Backup Failed", $"Database backup failed:\n{ex.Message}", "OK"));
             }
         });
@@ -234,24 +238,24 @@ public class MainApplication
     private void OnClientConnected(object? sender, TelnetConnection connection)
     {
         _logger.Information("Client connected from {RemoteEndPoint}", connection.RemoteEndPoint);
-        Application.MainLoop.Invoke(UpdateConnectionsList);
+        Application.Invoke(UpdateConnectionsList);
     }
 
     private void OnClientDisconnected(object? sender, TelnetConnection connection)
     {
         _logger.Information("Client disconnected from {RemoteEndPoint}", connection.RemoteEndPoint);
-        Application.MainLoop.Invoke(UpdateConnectionsList);
+        Application.Invoke(UpdateConnectionsList);
     }
 
     private void OnConfigurationChanged(object? sender, SystemConfiguration config)
     {
         _logger.Information("Configuration changed, updating display");
-        Application.MainLoop.Invoke(UpdateDisplay);
+        Application.Invoke(UpdateDisplay);
     }
 
     private bool UpdateTimerCallback()
     {
-        Application.MainLoop.Invoke(UpdateDisplay);
+        Application.Invoke(UpdateDisplay);
         return true; // Continue timer
     }
 
@@ -284,9 +288,9 @@ public class MainApplication
         var connections = _telnetServer.ActiveConnections;
         _connectionsLabel.Text = $"Connections: {connections.Count}";
 
-        var connectionStrings = connections
+        var connectionStrings = new ObservableCollection<string>(connections
             .Select(c => $"{c.RemoteEndPoint} - Connected: {c.ConnectedAt:HH:mm:ss}")
-            .ToList();
+            .ToList());
 
         _connectionsListView.SetSource(connectionStrings);
     }

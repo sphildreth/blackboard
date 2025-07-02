@@ -7,7 +7,7 @@ system:
   preEnterCode: ""
   maxUsers: 100
   timeZone: "UTC"
-  rootPath: "data"  # Main storage point for menus, doors, etc.
+  rootPath: "/opt/blackboard"  # Main storage point for menus, doors, etc. e.g. "C:\bbs" or "/opt/blackboard"
 
 network:
   telnetBindAddress: "127.0.0.1"
