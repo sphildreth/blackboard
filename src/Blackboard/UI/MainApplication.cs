@@ -48,7 +48,7 @@ public class MainApplication
         catch (Exception ex)
         {
             _logger.Error(ex, "Terminal UI failed to start, this may be due to running in a headless environment");
-            Console.WriteLine("Blackboard BBS is running in console mode.");
+            Console.WriteLine("Blackboard is running in console mode.");
             Console.WriteLine("The Terminal.Gui interface requires a proper terminal environment.");
             Console.WriteLine("Press Ctrl+C to exit.");
             var cancellationToken = new CancellationTokenSource();
@@ -75,7 +75,7 @@ public class MainApplication
             Y = 0,
             Width = 80,
             Height = 25,
-            Title = "Blackboard BBS - System Console"
+            Title = "Blackboard - System Console"
         };
 
         // System status panel
@@ -230,10 +230,9 @@ public class MainApplication
 
     private void OnAboutClicked()
     {
-        MessageBox.Query("About Blackboard BBS", 
-            "Blackboard BBS v1.0\n\n" +
-            "A modern terminal-based BBS application\n" +
-            "Built with .NET 8 and Terminal.Gui\n\n" +
+        MessageBox.Query("About Blackboard", 
+            "Blackboard v1.0\n\n" +
+            "A modern BBS system with old school charm\n" +
             "Copyright (c) 2025", "OK");
     }
 

@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Script to run the Blackboard BBS application from the console
+# Script to run the Blackboard application from the console
 
 # Navigate to the directory containing this script
 cd "$(dirname "$0")"

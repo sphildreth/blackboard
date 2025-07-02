@@ -4,7 +4,7 @@ A modern terminal-based BBS built with .NET 8, inspired by classic BBS systems l
 
 ## Phase 1 Implementation
 
-This implementation covers the foundational components of the Blackboard BBS system:
+This implementation covers the foundational components of the Blackboard system:
 
 ### ✅ Completed Features
 

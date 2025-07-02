@@ -1,5 +1,5 @@
 system:
-  boardName: "Blackboard BBS"
+  boardName: "Blackboard"
   sysopName: "System Operator"
   location: "Somewhere, USA"
   systemOnline: false

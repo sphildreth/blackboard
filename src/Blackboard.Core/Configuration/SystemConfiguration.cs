@@ -11,7 +11,7 @@ public class SystemConfiguration
 
 public class SystemSettings
 {
-    public string BoardName { get; set; } = "Blackboard BBS";
+    public string BoardName { get; set; } = "Blackboard";
     public string SysopName { get; set; } = "System Operator";
     public string Location { get; set; } = "Somewhere, USA";
     public bool SystemOnline { get; set; } = false;

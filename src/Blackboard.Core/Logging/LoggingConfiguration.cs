@@ -17,7 +17,7 @@ public static class LoggingConfiguration
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .Enrich.FromLogContext()
-            .Enrich.WithProperty("Application", "Blackboard BBS")
+            .Enrich.WithProperty("Application", "Blackboard")
             .Enrich.WithEnvironmentName()
             .Enrich.WithProcessId()
             .Enrich.WithThreadId();

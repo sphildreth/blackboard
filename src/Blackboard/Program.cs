@@ -28,7 +28,7 @@ class Program
             _logger = LoggingConfiguration.CreateLogger(_configManager.Configuration);
             Log.Logger = _logger;
 
-            _logger.Information("Starting Blackboard BBS...");
+            _logger.Information("Starting Blackboard...");
             _logger.Information("Configuration loaded from {ConfigPath}", configPath);
 
             // Initialize database
@@ -91,7 +91,7 @@ class Program
             var mainApp = new MainApplication(_logger, _configManager, _databaseManager, _telnetServer);
 
             var initTime = DateTime.UtcNow - startTime;
-            _logger.Information("Blackboard BBS initialized in {InitTime:F2} seconds", initTime.TotalSeconds);
+            _logger.Information("Blackboard initialized in {InitTime:F2} seconds", initTime.TotalSeconds);
 
             // Run the Terminal.Gui application
             mainApp.Run();
@@ -117,7 +117,7 @@ class Program
 
     private static async Task Shutdown()
     {
-        _logger?.Information("Shutting down Blackboard BBS...");
+        _logger?.Information("Shutting down Blackboard...");
 
         try
         {
@@ -139,7 +139,7 @@ class Program
             // Dispose configuration manager
             _configManager?.Dispose();
 
-            _logger?.Information("Blackboard BBS shutdown complete");
+            _logger?.Information("Blackboard shutdown complete");
         }
         catch (Exception ex)
         {

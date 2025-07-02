@@ -5,7 +5,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyTitle>Blackboard BBS</AssemblyTitle>
+    <AssemblyTitle>Blackboard</AssemblyTitle>
     <AssemblyDescription>A modern terminal-based BBS application</AssemblyDescription>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>

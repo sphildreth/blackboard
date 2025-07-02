@@ -1,5 +1,5 @@
 
-# Blackboard BBS - Product Requirements Document (PRD)
+# Blackboard - Product Requirements Document (PRD)
 
 ---
 
