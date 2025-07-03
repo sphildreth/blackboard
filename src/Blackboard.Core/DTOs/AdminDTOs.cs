@@ -267,7 +267,9 @@ public class DoorSystemStatisticsDto
     public int TotalDoors { get; set; }
     public int ActiveDoors { get; set; }
     public int ActiveSessions { get; set; }
+    public int TotalSessions { get; set; }
     public int TotalSessionsToday { get; set; }
+    public int TotalSessionTime { get; set; } // total time in seconds
     public int TotalPlayTimeToday { get; set; } // seconds
     public int UniquePlayersToday { get; set; }
     public List<DoorDto> MostPlayedDoors { get; set; } = new();
@@ -308,16 +310,28 @@ public class CreateDoorDto
     public string? CommandLine { get; set; }
     public string? WorkingDirectory { get; set; }
     public string DropFileType { get; set; } = "DOOR.SYS";
+    public string? DropFileLocation { get; set; }
     public bool RequiresDosBox { get; set; }
     public string? DosBoxConfigPath { get; set; }
+    public string? SerialPort { get; set; }
+    public int MemorySize { get; set; } = 640;
     public int MinimumLevel { get; set; }
+    public int MaximumLevel { get; set; } = 999;
     public int TimeLimit { get; set; } = 60;
     public int DailyLimit { get; set; } = 5;
+    public int Cost { get; set; } = 0;
+    public bool SchedulingEnabled { get; set; }
+    public string? AvailableHours { get; set; }
+    public string? TimeZone { get; set; }
+    public bool MultiNodeEnabled { get; set; }
+    public int MaxPlayers { get; set; } = 1;
+    public bool InterBbsEnabled { get; set; }
 }
 
 public class DropFileInfo
 {
     public string Type { get; set; } = string.Empty; // DOOR.SYS, DORINFO1.DEF, etc.
+    public string FileName { get; set; } = string.Empty;
     public string FilePath { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public Dictionary<string, string> Variables { get; set; } = new();
@@ -328,9 +342,14 @@ public class FossilEmulationDto
     public string SessionId { get; set; } = string.Empty;
     public string ComPort { get; set; } = "COM1";
     public int BaudRate { get; set; } = 38400;
+    public int DataBits { get; set; } = 8;
+    public int StopBits { get; set; } = 1;
+    public string Parity { get; set; } = "None";
     public string NamedPipeName { get; set; } = string.Empty;
+    public string PipeName { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public DateTime StartTime { get; set; }
+    public DateTime? EndTime { get; set; }
     public long BytesSent { get; set; }
     public long BytesReceived { get; set; }
 }

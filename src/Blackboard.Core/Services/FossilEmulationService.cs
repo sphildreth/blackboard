@@ -14,13 +14,14 @@ namespace Blackboard.Core.Services;
 /// Provides a bridge between legacy DOS door games expecting FOSSIL drivers
 /// and modern telnet connections, similar to NetFoss functionality.
 /// </summary>
-public class FossilEmulationService : IFossilEmulationService
+public class FossilEmulationService : IFossilEmulationService, IDisposable
 {
     private readonly ILogger _logger;
     private readonly Dictionary<string, FossilSession> _activeSessions;
     private readonly Dictionary<string, NamedPipeServerStream> _namedPipes;
     private readonly Dictionary<string, CancellationTokenSource> _pipeTokens;
     private readonly object _lockObject = new();
+    private bool _disposed = false;
 
     public FossilEmulationService(ILogger logger)
     {
@@ -46,7 +47,7 @@ public class FossilEmulationService : IFossilEmulationService
                 SessionId = sessionId,
                 TelnetConnection = telnetConnection,
                 StartTime = DateTime.UtcNow,
-                ComPort = 1,
+                ComPort = "COM1",
                 BaudRate = 38400,
                 DataBits = 8,
                 StopBits = 1,
@@ -246,7 +247,7 @@ public class FossilEmulationService : IFossilEmulationService
             if (!_activeSessions.TryGetValue(sessionId, out var session))
                 return false;
 
-            session.ComPort = comPort;
+            session.ComPort = $"COM{comPort}";
             session.BaudRate = baudRate;
             session.IsInitialized = true;
         }
@@ -323,7 +324,7 @@ public class FossilEmulationService : IFossilEmulationService
         }
 
         // Send data to telnet connection asynchronously
-        _ = Task.Run(async () => await ProcessOutputBufferAsync(sessionId));
+        _ = Task.Run(() => ProcessOutputBuffer(sessionId));
 
         await Task.CompletedTask;
         return data.Length;
@@ -735,7 +736,8 @@ public class FossilEmulationService : IFossilEmulationService
                         // Send to telnet connection
                         if (session.TelnetConnection != null)
                         {
-                            await session.TelnetConnection.SendAsync(data);
+                            var text = Encoding.GetEncoding("CP437").GetString(data);
+                            await session.TelnetConnection.SendAsync(text);
                         }
                     }
 
@@ -791,7 +793,7 @@ public class FossilEmulationService : IFossilEmulationService
         }
     }
 
-    private async Task ProcessOutputBufferAsync(string sessionId)
+    private void ProcessOutputBuffer(string sessionId)
     {
         lock (_lockObject)
         {
@@ -811,7 +813,8 @@ public class FossilEmulationService : IFossilEmulationService
             {
                 try
                 {
-                    await session.TelnetConnection.SendAsync(data);
+                    var text = Encoding.GetEncoding("CP437").GetString(data);
+                    await session.TelnetConnection.SendAsync(text);
                 }
                 catch (Exception ex)
                 {
@@ -831,7 +834,7 @@ public class FossilEmulationService : IFossilEmulationService
         public TelnetConnection? TelnetConnection { get; set; }
         public DateTime StartTime { get; set; }
         public DateTime? EndTime { get; set; }
-        public int ComPort { get; set; }
+        public string ComPort { get; set; } = "COM1";
         public int BaudRate { get; set; }
         public int DataBits { get; set; }
         public int StopBits { get; set; }
@@ -859,6 +862,43 @@ public class FossilEmulationService : IFossilEmulationService
         public bool LoggingEnabled { get; set; }
         public string LogLevel { get; set; } = "info";
         public List<string> LogEntries { get; set; } = new();
+    }
+
+    #endregion
+
+    #region IDisposable Implementation
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed && disposing)
+        {
+            // Clean up all active sessions
+            lock (_lockObject)
+            {
+                foreach (var token in _pipeTokens.Values)
+                {
+                    try { token.Cancel(); } catch { }
+                    try { token.Dispose(); } catch { }
+                }
+                
+                foreach (var pipe in _namedPipes.Values)
+                {
+                    try { pipe.Dispose(); } catch { }
+                }
+                
+                _activeSessions.Clear();
+                _namedPipes.Clear();
+                _pipeTokens.Clear();
+            }
+            
+            _disposed = true;
+        }
     }
 
     #endregion

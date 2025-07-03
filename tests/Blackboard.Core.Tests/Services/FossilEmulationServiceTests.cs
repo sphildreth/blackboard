@@ -2,7 +2,7 @@ using Blackboard.Core.DTOs;
 using Blackboard.Core.Network;
 using Blackboard.Core.Services;
 using FluentAssertions;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Moq;
 using Xunit;
 
@@ -41,7 +41,7 @@ public class FossilEmulationServiceTests : IDisposable
         result.Should().NotBeNull();
         result.SessionId.Should().Be(sessionId);
         result.IsActive.Should().BeTrue();
-        result.ComPort.Should().Be(1);
+        result.ComPort.Should().Be("COM1");
         result.BaudRate.Should().Be(38400);
         result.DataBits.Should().Be(8);
         result.StopBits.Should().Be(1);
@@ -211,7 +211,7 @@ public class FossilEmulationServiceTests : IDisposable
         result.Should().BeTrue();
         
         var session = await _fossilService.GetFossilSessionAsync(sessionId);
-        session!.ComPort.Should().Be(2);
+        session!.ComPort.Should().Be("COM2");
         session.BaudRate.Should().Be(57600);
     }
 

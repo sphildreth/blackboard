@@ -37,7 +37,7 @@ public interface IDoorService
     // Drop File Management
     Task<DropFileInfo> GenerateDropFileAsync(int doorId, int userId, string sessionId);
     Task<bool> CleanupDropFileAsync(string sessionId);
-    Task<string> GetDropFileTemplateAsync(string dropFileType);
+    string GetDropFileTemplate(string dropFileType);
     Task<bool> ValidateDropFileAsync(string filePath);
 
     // Door Configuration
@@ -55,7 +55,7 @@ public interface IDoorService
     Task<IEnumerable<DoorSessionDto>> GetRecentSessionsAsync(int count = 20);
 
     // DOSBox Integration
-    Task<bool> IsDosBoxAvailableAsync();
+    bool IsDosBoxAvailable();
     Task<string> GenerateDosBoxConfigAsync(int doorId, string sessionId);
     Task<Process?> StartDosBoxSessionAsync(int doorId, string sessionId, string dropFilePath);
     Task<bool> ValidateDosBoxInstallationAsync();

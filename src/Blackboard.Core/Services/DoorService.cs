@@ -454,7 +454,7 @@ public class DoorService : IDoorService
         if (door == null)
             throw new ArgumentException("Door not found", nameof(doorId));
 
-        var template = await GetDropFileTemplateAsync(door.DropFileType);
+        var template = GetDropFileTemplate(door.DropFileType);
         var dropFileName = $"{sessionId}_{door.DropFileType.ToLower().Replace(".", "_")}";
         var dropFilePath = Path.Combine(_dropFileBasePath, dropFileName);
 
@@ -499,6 +499,7 @@ public class DoorService : IDoorService
         return new DropFileInfo
         {
             Type = door.DropFileType,
+            FileName = dropFileName,
             FilePath = dropFilePath,
             Content = content,
             Variables = variables
@@ -527,7 +528,7 @@ public class DoorService : IDoorService
         return false;
     }
 
-    public async Task<string> GetDropFileTemplateAsync(string dropFileType)
+    public string GetDropFileTemplate(string dropFileType)
     {
         return dropFileType.ToUpper() switch
         {
@@ -743,7 +744,7 @@ public class DoorService : IDoorService
 
     #region DOSBox Integration
 
-    public async Task<bool> IsDosBoxAvailableAsync()
+    public bool IsDosBoxAvailable()
     {
         try
         {
@@ -952,7 +953,7 @@ public class DoorService : IDoorService
         if (!string.IsNullOrEmpty(door.WorkingDirectory) && !Directory.Exists(door.WorkingDirectory))
             issues.Add("Working directory not found");
 
-        if (door.RequiresDosBox && !await IsDosBoxAvailableAsync())
+        if (door.RequiresDosBox && !IsDosBoxAvailable())
             issues.Add("DOSBox not available but required");
 
         if (!string.IsNullOrEmpty(door.DosBoxConfigPath) && !File.Exists(door.DosBoxConfigPath))

@@ -4,7 +4,7 @@ using Blackboard.Core.Models;
 using Blackboard.Core.Services;
 using Blackboard.Data;
 using FluentAssertions;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Moq;
 using Xunit;
 
@@ -62,8 +62,8 @@ public class DoorServiceTests : IDisposable
         // Arrange
         var expectedDoors = new List<dynamic>
         {
-            new { Id = 1, Name = "Door1", Description = "Test Door 1", ActiveSessions = 0, TotalSessions = 5, LastPlayed = DateTime.UtcNow },
-            new { Id = 2, Name = "Door2", Description = "Test Door 2", ActiveSessions = 1, TotalSessions = 3, LastPlayed = DateTime.UtcNow }
+            CreateDoorData(1, "Door1", "Test Door 1", activeSessions: 0, totalSessions: 5, lastPlayed: DateTime.UtcNow),
+            CreateDoorData(2, "Door2", "Test Door 2", activeSessions: 1, totalSessions: 3, lastPlayed: DateTime.UtcNow)
         };
 
         _mockDatabaseManager
@@ -84,11 +84,11 @@ public class DoorServiceTests : IDisposable
     {
         // Arrange
         var doorId = 1;
-        var doorData = new { Id = doorId, Name = "TestDoor", Description = "Test", ActiveSessions = 0, TotalSessions = 0, LastPlayed = (DateTime?)null };
+        var doorData = CreateDoorData(doorId, "TestDoor", "Test");
 
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(doorData);
+            .Returns(Task.FromResult<dynamic>(doorData));
 
         // Act
         var result = await _doorService.GetDoorAsync(doorId);
@@ -107,7 +107,7 @@ public class DoorServiceTests : IDisposable
 
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync((dynamic?)null);
+            .Returns(Task.FromResult<dynamic?>(null));
 
         // Act
         var result = await _doorService.GetDoorAsync(doorId);
@@ -137,10 +137,10 @@ public class DoorServiceTests : IDisposable
             .Setup(x => x.QueryFirstAsync<int>(It.IsAny<string>(), It.IsAny<object>()))
             .ReturnsAsync(newDoorId);
 
-        var createdDoor = new { Id = newDoorId, Name = createDto.Name, Description = createDto.Description, ActiveSessions = 0, TotalSessions = 0, LastPlayed = (DateTime?)null };
+        var createdDoor = CreateDoorData(newDoorId, createDto.Name, createDto.Description, activeSessions: 0, totalSessions: 0, lastPlayed: null);
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(createdDoor);
+            .Returns(Task.FromResult<dynamic>(createdDoor));
 
         // Act
         var result = await _doorService.CreateDoorAsync(createDto, 1);
@@ -162,11 +162,11 @@ public class DoorServiceTests : IDisposable
 
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(new { Id = doorId, Name = "TestDoor", IsActive = true, ActiveSessions = 1, TotalSessions = 5, LastPlayed = DateTime.UtcNow });
+            .Returns(Task.FromResult<dynamic>(CreateDoorData(doorId, "TestDoor", "Test", activeSessions: 1, totalSessions: 5, lastPlayed: DateTime.UtcNow)));
 
         _mockDatabaseManager
             .Setup(x => x.QueryAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(new List<dynamic> { new { Id = 1, SessionId = "test-session", Status = "running" } });
+            .ReturnsAsync(new List<dynamic> { CreateSessionData(1, "test-session", "running") });
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => _doorService.DeleteDoorAsync(doorId));
@@ -183,13 +183,21 @@ public class DoorServiceTests : IDisposable
         var userId = 1;
         var doorId = 1;
 
-        // Mock door data
-        var doorData = new { Id = doorId, Name = "TestDoor", IsActive = true, MinimumLevel = 10, MaximumLevel = 100, ActiveSessions = 0, TotalSessions = 0, LastPlayed = (DateTime?)null };
-        _mockDatabaseManager
-            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("SELECT d.*")), It.IsAny<object>()))
-            .ReturnsAsync(doorData);
+        // Create a test executable file
+        var testExePath = Path.Combine(_testBasePath, "test.exe");
+        await File.WriteAllTextAsync(testExePath, "test");
 
-        // Mock user level
+        // Mock door data - this will be called by GetDoorAsync multiple times
+        var doorData = CreateDoorData(doorId, "TestDoor", "Test", 
+            activeSessions: 0, totalSessions: 0, lastPlayed: null, 
+            minimumLevel: 10, maximumLevel: 100, executablePath: testExePath, 
+            isActive: true);
+        
+        _mockDatabaseManager
+            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM Doors d") && s.Contains("WHERE d.Id = @DoorId")), It.IsAny<object>()))
+            .Returns(Task.FromResult<dynamic>(doorData));
+
+        // Mock user level (50 is between min 10 and max 100)
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<int?>(It.Is<string>(s => s.Contains("SecurityLevel")), It.IsAny<object>()))
             .ReturnsAsync(50);
@@ -203,13 +211,6 @@ public class DoorServiceTests : IDisposable
         _mockDatabaseManager
             .Setup(x => x.QueryFirstAsync<int>(It.Is<string>(s => s.Contains("COUNT(*)")), It.IsAny<object>()))
             .ReturnsAsync(0);
-
-        // Mock executable exists
-        File.WriteAllText(Path.Combine(_testBasePath, "test.exe"), "test");
-        var testDoorData = new { Id = doorId, Name = "TestDoor", IsActive = true, ExecutablePath = Path.Combine(_testBasePath, "test.exe"), ActiveSessions = 0, TotalSessions = 0, LastPlayed = (DateTime?)null };
-        _mockDatabaseManager
-            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM Doors d WHERE d.Id")), It.IsAny<object>()))
-            .ReturnsAsync(testDoorData);
 
         // Act
         var result = await _doorService.CanUserAccessDoorAsync(userId, doorId);
@@ -226,10 +227,10 @@ public class DoorServiceTests : IDisposable
         var doorId = 1;
 
         // Mock door data with high minimum level
-        var doorData = new { Id = doorId, Name = "TestDoor", IsActive = true, MinimumLevel = 100, MaximumLevel = 255, ActiveSessions = 0, TotalSessions = 0, LastPlayed = (DateTime?)null };
+        var doorData = CreateDoorData(doorId, "TestDoor", "Test Door", isActive: true, minimumLevel: 100, maximumLevel: 255);
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(doorData);
+            .Returns(Task.FromResult<dynamic>(doorData));
 
         // Mock user level too low
         _mockDatabaseManager
@@ -252,10 +253,10 @@ public class DoorServiceTests : IDisposable
         var dailyLimit = 3;
 
         // Mock door with daily limit
-        var doorData = new { Id = doorId, Name = "TestDoor", DailyLimit = dailyLimit, ActiveSessions = 0, TotalSessions = 0, LastPlayed = (DateTime?)null };
+        var doorData = CreateDoorData(doorId, "TestDoor", "Test Door", dailyLimit: dailyLimit);
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(doorData);
+            .Returns(Task.FromResult<dynamic>(doorData));
 
         // Mock user has reached daily limit
         _mockDatabaseManager
@@ -281,8 +282,32 @@ public class DoorServiceTests : IDisposable
         var doorId = 1;
         var sessionDbId = 100;
 
-        // Setup mocks for access check
-        SetupValidAccessMocks(userId, doorId);
+        // Create a test executable file
+        var testExePath = Path.Combine(_testBasePath, "test.exe");
+        await File.WriteAllTextAsync(testExePath, "test");
+
+        // Mock door data for GetDoorAsync calls
+        var doorData = CreateDoorData(doorId, "TestDoor", "Test Door", 
+            isActive: true, minimumLevel: 10, maximumLevel: 100, executablePath: testExePath);
+        
+        _mockDatabaseManager
+            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("SELECT d.*") && s.Contains("FROM Doors d") && s.Contains("WHERE d.Id = @DoorId")), It.IsAny<object>()))
+            .Returns(Task.FromResult<dynamic?>(doorData));
+
+        // Mock user level for CanUserAccessDoorAsync
+        _mockDatabaseManager
+            .Setup(x => x.QueryFirstOrDefaultAsync<int?>(It.Is<string>(s => s.Contains("SecurityLevel")), It.IsAny<object>()))
+            .ReturnsAsync(50);
+
+        // Mock no deny permissions for CanUserAccessDoorAsync
+        _mockDatabaseManager
+            .Setup(x => x.QueryAsync<string>(It.Is<string>(s => s.Contains("AccessType")), It.IsAny<object>()))
+            .ReturnsAsync(new List<string>());
+
+        // Mock daily limit not reached for CanUserAccessDoorAsync
+        _mockDatabaseManager
+            .Setup(x => x.QueryFirstAsync<int>(It.Is<string>(s => s.Contains("COUNT(*)")), It.IsAny<object>()))
+            .ReturnsAsync(0);
 
         // Mock session creation
         _mockDatabaseManager
@@ -290,22 +315,17 @@ public class DoorServiceTests : IDisposable
             .ReturnsAsync(sessionDbId);
 
         // Mock session retrieval
-        var sessionData = new 
-        { 
-            Id = sessionDbId, 
-            SessionId = "test-session", 
-            DoorId = doorId, 
-            UserId = userId, 
-            Status = "starting",
-            DoorName = "TestDoor",
-            UserHandle = "TestUser",
-            StartTime = DateTime.UtcNow,
-            EndTime = (DateTime?)null,
-            LastActivity = DateTime.UtcNow
-        };
+        var sessionData = CreateSessionData(sessionDbId, "test-session", "starting", doorId, userId);
+        dynamic extendedSessionData = sessionData;
+        extendedSessionData.DoorName = "TestDoor";
+        extendedSessionData.UserHandle = "TestUser";
+        extendedSessionData.StartTime = DateTime.UtcNow;
+        extendedSessionData.EndTime = (DateTime?)null;
+        extendedSessionData.LastActivity = DateTime.UtcNow;
+        
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM DoorSessions ds")), It.IsAny<object>()))
-            .ReturnsAsync(sessionData);
+            .Returns(Task.FromResult<dynamic?>(extendedSessionData));
 
         // Act
         var result = await _doorService.StartDoorSessionAsync(doorId, userId);
@@ -324,24 +344,17 @@ public class DoorServiceTests : IDisposable
         var sessionId = "test-session";
         var exitCode = 0;
 
+        // Set up the sequence of database calls:
+        // 1. ExecuteAsync for updating session status - called first
         _mockDatabaseManager
-            .Setup(x => x.ExecuteAsync(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(1);
+            .SetupSequence(x => x.ExecuteAsync(It.IsAny<string>(), It.IsAny<object>()))
+            .ReturnsAsync(1)  // First call for session update
+            .ReturnsAsync(1); // Second call for statistics if needed
 
-        // Mock session for statistics update
-        var sessionData = new 
-        { 
-            Id = 1, 
-            SessionId = sessionId, 
-            DoorId = 1, 
-            UserId = 1, 
-            Duration = 300,
-            DoorName = "TestDoor",
-            UserHandle = "TestUser"
-        };
+        // 2. QueryFirstOrDefaultAsync<string> for CleanupDropFileAsync (return null - no file to clean)
         _mockDatabaseManager
-            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(sessionData);
+            .Setup(x => x.QueryFirstOrDefaultAsync<string>(It.Is<string>(s => s.Contains("DropFilePath")), It.IsAny<object>()))
+            .ReturnsAsync((string?)null);
 
         // Act
         var result = await _doorService.EndDoorSessionAsync(sessionId, exitCode);
@@ -364,16 +377,21 @@ public class DoorServiceTests : IDisposable
         var sessionId = "test-session";
 
         // Mock door data
-        var doorData = new { Id = doorId, Name = "TestDoor", DropFileType = "DOOR.SYS", SerialPort = "COM1", ActiveSessions = 0, TotalSessions = 0, LastPlayed = (DateTime?)null };
+        var doorData = CreateDoorData(doorId, "TestDoor", "Test Door", dropFileType: "DOOR.SYS", serialPort: "COM1");
         _mockDatabaseManager
-            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM Doors d WHERE d.Id")), It.IsAny<object>()))
-            .ReturnsAsync(doorData);
+            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM Doors d") && s.Contains("WHERE d.Id = @DoorId")), It.IsAny<object>()))
+            .Returns(Task.FromResult<dynamic>(doorData));
 
         // Mock user data
-        var userData = new { Handle = "TestUser", RealName = "Test User", Location = "Test City", SecurityLevel = 50, TimeLeft = 60, LastLoginAt = DateTime.UtcNow };
+        var userData = CreateUserData("TestUser", "Test User", "Test City", 50, 60);
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM Users WHERE Id")), It.IsAny<object>()))
-            .ReturnsAsync(userData);
+            .Returns(Task.FromResult<dynamic>(userData));
+
+        // Mock session update
+        _mockDatabaseManager
+            .Setup(x => x.ExecuteAsync(It.IsAny<string>(), It.IsAny<object>()))
+            .ReturnsAsync(1);
 
         // Act
         var result = await _doorService.GenerateDropFileAsync(doorId, userId, sessionId);
@@ -396,6 +414,11 @@ public class DoorServiceTests : IDisposable
         await File.WriteAllTextAsync(filePath, "test content");
         File.Exists(filePath).Should().BeTrue();
 
+        // Mock database to return the file path
+        _mockDatabaseManager
+            .Setup(x => x.QueryFirstOrDefaultAsync<string>(It.IsAny<string>(), It.IsAny<object>()))
+            .ReturnsAsync(filePath);
+
         // Act
         var result = await _doorService.CleanupDropFileAsync(sessionId);
 
@@ -405,10 +428,10 @@ public class DoorServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetDropFileTemplateAsync_DoorSys_ReturnsTemplate()
+    public void GetDropFileTemplate_DoorSys_ReturnsTemplate()
     {
         // Act
-        var result = await _doorService.GetDropFileTemplateAsync("DOOR.SYS");
+        var result = _doorService.GetDropFileTemplate("DOOR.SYS");
 
         // Assert
         result.Should().NotBeNullOrEmpty();
@@ -452,19 +475,14 @@ Test City
         var doorId = 1;
         var sessionId = "test-session";
 
-        var doorData = new 
-        { 
-            Id = doorId, 
-            Name = "TestDoor", 
-            WorkingDirectory = "/test/path",
-            MemorySize = 16,
-            ActiveSessions = 0, 
-            TotalSessions = 0, 
-            LastPlayed = (DateTime?)null 
-        };
+        var doorData = CreateDoorData(doorId, "TestDoor", "Test Door", 
+            workingDirectory: "/test/path");
+        dynamic extendedDoorData = doorData;
+        extendedDoorData.MemorySize = 16;
+        
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(doorData);
+            .Returns(Task.FromResult<dynamic>(extendedDoorData));
 
         // Act
         var result = await _doorService.GenerateDosBoxConfigAsync(doorId, sessionId);
@@ -481,10 +499,10 @@ Test City
     }
 
     [Fact]
-    public async Task IsDosBoxAvailableAsync_WhenNotInstalled_ReturnsFalse()
+    public void IsDosBoxAvailable_WhenNotInstalled_ReturnsFalse()
     {
         // Act
-        var result = await _doorService.IsDosBoxAvailableAsync();
+        var result = _doorService.IsDosBoxAvailable();
 
         // Assert
         result.Should().BeFalse();
@@ -622,21 +640,14 @@ Test City
     {
         // Arrange
         var doorId = 1;
-        var doorData = new 
-        { 
-            Id = doorId, 
-            Name = "TestDoor", 
-            ExecutablePath = "/nonexistent/path/door.exe",
-            WorkingDirectory = "/test/path",
-            RequiresDosBox = false,
-            ActiveSessions = 0, 
-            TotalSessions = 0, 
-            LastPlayed = (DateTime?)null 
-        };
+        var doorData = CreateDoorData(doorId, "TestDoor", "Test Door", 
+            executablePath: "/nonexistent/path/door.exe", 
+            workingDirectory: "/test/path", 
+            requiresDosBox: false);
 
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(doorData);
+            .Returns(Task.FromResult<dynamic>(doorData));
 
         // Act
         var result = await _doorService.ValidateDoorConfigurationAsync(doorId);
@@ -714,10 +725,11 @@ Test City
     private void SetupValidAccessMocks(int userId, int doorId)
     {
         // Mock door data
-        var doorData = new { Id = doorId, Name = "TestDoor", IsActive = true, MinimumLevel = 10, MaximumLevel = 100, ExecutablePath = "/test/door.exe", ActiveSessions = 0, TotalSessions = 0, LastPlayed = (DateTime?)null };
+        var doorData = CreateDoorData(doorId, "TestDoor", "Test Door", 
+            isActive: true, minimumLevel: 10, maximumLevel: 100, executablePath: "/test/door.exe");
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-            .ReturnsAsync(doorData);
+            .Returns(Task.FromResult<dynamic>(doorData));
 
         // Mock user level
         _mockDatabaseManager
@@ -735,5 +747,81 @@ Test City
             .ReturnsAsync(0);
     }
 
+    private dynamic CreateDoorData(int id, string name = "TestDoor", string description = "Test", 
+        int activeSessions = 0, int totalSessions = 0, DateTime? lastPlayed = null, 
+        string category = "Games", string executablePath = "/path/to/door.exe",
+        bool isActive = true, int minimumLevel = 0, int maximumLevel = 999,
+        int timeLimit = 60, int dailyLimit = 5, string dropFileType = "DOOR.SYS",
+        string? serialPort = null, string workingDirectory = "", bool requiresDosBox = false)
+    {
+        dynamic doorData = new System.Dynamic.ExpandoObject();
+        doorData.Id = id;
+        doorData.Name = name;
+        doorData.Description = description;
+        doorData.Category = category;
+        doorData.ExecutablePath = executablePath;
+        doorData.CommandLine = "";
+        doorData.WorkingDirectory = workingDirectory;
+        doorData.DropFileType = dropFileType;
+        doorData.DropFileLocation = "";
+        doorData.IsActive = isActive;
+        doorData.RequiresDosBox = requiresDosBox;
+        doorData.DosBoxConfigPath = (string?)null;
+        doorData.SerialPort = serialPort;
+        doorData.MemorySize = 640;
+        doorData.MinimumLevel = minimumLevel;
+        doorData.MaximumLevel = maximumLevel;
+        doorData.TimeLimit = timeLimit;
+        doorData.DailyLimit = dailyLimit;
+        doorData.Cost = 0;
+        doorData.SchedulingEnabled = false;
+        doorData.AvailableHours = "";
+        doorData.TimeZone = "UTC";
+        doorData.MultiNodeEnabled = false;
+        doorData.MaxPlayers = 1;
+        doorData.InterBbsEnabled = false;
+        doorData.CreatedAt = DateTime.UtcNow;
+        doorData.UpdatedAt = DateTime.UtcNow;
+        doorData.CreatedBy = 1;
+        doorData.ActiveSessions = activeSessions;
+        doorData.TotalSessions = totalSessions;
+        doorData.LastPlayed = lastPlayed;
+        return doorData;
+    }
+
+    private dynamic CreateSessionData(int id, string sessionId, string status = "running", 
+        int doorId = 1, int userId = 1)
+    {
+        dynamic sessionData = new System.Dynamic.ExpandoObject();
+        sessionData.Id = id;
+        sessionData.SessionId = sessionId;
+        sessionData.Status = status;
+        sessionData.DoorId = doorId;
+        sessionData.UserId = userId;
+        sessionData.StartTime = DateTime.UtcNow;
+        sessionData.EndTime = (DateTime?)null;
+        sessionData.ExitCode = (int?)null;
+        sessionData.ErrorMessage = (string?)null;
+        sessionData.NodeNumber = (int?)null;
+        sessionData.DoorName = "TestDoor";
+        sessionData.UserHandle = "TestUser";
+        sessionData.Duration = 0;
+        sessionData.LastActivity = DateTime.UtcNow;
+        return sessionData;
+    }
+
+    private dynamic CreateUserData(string handle = "TestUser", string realName = "Test User", 
+        string location = "Test City", int securityLevel = 50, int timeLeft = 60)
+    {
+        dynamic userData = new System.Dynamic.ExpandoObject();
+        userData.Handle = handle;
+        userData.RealName = realName;
+        userData.Location = location;
+        userData.SecurityLevel = securityLevel;
+        userData.TimeLeft = timeLeft;
+        userData.LastLoginAt = DateTime.UtcNow;
+        return userData;
+    }
+    
     #endregion
 }

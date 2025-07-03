@@ -1,9 +1,10 @@
 using Blackboard.Core.DTOs;
 using Blackboard.Core.Services;
 using Blackboard.Data;
+using Blackboard.Data.Configuration;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Moq;
 using Xunit;
 
@@ -24,8 +25,19 @@ public class DoorServiceIntegrationTests : IDisposable
         _connection = new SqliteConnection("Data Source=:memory:");
         _connection.Open();
         
-        _databaseManager = new DatabaseManager(_connection.ConnectionString);
+        // Create mock logger
         _mockLogger = new Mock<ILogger>();
+        
+        // Create database configuration
+        var config = new DatabaseConfiguration 
+        { 
+            ConnectionString = _connection.ConnectionString 
+        };
+        
+        _databaseManager = new DatabaseManager(_mockLogger.Object, config);
+        
+        // Initialize the database manager
+        _databaseManager.InitializeAsync().Wait();
         
         _testBasePath = Path.Combine(Path.GetTempPath(), "blackboard_integration_test_doors");
         _testDropFilePath = Path.Combine(Path.GetTempPath(), "blackboard_integration_test_dropfiles");
