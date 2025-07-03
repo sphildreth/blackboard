@@ -85,17 +85,9 @@ public class BbsSessionHandler
 
     private async Task ShowWelcomeScreen(TelnetConnection connection)
     {
-        await connection.SendLineAsync("═══════════════════════════════════════════════════════════════════════════════");
-        await connection.SendLineAsync("                           ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄");
-        await connection.SendLineAsync("                          ████▌▄▌▄▐▐▌█████████████████████████");
-        await connection.SendLineAsync("                          ████▌▄▌▄▐▐▌▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀████████");
-        await connection.SendLineAsync("                          ▀▀▀▀▀▀▀▀▀▀▀     B L A C K B O A R D   ████████");
-        await connection.SendLineAsync("                                                                 ▀▀▀▀▀▀▀▀");
-        await connection.SendLineAsync("═══════════════════════════════════════════════════════════════════════════════");
-        await connection.SendLineAsync("");
-        await connection.SendLineAsync("                          Welcome to Blackboard BBS!");
-        await connection.SendLineAsync("                         Running on .NET 8 with Terminal.Gui");
-        await connection.SendLineAsync("");
+        // Try to load and display logon.ans from the screens directory
+        var logonScreen = await MenuConfigLoader.LoadScreenAsync(_screensDir, "logon.ans");
+        await connection.SendLineAsync(logonScreen);
     }
 
     private async Task<(UserProfileDto?, UserSession?)> HandleLogin(TelnetConnection connection)
@@ -252,6 +244,9 @@ public class BbsSessionHandler
 
     private async Task HandleAuthenticatedSession(TelnetConnection connection, UserProfileDto user, UserSession session, CancellationToken cancellationToken)
     {
+        // Send all the LOGON*.ANS screens in in order
+        
+
         var menuConfigFile = "mainmenu.yml";
         await ShowMenuLoop(connection, _screensDir, menuConfigFile, user, session, cancellationToken);
     }

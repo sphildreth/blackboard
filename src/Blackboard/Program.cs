@@ -87,13 +87,9 @@ class Program
             var auditService = new AuditService(_databaseManager, _logger);
             var userService = new UserService(_databaseManager, passwordService, sessionService, auditService, 
                 _configManager.Configuration.Security, _logger);
-            
-
-            // Determine screens directory from config
-            string screensDir = Path.Combine(rootPath, _configManager.Configuration.System.ScreensPath ?? "screens");
 
             // Initialize telnet server with screensDir
-            _telnetServer = new TelnetServer(_logger, _configManager, userService, sessionService, screensDir);
+            _telnetServer = new TelnetServer(_logger, _configManager, userService, sessionService, Path.Combine(rootPath, "screens"));
 
             // Check if we should auto-start the terminal server
             if (_configManager.Configuration.System.TerminalServerAutoStart)

@@ -9,7 +9,6 @@ system:
   timeZone: "UTC"
   rootPath: "/opt/blackboard"
   terminalServerAutoStart: true
-  screensPath: "screens"
 
 network:
   telnetBindAddress: "127.0.0.1"
