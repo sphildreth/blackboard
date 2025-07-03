@@ -288,6 +288,109 @@ public class DatabaseManager : IDatabaseManager
                 FOREIGN KEY (ResultingFileId) REFERENCES Files(Id) ON DELETE SET NULL
             );
 
+            -- Door Game System tables (for Phase 6)
+            CREATE TABLE IF NOT EXISTS Doors (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL UNIQUE,
+                Description TEXT,
+                Category TEXT NOT NULL,
+                ExecutablePath TEXT NOT NULL,
+                CommandLine TEXT,
+                WorkingDirectory TEXT,
+                DropFileType TEXT NOT NULL DEFAULT 'DOOR.SYS',
+                DropFileLocation TEXT,
+                IsActive INTEGER NOT NULL DEFAULT 1,
+                RequiresDosBox INTEGER NOT NULL DEFAULT 0,
+                DosBoxConfigPath TEXT,
+                SerialPort TEXT DEFAULT 'COM1',
+                MemorySize INTEGER DEFAULT 16,
+                MinimumLevel INTEGER DEFAULT 0,
+                MaximumLevel INTEGER DEFAULT 255,
+                TimeLimit INTEGER DEFAULT 60,
+                DailyLimit INTEGER DEFAULT 5,
+                Cost INTEGER DEFAULT 0,
+                SchedulingEnabled INTEGER DEFAULT 0,
+                AvailableHours TEXT,
+                TimeZone TEXT DEFAULT 'UTC',
+                MultiNodeEnabled INTEGER DEFAULT 0,
+                MaxPlayers INTEGER DEFAULT 1,
+                InterBbsEnabled INTEGER DEFAULT 0,
+                CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                CreatedBy INTEGER,
+                FOREIGN KEY (CreatedBy) REFERENCES Users(Id) ON DELETE SET NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS DoorSessions (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                SessionId TEXT NOT NULL UNIQUE,
+                DoorId INTEGER NOT NULL,
+                UserId INTEGER NOT NULL,
+                NodeNumber INTEGER,
+                StartTime DATETIME DEFAULT CURRENT_TIMESTAMP,
+                EndTime DATETIME,
+                ExitCode INTEGER,
+                DropFilePath TEXT,
+                WorkingDirectory TEXT,
+                ProcessId INTEGER,
+                Status TEXT NOT NULL DEFAULT 'starting',
+                ErrorMessage TEXT,
+                LastActivity DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (DoorId) REFERENCES Doors(Id) ON DELETE CASCADE,
+                FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS DoorConfigs (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                DoorId INTEGER NOT NULL,
+                ConfigKey TEXT NOT NULL,
+                ConfigValue TEXT NOT NULL,
+                ConfigType TEXT DEFAULT 'string',
+                FOREIGN KEY (DoorId) REFERENCES Doors(Id) ON DELETE CASCADE,
+                UNIQUE(DoorId, ConfigKey)
+            );
+
+            CREATE TABLE IF NOT EXISTS DoorPermissions (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                DoorId INTEGER NOT NULL,
+                UserId INTEGER,
+                UserGroup TEXT,
+                AccessType TEXT NOT NULL,
+                GrantedBy INTEGER NOT NULL,
+                GrantedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                ExpiresAt DATETIME,
+                FOREIGN KEY (DoorId) REFERENCES Doors(Id) ON DELETE CASCADE,
+                FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+                FOREIGN KEY (GrantedBy) REFERENCES Users(Id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS DoorStatistics (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                DoorId INTEGER NOT NULL,
+                UserId INTEGER NOT NULL,
+                TotalSessions INTEGER DEFAULT 0,
+                TotalTime INTEGER DEFAULT 0,
+                LastPlayed DATETIME,
+                HighScore INTEGER,
+                CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (DoorId) REFERENCES Doors(Id) ON DELETE CASCADE,
+                FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+                UNIQUE(DoorId, UserId)
+            );
+
+            CREATE TABLE IF NOT EXISTS DoorLogs (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                DoorId INTEGER NOT NULL,
+                SessionId INTEGER,
+                LogLevel TEXT NOT NULL,
+                Message TEXT NOT NULL,
+                Details TEXT,
+                Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (DoorId) REFERENCES Doors(Id) ON DELETE CASCADE,
+                FOREIGN KEY (SessionId) REFERENCES DoorSessions(Id) ON DELETE SET NULL
+            );
+
             -- Create indexes for performance
             CREATE INDEX IF NOT EXISTS idx_users_handle ON Users(Handle);
             CREATE INDEX IF NOT EXISTS idx_users_email ON Users(Email);
@@ -322,6 +425,24 @@ public class DatabaseManager : IDatabaseManager
             CREATE INDEX IF NOT EXISTS idx_upload_tokens_token ON UploadTokens(Token);
             CREATE INDEX IF NOT EXISTS idx_upload_tokens_expires ON UploadTokens(ExpiresAt);
 
+            -- Door system indexes
+            CREATE INDEX IF NOT EXISTS idx_doors_name ON Doors(Name);
+            CREATE INDEX IF NOT EXISTS idx_doors_category ON Doors(Category);
+            CREATE INDEX IF NOT EXISTS idx_doors_active ON Doors(IsActive);
+            CREATE INDEX IF NOT EXISTS idx_door_sessions_door_id ON DoorSessions(DoorId);
+            CREATE INDEX IF NOT EXISTS idx_door_sessions_user_id ON DoorSessions(UserId);
+            CREATE INDEX IF NOT EXISTS idx_door_sessions_session_id ON DoorSessions(SessionId);
+            CREATE INDEX IF NOT EXISTS idx_door_sessions_status ON DoorSessions(Status);
+            CREATE INDEX IF NOT EXISTS idx_door_sessions_start_time ON DoorSessions(StartTime);
+            CREATE INDEX IF NOT EXISTS idx_door_configs_door_id ON DoorConfigs(DoorId);
+            CREATE INDEX IF NOT EXISTS idx_door_permissions_door_id ON DoorPermissions(DoorId);
+            CREATE INDEX IF NOT EXISTS idx_door_permissions_user_id ON DoorPermissions(UserId);
+            CREATE INDEX IF NOT EXISTS idx_door_statistics_door_id ON DoorStatistics(DoorId);
+            CREATE INDEX IF NOT EXISTS idx_door_statistics_user_id ON DoorStatistics(UserId);
+            CREATE INDEX IF NOT EXISTS idx_door_logs_door_id ON DoorLogs(DoorId);
+            CREATE INDEX IF NOT EXISTS idx_door_logs_session_id ON DoorLogs(SessionId);
+            CREATE INDEX IF NOT EXISTS idx_door_logs_timestamp ON DoorLogs(Timestamp);
+
             -- Create triggers for UpdatedAt
             CREATE TRIGGER IF NOT EXISTS users_updated_at 
                 AFTER UPDATE ON Users
@@ -339,6 +460,18 @@ public class DatabaseManager : IDatabaseManager
                 AFTER UPDATE ON FileAreas
                 BEGIN
                     UPDATE FileAreas SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id = NEW.Id;
+                END;
+
+            CREATE TRIGGER IF NOT EXISTS doors_updated_at 
+                AFTER UPDATE ON Doors
+                BEGIN
+                    UPDATE Doors SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id = NEW.Id;
+                END;
+
+            CREATE TRIGGER IF NOT EXISTS door_statistics_updated_at 
+                AFTER UPDATE ON DoorStatistics
+                BEGIN
+                    UPDATE DoorStatistics SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id = NEW.Id;
                 END;
         ";
 

@@ -189,3 +189,148 @@ public class FileAreaStatisticsDto
     public List<BbsFileDto> MostDownloadedFiles { get; set; } = new();
     public List<BbsFileDto> RecentUploads { get; set; } = new();
 }
+
+// Door Game System DTOs
+public class DoorDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public string ExecutablePath { get; set; } = string.Empty;
+    public string? CommandLine { get; set; }
+    public string? WorkingDirectory { get; set; }
+    public string DropFileType { get; set; } = "DOOR.SYS";
+    public string? DropFileLocation { get; set; }
+    public bool IsActive { get; set; }
+    public bool RequiresDosBox { get; set; }
+    public string? DosBoxConfigPath { get; set; }
+    public string? SerialPort { get; set; }
+    public int MemorySize { get; set; }
+    public int MinimumLevel { get; set; }
+    public int MaximumLevel { get; set; }
+    public int TimeLimit { get; set; }
+    public int DailyLimit { get; set; }
+    public int Cost { get; set; }
+    public bool SchedulingEnabled { get; set; }
+    public string? AvailableHours { get; set; }
+    public string? TimeZone { get; set; }
+    public bool MultiNodeEnabled { get; set; }
+    public int MaxPlayers { get; set; }
+    public bool InterBbsEnabled { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public int? CreatedBy { get; set; }
+
+    // Additional runtime info
+    public int ActiveSessions { get; set; }
+    public int TotalSessions { get; set; }
+    public DateTime? LastPlayed { get; set; }
+    public bool IsAvailable { get; set; }
+    public string? UnavailableReason { get; set; }
+}
+
+public class DoorSessionDto
+{
+    public int Id { get; set; }
+    public string SessionId { get; set; } = string.Empty;
+    public int DoorId { get; set; }
+    public string DoorName { get; set; } = string.Empty;
+    public int UserId { get; set; }
+    public string UserHandle { get; set; } = string.Empty;
+    public int? NodeNumber { get; set; }
+    public DateTime StartTime { get; set; }
+    public DateTime? EndTime { get; set; }
+    public int Duration { get; set; }
+    public int? ExitCode { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? ErrorMessage { get; set; }
+    public DateTime LastActivity { get; set; }
+}
+
+public class DoorStatisticsDto
+{
+    public int Id { get; set; }
+    public int DoorId { get; set; }
+    public string DoorName { get; set; } = string.Empty;
+    public int UserId { get; set; }
+    public string UserHandle { get; set; } = string.Empty;
+    public int TotalSessions { get; set; }
+    public int TotalTime { get; set; }
+    public DateTime? LastPlayed { get; set; }
+    public int? HighScore { get; set; }
+    public string? HighScoreData { get; set; }
+}
+
+public class DoorSystemStatisticsDto
+{
+    public int TotalDoors { get; set; }
+    public int ActiveDoors { get; set; }
+    public int ActiveSessions { get; set; }
+    public int TotalSessionsToday { get; set; }
+    public int TotalPlayTimeToday { get; set; } // seconds
+    public int UniquePlayersToday { get; set; }
+    public List<DoorDto> MostPlayedDoors { get; set; } = new();
+    public List<DoorSessionDto> RecentSessions { get; set; } = new();
+    public List<string> ActiveCategories { get; set; } = new();
+}
+
+public class DoorConfigDto
+{
+    public int Id { get; set; }
+    public int DoorId { get; set; }
+    public string ConfigKey { get; set; } = string.Empty;
+    public string? ConfigValue { get; set; }
+    public string ConfigType { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
+public class DoorPermissionDto
+{
+    public int Id { get; set; }
+    public int DoorId { get; set; }
+    public int? UserId { get; set; }
+    public string? UserHandle { get; set; }
+    public string? UserGroup { get; set; }
+    public string AccessType { get; set; } = string.Empty;
+    public DateTime GrantedAt { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public int? GrantedBy { get; set; }
+    public string? GrantedByHandle { get; set; }
+}
+
+public class CreateDoorDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public string ExecutablePath { get; set; } = string.Empty;
+    public string? CommandLine { get; set; }
+    public string? WorkingDirectory { get; set; }
+    public string DropFileType { get; set; } = "DOOR.SYS";
+    public bool RequiresDosBox { get; set; }
+    public string? DosBoxConfigPath { get; set; }
+    public int MinimumLevel { get; set; }
+    public int TimeLimit { get; set; } = 60;
+    public int DailyLimit { get; set; } = 5;
+}
+
+public class DropFileInfo
+{
+    public string Type { get; set; } = string.Empty; // DOOR.SYS, DORINFO1.DEF, etc.
+    public string FilePath { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public Dictionary<string, string> Variables { get; set; } = new();
+}
+
+public class FossilEmulationDto
+{
+    public string SessionId { get; set; } = string.Empty;
+    public string ComPort { get; set; } = "COM1";
+    public int BaudRate { get; set; } = 38400;
+    public string NamedPipeName { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public DateTime StartTime { get; set; }
+    public long BytesSent { get; set; }
+    public long BytesReceived { get; set; }
+}

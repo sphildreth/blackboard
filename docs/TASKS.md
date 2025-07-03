@@ -60,13 +60,13 @@ This checklist is based on the Product Requirements Document (PRD) and is organi
 ---
 
 ## Phase 6: Door Game System
-- [ ] Develop door registry and management interface
-- [ ] Support DOS/Win/Linux doors with DOSBox integration
-- [ ] Implement drop file standards (DOOR.SYS, DORINFO1.DEF)
-- [ ] Add access controls and scheduling for doors
-- [ ] Integrate monitoring and stats for door sessions
-- [ ] Implement maintenance tools (install wizard, compatibility test)
-- [ ] Implement serial port (FOSSIL) emulation for legacy door capability like NetFoss
+- [x] Develop door registry and management interface
+- [x] Support DOS/Win/Linux doors with DOSBox integration
+- [x] Implement drop file standards (DOOR.SYS, DORINFO1.DEF)
+- [x] Add access controls and scheduling for doors
+- [x] Integrate monitoring and stats for door sessions
+- [x] Implement maintenance tools (install wizard, compatibility test)
+- [x] Implement serial port (FOSSIL) to telnet emulation for legacy door capability like NetFoss
 
 ---
 

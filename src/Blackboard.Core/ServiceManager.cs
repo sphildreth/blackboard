@@ -42,6 +42,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IFileTransferService, FileTransferService>();
         services.AddScoped<IFileCompressionService, FileCompressionService>();
 
+        // Door Game System Services (Phase 6)
+        services.AddScoped<IDoorService, DoorService>();
+        services.AddScoped<IFossilEmulationService, FossilEmulationService>();
+
         // Background Services
         services.AddHostedService<SessionCleanupService>();
 
@@ -80,6 +84,8 @@ public class ServiceManager
     public IFileAreaService FileAreaService => GetService<IFileAreaService>();
     public IFileTransferService FileTransferService => GetService<IFileTransferService>();
     public IFileCompressionService FileCompressionService => GetService<IFileCompressionService>();
+    public IDoorService DoorService => GetService<IDoorService>();
+    public IFossilEmulationService FossilEmulationService => GetService<IFossilEmulationService>();
     public DatabaseManager DatabaseManager => GetService<DatabaseManager>();
     public SystemConfiguration SystemConfiguration => GetService<SystemConfiguration>();
 }
