@@ -322,38 +322,52 @@ public class MainApplication
 
     private void UpdateDisplay()
     {
-        if (_statusLabel != null)
+        try
         {
-            _statusLabel.Text = $"Status: {(_isServerRunning ? "Online" : "Offline")}";
-        }
+            if (_statusLabel != null)
+            {
+                _statusLabel.Text = $"Status: {(_isServerRunning ? "Online" : "Offline")}";
+            }
 
-        if (_uptimeLabel != null && _isServerRunning)
+            if (_uptimeLabel != null && _isServerRunning)
+            {
+                // Calculate actual uptime since server start
+                var uptime = DateTime.UtcNow - _serverStartTime;
+                _uptimeLabel.Text = $"Uptime: {uptime:hh\\:mm\\:ss}";
+            }
+
+            if (_startStopButton != null)
+            {
+                _startStopButton.Text = _isServerRunning ? "Stop Server" : "Start Server";
+            }
+
+            UpdateConnectionsList();
+        }
+        catch (Exception ex)
         {
-            // Calculate actual uptime since server start
-            var uptime = DateTime.UtcNow - _serverStartTime;
-            _uptimeLabel.Text = $"Uptime: {uptime:hh\\:mm\\:ss}";
+            _logger.Error(ex, "Exception in UpdateDisplay");
         }
-
-        if (_startStopButton != null)
-        {
-            _startStopButton.Text = _isServerRunning ? "Stop Server" : "Start Server";
-        }
-
-        UpdateConnectionsList();
     }
 
     private void UpdateConnectionsList()
     {
-        if (_connectionsListView == null || _connectionsLabel == null)
-            return;
+        try
+        {
+            if (_connectionsListView == null || _connectionsLabel == null)
+                return;
 
-        var connections = _telnetServer.ActiveConnections;
-        _connectionsLabel.Text = $"Connections: {connections.Count}";
+            var connections = _telnetServer.ActiveConnections;
+            _connectionsLabel.Text = $"Connections: {connections.Count}";
 
-        var connectionStrings = new ObservableCollection<string>(connections
-            .Select(c => $"{c.RemoteEndPoint} - Connected: {c.ConnectedAt:HH:mm:ss}")
-            .ToList());
+            var connectionStrings = new ObservableCollection<string>(connections
+                .Select(c => $"{c.RemoteEndPoint} - Connected: {c.ConnectedAt:HH:mm:ss}")
+                .ToList());
 
-        _connectionsListView.SetSource(connectionStrings);
+            _connectionsListView.SetSource(connectionStrings);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Exception in UpdateConnectionsList");
+        }
     }
 }
