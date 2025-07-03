@@ -13,6 +13,7 @@ public class TelnetServer
     private readonly ConfigurationManager _configManager;
     private readonly IUserService _userService;
     private readonly ISessionService _sessionService;
+    private readonly IMessageService _messageService;
     private readonly string _screensDir;
     private TcpListener? _listener;
     private CancellationTokenSource? _cancellationTokenSource;
@@ -25,12 +26,13 @@ public class TelnetServer
     public IReadOnlyList<TelnetConnection> ActiveConnections => _activeConnections.AsReadOnly();
     public bool IsRunning => _isRunning;
 
-    public TelnetServer(ILogger logger, ConfigurationManager configManager, IUserService userService, ISessionService sessionService, string screensDir)
+    public TelnetServer(ILogger logger, ConfigurationManager configManager, IUserService userService, ISessionService sessionService, IMessageService messageService, string screensDir)
     {
         _logger = logger;
         _configManager = configManager;
         _userService = userService;
         _sessionService = sessionService;
+        _messageService = messageService;
         _screensDir = screensDir;
         _activeConnections = new List<TelnetConnection>();
     }
@@ -163,7 +165,7 @@ public class TelnetServer
 
     private async Task HandleSessionAsync(TelnetConnection connection, CancellationToken cancellationToken)
     {
-        var sessionHandler = new BbsSessionHandler(_userService, _sessionService, _logger, _screensDir);
+        var sessionHandler = new BbsSessionHandler(_userService, _sessionService, _messageService, _logger, _screensDir);
         await sessionHandler.HandleSessionAsync(connection, cancellationToken);
     }
 }

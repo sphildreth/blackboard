@@ -156,6 +156,7 @@ public class MainApplication
             {
                 new MenuItemv2("_Admin Dashboard", "", () => OnAdminDashboardClicked()),
                 new MenuItemv2("_User Management", "", () => OnUserManagementClicked()),
+                new MenuItemv2("_Message Composer (ANSI)", "", () => OnAnsiEditorClicked()),
                 new MenuItemv2("_Log Viewer", "", () => ShowNotImplemented("Log Viewer")),
                 new MenuItemv2("_Database Backup", "", () => OnDatabaseBackupClicked())
             }),
@@ -165,6 +166,25 @@ public class MainApplication
             })
         });
         _mainWindow.Add(menu);
+    }
+
+    // --- ANSI Editor Integration ---
+    private void OnAnsiEditorClicked()
+    {
+        try
+        {
+            var editor = new AnsiEditorWindow("ANSI Message Editor", composedText =>
+            {
+                MessageBox.Query("Message Saved", "Message composed and saved!\n\nPreview:\n" + composedText, "OK");
+                // Here you would call the message service to save/send the message
+            });
+            Application.Run((Toplevel)editor);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error opening ANSI editor");
+            MessageBox.ErrorQuery("Error", $"Failed to open ANSI editor: {ex.Message}", "OK");
+        }
     }
 
     private void SetupEventHandlers()

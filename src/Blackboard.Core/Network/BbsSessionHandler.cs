@@ -3,6 +3,7 @@ using Blackboard.Core.Services;
 using Blackboard.Core.DTOs;
 using Serilog;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Blackboard.Core.Network;
 
@@ -10,13 +11,15 @@ public class BbsSessionHandler
 {
     private readonly IUserService _userService;
     private readonly ISessionService _sessionService;
+    private readonly IMessageService _messageService;
     private readonly ILogger _logger;
     private readonly string _screensDir;
 
-    public BbsSessionHandler(IUserService userService, ISessionService sessionService, ILogger logger, string screensDir)
+    public BbsSessionHandler(IUserService userService, ISessionService sessionService, IMessageService messageService, ILogger logger, string screensDir)
     {
         _userService = userService;
         _sessionService = sessionService;
+        _messageService = messageService;
         _logger = logger;
         _screensDir = screensDir;
     }
@@ -317,7 +320,7 @@ public class BbsSessionHandler
                             await ShowSystemInfo(connection);
                             break;
                         case "messages":
-                            await connection.SendLineAsync("Message system not yet implemented.");
+                            await ShowMessageMenu(connection, user);
                             break;
                         case "files":
                             await connection.SendLineAsync("File system not yet implemented.");
@@ -396,5 +399,399 @@ public class BbsSessionHandler
         await connection.SendLineAsync("");
         await connection.SendLineAsync("Press any key to continue...");
         await connection.ReadLineAsync();
+    }
+
+    // Phase 4: Enhanced messaging functionality
+    private async Task ShowMessageMenu(TelnetConnection connection, UserProfileDto user)
+    {
+        while (true)
+        {
+            var unreadCount = await _messageService.GetUnreadCountAsync(user.Id);
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("=== MESSAGES ===");
+            await connection.SendLineAsync($"1. Inbox {(unreadCount > 0 ? $"({unreadCount} unread)" : "")}");
+            await connection.SendLineAsync("2. Outbox");
+            await connection.SendLineAsync("3. Send Message");
+            await connection.SendLineAsync("4. Search Messages");
+            await connection.SendLineAsync("5. Message Preferences");
+            await connection.SendLineAsync("6. Back");
+            await connection.SendAsync("Select option: ");
+            var input = (await connection.ReadLineAsync() ?? "").Trim();
+            switch (input)
+            {
+                case "1":
+                    await ShowInbox(connection, user);
+                    break;
+                case "2":
+                    await ShowOutbox(connection, user);
+                    break;
+                case "3":
+                    await SendPrivateMessage(connection, user);
+                    break;
+                case "4":
+                    await ShowMessageSearch(connection, user);
+                    break;
+                case "5":
+                    await ShowMessagePreferences(connection, user);
+                    break;
+                case "6":
+                    return;
+                default:
+                    await connection.SendLineAsync("Invalid option.");
+                    break;
+            }
+        }
+    }
+
+    private async Task ShowInbox(TelnetConnection connection, UserProfileDto user)
+    {
+        var messages = await _messageService.GetInboxAsync(user.Id);
+        await connection.SendLineAsync("\n--- INBOX ---");
+        int i = 1;
+        foreach (var msg in messages)
+        {
+            await connection.SendLineAsync($"{i++}. From: {msg.FromUserId} | Subject: {msg.Subject} | {(msg.IsRead ? "Read" : "Unread")} | {msg.CreatedAt:yyyy-MM-dd HH:mm}");
+        }
+        await connection.SendLineAsync("Enter message # to read, or press Enter to return.");
+        var input = await connection.ReadLineAsync();
+        if (int.TryParse(input, out int idx) && idx > 0 && idx <= messages.Count())
+        {
+            var msg = messages.ElementAt(idx - 1);
+            await ShowMessageDetail(connection, user, msg);
+        }
+    }
+
+    private async Task ShowOutbox(TelnetConnection connection, UserProfileDto user)
+    {
+        var messages = await _messageService.GetOutboxAsync(user.Id);
+        await connection.SendLineAsync("\n--- OUTBOX ---");
+        int i = 1;
+        foreach (var msg in messages)
+        {
+            await connection.SendLineAsync($"{i++}. To: {msg.ToUserId} | Subject: {msg.Subject} | {msg.CreatedAt:yyyy-MM-dd HH:mm}");
+        }
+        await connection.SendLineAsync("Enter message # to view, or press Enter to return.");
+        var input = await connection.ReadLineAsync();
+        if (int.TryParse(input, out int idx) && idx > 0 && idx <= messages.Count())
+        {
+            var msg = messages.ElementAt(idx - 1);
+            await ShowMessageDetail(connection, user, msg);
+        }
+    }
+
+    private async Task ShowMessageDetail(TelnetConnection connection, UserProfileDto user, Message msg)
+    {
+        await connection.SendLineAsync($"\n--- MESSAGE ---");
+        await connection.SendLineAsync($"From: {msg.FromUserId}");
+        await connection.SendLineAsync($"To: {msg.ToUserId}");
+        await connection.SendLineAsync($"Subject: {msg.Subject}");
+        await connection.SendLineAsync($"Date: {msg.CreatedAt:yyyy-MM-dd HH:mm}");
+        await connection.SendLineAsync($"Body:\n{msg.Body}");
+        if (!msg.IsRead && msg.ToUserId == user.Id)
+            await _messageService.MarkAsReadAsync(msg.Id, user.Id);
+        await connection.SendLineAsync("Press D to delete, Enter to return.");
+        var input = await connection.ReadLineAsync();
+        if (input?.Trim().ToUpper() == "D")
+        {
+            await _messageService.DeleteMessageAsync(msg.Id, user.Id);
+            await connection.SendLineAsync("Message deleted.");
+        }
+    }
+
+    private async Task SendPrivateMessage(TelnetConnection connection, UserProfileDto user)
+    {
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("--- SEND PRIVATE MESSAGE ---");
+        await connection.SendAsync("To User ID: ");
+        var toUserIdStr = await connection.ReadLineAsync();
+        if (!int.TryParse(toUserIdStr, out int toUserId))
+        {
+            await connection.SendLineAsync("Invalid user ID.");
+            return;
+        }
+
+        // Check if the target user has blocked this user
+        if (await _messageService.IsUserBlockedAsync(user.Id, toUserId))
+        {
+            await connection.SendLineAsync("Cannot send message: You have been blocked by this user.");
+            return;
+        }
+
+        // Check if user can send messages (quota)
+        if (!await _messageService.CanSendMessageAsync(user.Id))
+        {
+            var quota = await _messageService.GetMessageQuotaAsync(user.Id);
+            await connection.SendLineAsync($"Cannot send message: Daily quota of {quota} messages exceeded.");
+            return;
+        }
+
+        await connection.SendAsync("Subject: ");
+        var subject = await connection.ReadLineAsync();
+
+        // Check user preferences for ANSI editor
+        var preferences = await _messageService.GetUserPreferencesAsync(user.Id);
+        string body;
+
+        if (preferences.EnableAnsiEditor)
+        {
+            await connection.SendLineAsync("Use ANSI editor? (Y/n): ");
+            var useAnsi = await connection.ReadLineAsync();
+            if (string.IsNullOrEmpty(useAnsi) || useAnsi.ToUpper().StartsWith("Y"))
+            {
+                body = await ComposeWithAnsiEditor(connection);
+            }
+            else
+            {
+                await connection.SendAsync("Message Body: ");
+                body = await connection.ReadLineAsync();
+            }
+        }
+        else
+        {
+            await connection.SendAsync("Message Body: ");
+            body = await connection.ReadLineAsync();
+        }
+
+        // Add signature if enabled
+        if (preferences.ShowSignature && !string.IsNullOrEmpty(preferences.Signature))
+        {
+            body += $"\n\n---\n{preferences.Signature}";
+        }
+
+        await _messageService.SendPrivateMessageAsync(user.Id, toUserId, subject ?? string.Empty, body ?? string.Empty);
+        await connection.SendLineAsync("Message sent.");
+    }
+
+    private async Task<string> ComposeWithAnsiEditor(TelnetConnection connection)
+    {
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("=== ANSI EDITOR ===");
+        await connection.SendLineAsync("Enter your message. Type '/save' on a new line to finish, '/quit' to cancel:");
+        await connection.SendLineAsync("");
+
+        var lines = new List<string>();
+        while (true)
+        {
+            var line = await connection.ReadLineAsync();
+            if (line == null) break;
+
+            if (line.Trim().ToLower() == "/save")
+            {
+                break;
+            }
+            else if (line.Trim().ToLower() == "/quit")
+            {
+                await connection.SendLineAsync("Message composition cancelled.");
+                return string.Empty;
+            }
+            else if (line.Trim().ToLower() == "/help")
+            {
+                await connection.SendLineAsync("ANSI Editor Commands:");
+                await connection.SendLineAsync("  /save  - Save and send message");
+                await connection.SendLineAsync("  /quit  - Cancel message");
+                await connection.SendLineAsync("  /help  - Show this help");
+                await connection.SendLineAsync("  ANSI codes supported (e.g., \\x1b[31m for red)");
+                continue;
+            }
+
+            lines.Add(line);
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    private async Task ShowMessageSearch(TelnetConnection connection, UserProfileDto user)
+    {
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("=== MESSAGE SEARCH ===");
+        await connection.SendAsync("Enter search term: ");
+        var query = await connection.ReadLineAsync();
+        
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            await connection.SendLineAsync("Search cancelled.");
+            return;
+        }
+
+        var results = await _messageService.SearchMessagesAsync(user.Id, query, 1, 50);
+        await connection.SendLineAsync($"\n--- SEARCH RESULTS for '{query}' ---");
+        
+        int i = 1;
+        foreach (var msg in results)
+        {
+            var messageType = msg.MessageType == MessageType.Private ? "PM" : "PUB";
+            var direction = msg.FromUserId == user.Id ? "TO" : "FROM";
+            var otherUserId = msg.FromUserId == user.Id ? msg.ToUserId : msg.FromUserId;
+            await connection.SendLineAsync($"{i++}. [{messageType}] {direction}: {otherUserId} | Subject: {msg.Subject} | {msg.CreatedAt:yyyy-MM-dd HH:mm}");
+        }
+
+        if (!results.Any())
+        {
+            await connection.SendLineAsync("No messages found matching your search.");
+        }
+
+        await connection.SendLineAsync("\nPress any key to continue...");
+        await connection.ReadLineAsync();
+    }
+
+    private async Task ShowMessagePreferences(TelnetConnection connection, UserProfileDto user)
+    {
+        var preferences = await _messageService.GetUserPreferencesAsync(user.Id);
+        
+        while (true)
+        {
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("=== MESSAGE PREFERENCES ===");
+            await connection.SendLineAsync($"1. Allow Private Messages: {(preferences.AllowPrivateMessages ? "Yes" : "No")}");
+            await connection.SendLineAsync($"2. Notify on New Message: {(preferences.NotifyOnNewMessage ? "Yes" : "No")}");
+            await connection.SendLineAsync($"3. Show Signature: {(preferences.ShowSignature ? "Yes" : "No")}");
+            await connection.SendLineAsync($"4. Enable ANSI Editor: {(preferences.EnableAnsiEditor ? "Yes" : "No")}");
+            await connection.SendLineAsync($"5. Auto-mark Read: {(preferences.AutoMarkRead ? "Yes" : "No")}");
+            await connection.SendLineAsync($"6. Edit Signature");
+            await connection.SendLineAsync($"7. Manage Blocked Users");
+            await connection.SendLineAsync($"8. Back");
+            await connection.SendAsync("Select option: ");
+            
+            var input = (await connection.ReadLineAsync() ?? "").Trim();
+            switch (input)
+            {
+                case "1":
+                    preferences.AllowPrivateMessages = !preferences.AllowPrivateMessages;
+                    await _messageService.UpdateUserPreferencesAsync(user.Id, preferences);
+                    await connection.SendLineAsync($"Private messages {(preferences.AllowPrivateMessages ? "enabled" : "disabled")}.");
+                    break;
+                case "2":
+                    preferences.NotifyOnNewMessage = !preferences.NotifyOnNewMessage;
+                    await _messageService.UpdateUserPreferencesAsync(user.Id, preferences);
+                    await connection.SendLineAsync($"New message notifications {(preferences.NotifyOnNewMessage ? "enabled" : "disabled")}.");
+                    break;
+                case "3":
+                    preferences.ShowSignature = !preferences.ShowSignature;
+                    await _messageService.UpdateUserPreferencesAsync(user.Id, preferences);
+                    await connection.SendLineAsync($"Signature display {(preferences.ShowSignature ? "enabled" : "disabled")}.");
+                    break;
+                case "4":
+                    preferences.EnableAnsiEditor = !preferences.EnableAnsiEditor;
+                    await _messageService.UpdateUserPreferencesAsync(user.Id, preferences);
+                    await connection.SendLineAsync($"ANSI editor {(preferences.EnableAnsiEditor ? "enabled" : "disabled")}.");
+                    break;
+                case "5":
+                    preferences.AutoMarkRead = !preferences.AutoMarkRead;
+                    await _messageService.UpdateUserPreferencesAsync(user.Id, preferences);
+                    await connection.SendLineAsync($"Auto-mark read {(preferences.AutoMarkRead ? "enabled" : "disabled")}.");
+                    break;
+                case "6":
+                    await EditSignature(connection, user, preferences);
+                    break;
+                case "7":
+                    await ManageBlockedUsers(connection, user);
+                    break;
+                case "8":
+                    return;
+                default:
+                    await connection.SendLineAsync("Invalid option.");
+                    break;
+            }
+        }
+    }
+
+    private async Task EditSignature(TelnetConnection connection, UserProfileDto user, MessagePreferences preferences)
+    {
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("=== EDIT SIGNATURE ===");
+        await connection.SendLineAsync($"Current signature: {preferences.Signature ?? "(none)"}");
+        await connection.SendAsync("Enter new signature (max 200 chars, empty to clear): ");
+        
+        var newSignature = await connection.ReadLineAsync();
+        if (newSignature != null && newSignature.Length > 200)
+        {
+            newSignature = newSignature.Substring(0, 200);
+            await connection.SendLineAsync("Signature truncated to 200 characters.");
+        }
+        
+        preferences.Signature = string.IsNullOrWhiteSpace(newSignature) ? null : newSignature;
+        await _messageService.UpdateUserPreferencesAsync(user.Id, preferences);
+        await connection.SendLineAsync("Signature updated.");
+    }
+
+    private async Task ManageBlockedUsers(TelnetConnection connection, UserProfileDto user)
+    {
+        while (true)
+        {
+            var blockedUsers = await _messageService.GetBlockedUsersAsync(user.Id);
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("=== BLOCKED USERS ===");
+            
+            if (blockedUsers.Any())
+            {
+                await connection.SendLineAsync("Currently blocked users:");
+                foreach (var blockedUserId in blockedUsers)
+                {
+                    await connection.SendLineAsync($"  User ID: {blockedUserId}");
+                }
+            }
+            else
+            {
+                await connection.SendLineAsync("No users are currently blocked.");
+            }
+            
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("1. Block a user");
+            await connection.SendLineAsync("2. Unblock a user");
+            await connection.SendLineAsync("3. Back");
+            await connection.SendAsync("Select option: ");
+            
+            var input = (await connection.ReadLineAsync() ?? "").Trim();
+            switch (input)
+            {
+                case "1":
+                    await connection.SendAsync("Enter User ID to block: ");
+                    var blockIdStr = await connection.ReadLineAsync();
+                    if (int.TryParse(blockIdStr, out int blockId))
+                    {
+                        if (blockId == user.Id)
+                        {
+                            await connection.SendLineAsync("You cannot block yourself.");
+                        }
+                        else if (await _messageService.BlockUserAsync(user.Id, blockId))
+                        {
+                            await connection.SendLineAsync($"User {blockId} has been blocked.");
+                        }
+                        else
+                        {
+                            await connection.SendLineAsync("Failed to block user.");
+                        }
+                    }
+                    else
+                    {
+                        await connection.SendLineAsync("Invalid User ID.");
+                    }
+                    break;
+                case "2":
+                    await connection.SendAsync("Enter User ID to unblock: ");
+                    var unblockIdStr = await connection.ReadLineAsync();
+                    if (int.TryParse(unblockIdStr, out int unblockId))
+                    {
+                        if (await _messageService.UnblockUserAsync(user.Id, unblockId))
+                        {
+                            await connection.SendLineAsync($"User {unblockId} has been unblocked.");
+                        }
+                        else
+                        {
+                            await connection.SendLineAsync("Failed to unblock user.");
+                        }
+                    }
+                    else
+                    {
+                        await connection.SendLineAsync("Invalid User ID.");
+                    }
+                    break;
+                case "3":
+                    return;
+                default:
+                    await connection.SendLineAsync("Invalid option.");
+                    break;
+            }
+        }
     }
 }

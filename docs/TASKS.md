@@ -34,13 +34,13 @@ This checklist is based on the Product Requirements Document (PRD) and is organi
 ---
 
 ## Phase 4: Messaging System
-- [ ] Implement private messaging (E2EE, inbox/outbox, read/unread)
-- [ ] Develop public message boards (threaded, moderation, sticky, search)
-- [ ] Add system messages (announcements, notifications)
-- [ ] Integrate ANSI editor for message composition
-- [ ] Implement message search, pagination, and unread tracking
-- [ ] Add admin moderation tools (edit/delete, reporting, approval queue)
-- [ ] Enforce message quotas and preferences
+- [x] Implement private messaging (E2EE, inbox/outbox, read/unread)
+- [x] Develop public message boards (threaded, moderation, sticky, search)
+- [x] Add system messages (announcements, notifications)
+- [x] Integrate ANSI editor for message composition
+- [x] Implement message search, pagination, and unread tracking
+- [x] Add admin moderation tools (edit/delete, reporting, approval queue)
+- [x] Enforce message quotas and preferences
 
 ---
 

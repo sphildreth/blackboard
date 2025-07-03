@@ -105,14 +105,27 @@ The system uses a YAML configuration file located at `config/blackboard.yml`. Ke
 - **Logs**: Stored in `logs/` directory
 - **Config**: `config/blackboard.yml`
 
-### Next Steps (Phase 2)
+### Phase 4: Messaging System
 
-The next phase will implement:
-- User registration and authentication
-- Session management
-- Security features (BCrypt password hashing, lockouts)
-- User profile management
-- Permission system
+#### ✅ Completed Features
+- **Private messaging** - Full inbox/outbox system with read/unread tracking
+- **Public message boards** - Threaded discussions with moderation and sticky messages
+- **System messages** - Admin announcements and notifications
+- **ANSI editor integration** - Built-in ANSI/ASCII art editor for message composition
+- **Message search & pagination** - Full-text search with paginated results
+- **Unread message tracking** - Real-time unread count and notification system
+- **Message quotas** - Daily and monthly message limits with quota enforcement
+- **User preferences** - Customizable notification settings and message controls
+- **User blocking system** - Block/unblock users with JSON-based storage
+- **Admin moderation tools** - Edit/delete messages, reporting system, approval queue
+
+#### Key Features
+- **ANSI Editor**: Interactive ANSI art editor accessible from message composition
+- **Search System**: Search messages by content with pagination support
+- **Quota Management**: Configurable daily (100) and monthly (3000) message limits
+- **Blocking System**: Users can block others, stored as JSON arrays in preferences
+- **Real-time Updates**: Unread counts and notifications update in real-time
+- **BBS Integration**: Full integration with telnet session handler and menu system
 
 ### Security Notes
 

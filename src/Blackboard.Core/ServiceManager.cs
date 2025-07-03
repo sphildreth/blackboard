@@ -10,14 +10,14 @@ namespace Blackboard.Core;
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddBlackboardCore(this IServiceCollection services, 
-        SystemConfiguration systemConfig)
+        SystemConfiguration? config = null)
     {
         // Configuration
-        services.AddSingleton(systemConfig);
-        services.AddSingleton<IDatabaseConfiguration>(systemConfig.Database);
-        services.AddSingleton(systemConfig.Security);
-        services.AddSingleton(systemConfig.Network);
-        services.AddSingleton(systemConfig.Logging);
+        services.AddSingleton(config);
+        services.AddSingleton<IDatabaseConfiguration>(config.Database);
+        services.AddSingleton(config.Security);
+        services.AddSingleton(config.Network);
+        services.AddSingleton(config.Logging);
 
         // Database
         services.AddSingleton<DatabaseManager>();
@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IAuditService, AuditService>();
         services.AddTransient<IUserService, UserService>();
         services.AddTransient<IAuthorizationService, AuthorizationService>();
+        services.AddScoped<IMessageService, MessageService>();
 
         // Background Services
         services.AddHostedService<SessionCleanupService>();
