@@ -95,3 +95,97 @@ public class DatabaseStatusDto
     public bool WalModeEnabled { get; set; }
     public string? LastError { get; set; }
 }
+
+// File Management DTOs
+public class FileAreaDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string Path { get; set; } = string.Empty;
+    public int RequiredLevel { get; set; }
+    public int UploadLevel { get; set; }
+    public bool IsActive { get; set; }
+    public long MaxFileSize { get; set; }
+    public bool AllowUploads { get; set; }
+    public bool AllowDownloads { get; set; }
+    public int FileCount { get; set; }
+    public long TotalSize { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public class BbsFileDto
+{
+    public int Id { get; set; }
+    public int AreaId { get; set; }
+    public string AreaName { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+    public string OriginalFileName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string FilePath { get; set; } = string.Empty;
+    public long Size { get; set; }
+    public string SizeFormatted { get; set; } = string.Empty;
+    public string? MimeType { get; set; }
+    public string[] Tags { get; set; } = Array.Empty<string>();
+    public DateTime UploadDate { get; set; }
+    public int? UploaderId { get; set; }
+    public string? UploaderHandle { get; set; }
+    public int DownloadCount { get; set; }
+    public DateTime? LastDownloadAt { get; set; }
+    public bool IsApproved { get; set; }
+    public int? ApprovedBy { get; set; }
+    public string? ApproverHandle { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public double AverageRating { get; set; }
+    public int RatingCount { get; set; }
+    public string Checksum { get; set; } = string.Empty;
+}
+
+public class FileRatingDto
+{
+    public int Id { get; set; }
+    public int FileId { get; set; }
+    public int UserId { get; set; }
+    public string UserHandle { get; set; } = string.Empty;
+    public int Rating { get; set; }
+    public string? Comment { get; set; }
+    public DateTime RatingDate { get; set; }
+}
+
+public class FileSearchResultDto
+{
+    public List<BbsFileDto> Files { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public bool HasNextPage => (Page * PageSize) < TotalCount;
+    public bool HasPreviousPage => Page > 1;
+}
+
+public class FileUploadDto
+{
+    public int AreaId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string[] Tags { get; set; } = Array.Empty<string>();
+    public byte[] FileData { get; set; } = Array.Empty<byte>();
+    public string? MimeType { get; set; }
+}
+
+public class FileAreaStatisticsDto
+{
+    public int TotalAreas { get; set; }
+    public int ActiveAreas { get; set; }
+    public int TotalFiles { get; set; }
+    public int ApprovedFiles { get; set; }
+    public int PendingApproval { get; set; }
+    public long TotalFileSize { get; set; }
+    public int DownloadsToday { get; set; }
+    public int UploadsToday { get; set; }
+    public List<FileAreaDto> MostActiveAreas { get; set; } = new();
+    public List<BbsFileDto> MostDownloadedFiles { get; set; } = new();
+    public List<BbsFileDto> RecentUploads { get; set; } = new();
+}

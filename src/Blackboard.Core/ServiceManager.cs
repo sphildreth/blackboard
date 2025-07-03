@@ -12,9 +12,18 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddBlackboardCore(this IServiceCollection services, 
         SystemConfiguration? config = null)
     {
+        // Ensure config is not null
+        if (config == null)
+        {
+            throw new ArgumentNullException(nameof(config), "SystemConfiguration cannot be null");
+        }
+
         // Configuration
         services.AddSingleton(config);
         services.AddSingleton<IDatabaseConfiguration>(config.Database);
+        services.AddSingleton(config.Security);
+        services.AddSingleton(config.Network);
+        services.AddSingleton(config.Logging);
         services.AddSingleton(config.Security);
         services.AddSingleton(config.Network);
         services.AddSingleton(config.Logging);
@@ -29,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IUserService, UserService>();
         services.AddTransient<IAuthorizationService, AuthorizationService>();
         services.AddScoped<IMessageService, MessageService>();
+        services.AddScoped<IFileAreaService, FileAreaService>();
 
         // Background Services
         services.AddHostedService<SessionCleanupService>();
@@ -64,6 +74,8 @@ public class ServiceManager
     public IAuditService AuditService => GetService<IAuditService>();
     public IPasswordService PasswordService => GetService<IPasswordService>();
     public IAuthorizationService AuthorizationService => GetService<IAuthorizationService>();
+    public IMessageService MessageService => GetService<IMessageService>();
+    public IFileAreaService FileAreaService => GetService<IFileAreaService>();
     public DatabaseManager DatabaseManager => GetService<DatabaseManager>();
     public SystemConfiguration SystemConfiguration => GetService<SystemConfiguration>();
 }

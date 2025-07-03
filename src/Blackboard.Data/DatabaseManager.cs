@@ -184,6 +184,61 @@ public class DatabaseManager : IDatabaseManager
                 FOREIGN KEY (ToUserId) REFERENCES Users(Id) ON DELETE CASCADE
             );
 
+            -- File Areas table (for Phase 5)
+            CREATE TABLE IF NOT EXISTS FileAreas (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT UNIQUE NOT NULL,
+                Description TEXT,
+                Path TEXT NOT NULL,
+                RequiredLevel INTEGER NOT NULL DEFAULT 0,
+                UploadLevel INTEGER NOT NULL DEFAULT 10,
+                IsActive INTEGER NOT NULL DEFAULT 1,
+                MaxFileSize INTEGER NOT NULL DEFAULT 10485760, -- 10MB default
+                AllowUploads INTEGER NOT NULL DEFAULT 1,
+                AllowDownloads INTEGER NOT NULL DEFAULT 1,
+                CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- Files table (for Phase 5)
+            CREATE TABLE IF NOT EXISTS Files (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                AreaId INTEGER NOT NULL,
+                FileName TEXT NOT NULL,
+                OriginalFileName TEXT NOT NULL,
+                Description TEXT,
+                FilePath TEXT NOT NULL,
+                Size INTEGER NOT NULL,
+                Checksum TEXT NOT NULL,
+                MimeType TEXT,
+                Tags TEXT, -- JSON array of tags
+                UploadDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UploaderId INTEGER,
+                DownloadCount INTEGER NOT NULL DEFAULT 0,
+                LastDownloadAt DATETIME,
+                IsApproved INTEGER NOT NULL DEFAULT 0,
+                ApprovedBy INTEGER,
+                ApprovedAt DATETIME,
+                IsActive INTEGER NOT NULL DEFAULT 1,
+                ExpiresAt DATETIME,
+                FOREIGN KEY (AreaId) REFERENCES FileAreas(Id) ON DELETE CASCADE,
+                FOREIGN KEY (UploaderId) REFERENCES Users(Id) ON DELETE SET NULL,
+                FOREIGN KEY (ApprovedBy) REFERENCES Users(Id) ON DELETE SET NULL
+            );
+
+            -- File Ratings table (for Phase 5)
+            CREATE TABLE IF NOT EXISTS FileRatings (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                FileId INTEGER NOT NULL,
+                UserId INTEGER NOT NULL,
+                Rating INTEGER NOT NULL CHECK (Rating >= 1 AND Rating <= 5),
+                Comment TEXT,
+                RatingDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (FileId) REFERENCES Files(Id) ON DELETE CASCADE,
+                FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+                UNIQUE(FileId, UserId)
+            );
+
             -- Create indexes for performance
             CREATE INDEX IF NOT EXISTS idx_users_handle ON Users(Handle);
             CREATE INDEX IF NOT EXISTS idx_users_email ON Users(Email);
@@ -197,6 +252,18 @@ public class DatabaseManager : IDatabaseManager
             CREATE INDEX IF NOT EXISTS idx_messages_from_user ON Messages(FromUserId);
             CREATE INDEX IF NOT EXISTS idx_messages_created ON Messages(CreatedAt);
 
+            -- File area indexes
+            CREATE INDEX IF NOT EXISTS idx_file_areas_name ON FileAreas(Name);
+            CREATE INDEX IF NOT EXISTS idx_file_areas_active ON FileAreas(IsActive);
+            CREATE INDEX IF NOT EXISTS idx_files_area_id ON Files(AreaId);
+            CREATE INDEX IF NOT EXISTS idx_files_filename ON Files(FileName);
+            CREATE INDEX IF NOT EXISTS idx_files_uploader ON Files(UploaderId);
+            CREATE INDEX IF NOT EXISTS idx_files_upload_date ON Files(UploadDate);
+            CREATE INDEX IF NOT EXISTS idx_files_approved ON Files(IsApproved);
+            CREATE INDEX IF NOT EXISTS idx_files_active ON Files(IsActive);
+            CREATE INDEX IF NOT EXISTS idx_file_ratings_file_id ON FileRatings(FileId);
+            CREATE INDEX IF NOT EXISTS idx_file_ratings_user_id ON FileRatings(UserId);
+
             -- Create triggers for UpdatedAt
             CREATE TRIGGER IF NOT EXISTS users_updated_at 
                 AFTER UPDATE ON Users
@@ -208,6 +275,12 @@ public class DatabaseManager : IDatabaseManager
                 AFTER UPDATE ON RuntimeConfiguration
                 BEGIN
                     UPDATE RuntimeConfiguration SET UpdatedAt = CURRENT_TIMESTAMP WHERE Key = NEW.Key;
+                END;
+
+            CREATE TRIGGER IF NOT EXISTS file_areas_updated_at 
+                AFTER UPDATE ON FileAreas
+                BEGIN
+                    UPDATE FileAreas SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id = NEW.Id;
                 END;
         ";
 

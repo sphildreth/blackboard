@@ -8,16 +8,16 @@ namespace Blackboard.Core.Network
 {
     public class MenuOption
     {
-        public string Label { get; set; }
-        public string Screen { get; set; }
-        public string Action { get; set; }
+        public required string Label { get; set; }
+        public required string Screen { get; set; }
+        public required string Action { get; set; }
     }
 
     public class MenuConfig
     {
-        public string Screen { get; set; }
-        public string Prompt { get; set; }
-        public Dictionary<string, MenuOption> Options { get; set; }
+        public required string Screen { get; set; }
+        public required string Prompt { get; set; }
+        public required Dictionary<string, MenuOption> Options { get; set; }
     }
 
     public static class MenuConfigLoader

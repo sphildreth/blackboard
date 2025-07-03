@@ -23,6 +23,7 @@ public class MainApplication
     private readonly IUserService _userService;
     private readonly IAuditService _auditService;
     private readonly ISystemStatisticsService _statisticsService;
+    private readonly IFileAreaService _fileAreaService;
     
     private Window? _mainWindow;
     private Label? _statusLabel;
@@ -48,6 +49,7 @@ public class MainApplication
         _userService = new UserService(databaseManager, passwordService, sessionService, _auditService, 
             configManager.Configuration.Security, logger);
         _statisticsService = new SystemStatisticsService(databaseManager, configManager.Configuration.Database, logger);
+        _fileAreaService = new FileAreaService(databaseManager, logger);
     }
 
     public void Run()
@@ -156,6 +158,7 @@ public class MainApplication
             {
                 new MenuItemv2("_Admin Dashboard", "", () => OnAdminDashboardClicked()),
                 new MenuItemv2("_User Management", "", () => OnUserManagementClicked()),
+                new MenuItemv2("_File Management", "", () => OnFileManagementClicked()),
                 new MenuItemv2("_Message Composer (ANSI)", "", () => OnAnsiEditorClicked()),
                 new MenuItemv2("_Log Viewer", "", () => ShowNotImplemented("Log Viewer")),
                 new MenuItemv2("_Database Backup", "", () => OnDatabaseBackupClicked())
@@ -388,6 +391,20 @@ public class MainApplication
         catch (Exception ex)
         {
             _logger.Error(ex, "Exception in UpdateConnectionsList");
+        }
+    }
+
+    private void OnFileManagementClicked()
+    {
+        try
+        {
+            var fileManagement = new FileAreaManagementWindow(_fileAreaService, _logger);
+            Application.Run((Toplevel)fileManagement);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error opening file management");
+            MessageBox.ErrorQuery("Error", $"Failed to open file management: {ex.Message}", "OK");
         }
     }
 }

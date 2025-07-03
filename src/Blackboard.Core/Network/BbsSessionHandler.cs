@@ -12,14 +12,16 @@ public class BbsSessionHandler
     private readonly IUserService _userService;
     private readonly ISessionService _sessionService;
     private readonly IMessageService _messageService;
+    private readonly IFileAreaService _fileAreaService;
     private readonly ILogger _logger;
     private readonly string _screensDir;
 
-    public BbsSessionHandler(IUserService userService, ISessionService sessionService, IMessageService messageService, ILogger logger, string screensDir)
+    public BbsSessionHandler(IUserService userService, ISessionService sessionService, IMessageService messageService, IFileAreaService fileAreaService, ILogger logger, string screensDir)
     {
         _userService = userService;
         _sessionService = sessionService;
         _messageService = messageService;
+        _fileAreaService = fileAreaService;
         _logger = logger;
         _screensDir = screensDir;
     }
@@ -323,7 +325,7 @@ public class BbsSessionHandler
                             await ShowMessageMenu(connection, user);
                             break;
                         case "files":
-                            await connection.SendLineAsync("File system not yet implemented.");
+                            await ShowFileMenu(connection, user);
                             break;
                         // Add more actions as needed
                     }
@@ -793,5 +795,500 @@ public class BbsSessionHandler
                     break;
             }
         }
+    }
+
+    // Phase 5: File Area Management functionality
+    private async Task ShowFileMenu(TelnetConnection connection, UserProfileDto user)
+    {
+        while (true)
+        {
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("=== FILE AREAS ===");
+            await connection.SendLineAsync("1. Browse File Areas");
+            await connection.SendLineAsync("2. Search Files");
+            await connection.SendLineAsync("3. Recent Uploads");
+            await connection.SendLineAsync("4. Most Downloaded");
+            await connection.SendLineAsync("5. My Uploads");
+            await connection.SendLineAsync("6. Upload File");
+            await connection.SendLineAsync("7. Back");
+            await connection.SendAsync("Select option: ");
+            
+            var input = (await connection.ReadLineAsync() ?? "").Trim();
+            switch (input)
+            {
+                case "1":
+                    await BrowseFileAreas(connection, user);
+                    break;
+                case "2":
+                    await SearchFiles(connection, user);
+                    break;
+                case "3":
+                    await ShowRecentUploads(connection, user);
+                    break;
+                case "4":
+                    await ShowMostDownloaded(connection, user);
+                    break;
+                case "5":
+                    await ShowMyUploads(connection, user);
+                    break;
+                case "6":
+                    await UploadFile(connection, user);
+                    break;
+                case "7":
+                    return;
+                default:
+                    await connection.SendLineAsync("Invalid option.");
+                    break;
+            }
+        }
+    }
+
+    private async Task BrowseFileAreas(TelnetConnection connection, UserProfileDto user)
+    {
+        var areas = await _fileAreaService.GetActiveFileAreasAsync();
+        
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("=== FILE AREAS ===");
+        
+        var areaList = areas.ToList();
+        if (!areaList.Any())
+        {
+            await connection.SendLineAsync("No file areas available.");
+            return;
+        }
+
+        for (int i = 0; i < areaList.Count; i++)
+        {
+            var area = areaList[i];
+            var canAccess = await _fileAreaService.CanUserAccessAreaAsync(user.Id, area.Id);
+            var accessIndicator = canAccess ? "" : " [RESTRICTED]";
+            await connection.SendLineAsync($"{i + 1}. {area.Name} ({area.FileCount} files){accessIndicator}");
+            if (!string.IsNullOrEmpty(area.Description))
+                await connection.SendLineAsync($"   {area.Description}");
+        }
+
+        await connection.SendLineAsync("");
+        await connection.SendAsync("Enter area number to browse (or press Enter to return): ");
+        var input = await connection.ReadLineAsync();
+        
+        if (int.TryParse(input, out int areaIndex) && areaIndex > 0 && areaIndex <= areaList.Count)
+        {
+            var selectedArea = areaList[areaIndex - 1];
+            await BrowseFilesInArea(connection, user, selectedArea);
+        }
+    }
+
+    private async Task BrowseFilesInArea(TelnetConnection connection, UserProfileDto user, FileAreaDto area)
+    {
+        if (!await _fileAreaService.CanUserAccessAreaAsync(user.Id, area.Id))
+        {
+            await connection.SendLineAsync("You do not have access to this file area.");
+            return;
+        }
+
+        int page = 1;
+        const int pageSize = 10;
+
+        while (true)
+        {
+            var result = await _fileAreaService.SearchFilesAsync(areaId: area.Id, page: page, pageSize: pageSize);
+            
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync($"=== {area.Name} === (Page {page})");
+            
+            if (!result.Files.Any())
+            {
+                await connection.SendLineAsync("No files found in this area.");
+            }
+            else
+            {
+                for (int i = 0; i < result.Files.Count; i++)
+                {
+                    var file = result.Files[i];
+                    await connection.SendLineAsync($"{i + 1}. {file.OriginalFileName} ({file.SizeFormatted})");
+                    await connection.SendLineAsync($"   Downloaded {file.DownloadCount} times | Rating: {file.AverageRating:F1}/5.0");
+                    if (!string.IsNullOrEmpty(file.Description))
+                        await connection.SendLineAsync($"   {file.Description}");
+                }
+            }
+
+            await connection.SendLineAsync("");
+            
+            var options = new List<string>();
+            if (result.Files.Any()) options.Add("Enter file number to view details");
+            if (result.HasPreviousPage) options.Add("P for previous page");
+            if (result.HasNextPage) options.Add("N for next page");
+            options.Add("Enter to return");
+
+            await connection.SendLineAsync(string.Join(", ", options));
+            await connection.SendAsync("Choice: ");
+            
+            var input = (await connection.ReadLineAsync() ?? "").Trim().ToLower();
+            
+            if (string.IsNullOrEmpty(input))
+            {
+                break;
+            }
+            else if (input == "n" && result.HasNextPage)
+            {
+                page++;
+            }
+            else if (input == "p" && result.HasPreviousPage)
+            {
+                page--;
+            }
+            else if (int.TryParse(input, out int fileIndex) && fileIndex > 0 && fileIndex <= result.Files.Count)
+            {
+                var selectedFile = result.Files[fileIndex - 1];
+                await ShowFileDetails(connection, user, selectedFile);
+            }
+            else
+            {
+                await connection.SendLineAsync("Invalid choice.");
+            }
+        }
+    }
+
+    private async Task ShowFileDetails(TelnetConnection connection, UserProfileDto user, BbsFileDto file)
+    {
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync($"=== {file.OriginalFileName} ===");
+        await connection.SendLineAsync($"Area: {file.AreaName}");
+        await connection.SendLineAsync($"Size: {file.SizeFormatted}");
+        await connection.SendLineAsync($"Uploaded: {file.UploadDate:yyyy-MM-dd} by {file.UploaderHandle ?? "Unknown"}");
+        await connection.SendLineAsync($"Downloads: {file.DownloadCount}");
+        await connection.SendLineAsync($"Rating: {file.AverageRating:F1}/5.0 ({file.RatingCount} ratings)");
+        
+        if (file.Tags.Any())
+            await connection.SendLineAsync($"Tags: {string.Join(", ", file.Tags)}");
+        
+        if (!string.IsNullOrEmpty(file.Description))
+        {
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("Description:");
+            await connection.SendLineAsync(file.Description);
+        }
+
+        // Show ratings/comments
+        var ratings = await _fileAreaService.GetFileRatingsAsync(file.Id);
+        if (ratings.Any())
+        {
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("Recent Comments:");
+            foreach (var rating in ratings.Take(3))
+            {
+                await connection.SendLineAsync($"  {rating.UserHandle}: {rating.Rating}/5 - {rating.Comment ?? "No comment"}");
+            }
+        }
+
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("1. Download File");
+        await connection.SendLineAsync("2. Rate/Comment");
+        await connection.SendLineAsync("3. Back");
+        await connection.SendAsync("Choice: ");
+        
+        var input = (await connection.ReadLineAsync() ?? "").Trim();
+        switch (input)
+        {
+            case "1":
+                await DownloadFile(connection, user, file);
+                break;
+            case "2":
+                await RateFile(connection, user, file);
+                break;
+            case "3":
+                return;
+        }
+    }
+
+    private async Task DownloadFile(TelnetConnection connection, UserProfileDto user, BbsFileDto file)
+    {
+        try
+        {
+            if (!await _fileAreaService.CanUserAccessAreaAsync(user.Id, file.AreaId))
+            {
+                await connection.SendLineAsync("You do not have download access to this file area.");
+                return;
+            }
+
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("=== DOWNLOAD FILE ===");
+            await connection.SendLineAsync($"File: {file.OriginalFileName} ({file.SizeFormatted})");
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("Transfer protocols available:");
+            await connection.SendLineAsync("1. HTTP Download (recommended for modern clients)");
+            await connection.SendLineAsync("2. ZMODEM (classic BBS protocol)");
+            await connection.SendLineAsync("3. XMODEM");
+            await connection.SendLineAsync("4. Cancel");
+            await connection.SendAsync("Select protocol: ");
+            
+            var protocolChoice = (await connection.ReadLineAsync() ?? "").Trim();
+            
+            switch (protocolChoice)
+            {
+                case "1":
+                    await connection.SendLineAsync("HTTP download not yet implemented in Phase 5.");
+                    await connection.SendLineAsync("This feature will be added in a future update.");
+                    break;
+                case "2":
+                    await connection.SendLineAsync("ZMODEM download not yet implemented in Phase 5.");
+                    await connection.SendLineAsync("This feature will be added in a future update.");
+                    break;
+                case "3":
+                    await connection.SendLineAsync("XMODEM download not yet implemented in Phase 5.");
+                    await connection.SendLineAsync("This feature will be added in a future update.");
+                    break;
+                case "4":
+                    return;
+                default:
+                    await connection.SendLineAsync("Invalid choice.");
+                    return;
+            }
+
+            // For now, just record the download attempt
+            await _fileAreaService.RecordDownloadAsync(file.Id, user.Id);
+            await connection.SendLineAsync("Download recorded (protocol implementation pending).");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error downloading file {FileId} for user {UserId}", file.Id, user.Id);
+            await connection.SendLineAsync("Error occurred during download.");
+        }
+    }
+
+    private async Task RateFile(TelnetConnection connection, UserProfileDto user, BbsFileDto file)
+    {
+        try
+        {
+            var existingRating = await _fileAreaService.GetUserFileRatingAsync(file.Id, user.Id);
+            
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync($"=== RATE FILE: {file.OriginalFileName} ===");
+            
+            if (existingRating != null)
+            {
+                await connection.SendLineAsync($"Your current rating: {existingRating.Rating}/5");
+                if (!string.IsNullOrEmpty(existingRating.Comment))
+                    await connection.SendLineAsync($"Your comment: {existingRating.Comment}");
+            }
+
+            await connection.SendAsync("Enter rating (1-5): ");
+            var ratingInput = await connection.ReadLineAsync();
+            
+            if (!int.TryParse(ratingInput, out int rating) || rating < 1 || rating > 5)
+            {
+                await connection.SendLineAsync("Invalid rating. Please enter a number from 1 to 5.");
+                return;
+            }
+
+            await connection.SendAsync("Enter comment (optional, press Enter to skip): ");
+            var comment = await connection.ReadLineAsync();
+            
+            if (string.IsNullOrWhiteSpace(comment))
+                comment = null;
+
+            if (existingRating != null)
+            {
+                await _fileAreaService.UpdateFileRatingAsync(file.Id, user.Id, rating, comment);
+                await connection.SendLineAsync("Your rating has been updated!");
+            }
+            else
+            {
+                await _fileAreaService.AddFileRatingAsync(file.Id, user.Id, rating, comment);
+                await connection.SendLineAsync("Thank you for your rating!");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error rating file {FileId} for user {UserId}", file.Id, user.Id);
+            await connection.SendLineAsync("Error occurred while saving rating.");
+        }
+    }
+
+    private async Task SearchFiles(TelnetConnection connection, UserProfileDto user)
+    {
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("=== SEARCH FILES ===");
+        await connection.SendAsync("Enter search term (filename or description): ");
+        
+        var searchTerm = await connection.ReadLineAsync();
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            await connection.SendLineAsync("Search cancelled.");
+            return;
+        }
+
+        var result = await _fileAreaService.SearchFilesAsync(searchTerm: searchTerm.Trim(), pageSize: 20);
+        
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync($"=== SEARCH RESULTS: '{searchTerm}' ===");
+        
+        if (!result.Files.Any())
+        {
+            await connection.SendLineAsync("No files found matching your search.");
+            return;
+        }
+
+        await connection.SendLineAsync($"Found {result.TotalCount} files:");
+        await connection.SendLineAsync("");
+
+        for (int i = 0; i < result.Files.Count; i++)
+        {
+            var file = result.Files[i];
+            await connection.SendLineAsync($"{i + 1}. {file.OriginalFileName} ({file.SizeFormatted}) - {file.AreaName}");
+            if (!string.IsNullOrEmpty(file.Description))
+                await connection.SendLineAsync($"   {file.Description}");
+        }
+
+        await connection.SendLineAsync("");
+        await connection.SendAsync("Enter file number to view details (or press Enter to return): ");
+        var input = await connection.ReadLineAsync();
+        
+        if (int.TryParse(input, out int fileIndex) && fileIndex > 0 && fileIndex <= result.Files.Count)
+        {
+            var selectedFile = result.Files[fileIndex - 1];
+            await ShowFileDetails(connection, user, selectedFile);
+        }
+    }
+
+    private async Task ShowRecentUploads(TelnetConnection connection, UserProfileDto user)
+    {
+        var recentFiles = await _fileAreaService.GetRecentUploadsAsync(15);
+        
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("=== RECENT UPLOADS ===");
+        
+        if (!recentFiles.Any())
+        {
+            await connection.SendLineAsync("No recent uploads found.");
+            return;
+        }
+
+        var fileList = recentFiles.ToList();
+        for (int i = 0; i < fileList.Count; i++)
+        {
+            var file = fileList[i];
+            await connection.SendLineAsync($"{i + 1}. {file.OriginalFileName} ({file.SizeFormatted}) - {file.AreaName}");
+            await connection.SendLineAsync($"   Uploaded {file.UploadDate:yyyy-MM-dd} by {file.UploaderHandle ?? "Unknown"}");
+        }
+
+        await connection.SendLineAsync("");
+        await connection.SendAsync("Enter file number to view details (or press Enter to return): ");
+        var input = await connection.ReadLineAsync();
+        
+        if (int.TryParse(input, out int fileIndex) && fileIndex > 0 && fileIndex <= fileList.Count)
+        {
+            var selectedFile = fileList[fileIndex - 1];
+            await ShowFileDetails(connection, user, selectedFile);
+        }
+    }
+
+    private async Task ShowMostDownloaded(TelnetConnection connection, UserProfileDto user)
+    {
+        var popularFiles = await _fileAreaService.GetMostDownloadedFilesAsync(15);
+        
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("=== MOST DOWNLOADED FILES ===");
+        
+        if (!popularFiles.Any())
+        {
+            await connection.SendLineAsync("No download statistics available.");
+            return;
+        }
+
+        var fileList = popularFiles.ToList();
+        for (int i = 0; i < fileList.Count; i++)
+        {
+            var file = fileList[i];
+            await connection.SendLineAsync($"{i + 1}. {file.OriginalFileName} ({file.DownloadCount} downloads) - {file.AreaName}");
+            await connection.SendLineAsync($"   {file.SizeFormatted} | Rating: {file.AverageRating:F1}/5.0");
+        }
+
+        await connection.SendLineAsync("");
+        await connection.SendAsync("Enter file number to view details (or press Enter to return): ");
+        var input = await connection.ReadLineAsync();
+        
+        if (int.TryParse(input, out int fileIndex) && fileIndex > 0 && fileIndex <= fileList.Count)
+        {
+            var selectedFile = fileList[fileIndex - 1];
+            await ShowFileDetails(connection, user, selectedFile);
+        }
+    }
+
+    private async Task ShowMyUploads(TelnetConnection connection, UserProfileDto user)
+    {
+        var userStats = await _fileAreaService.GetUserFileStatisticsAsync(user.Id);
+        
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("=== MY UPLOADS ===");
+        await connection.SendLineAsync($"Total uploads: {userStats.TotalFiles}");
+        await connection.SendLineAsync($"Approved files: {userStats.ApprovedFiles}");
+        await connection.SendLineAsync($"Pending approval: {userStats.PendingApproval}");
+        await connection.SendLineAsync($"Total size: {FormatFileSize(userStats.TotalFileSize)}");
+        await connection.SendLineAsync("");
+
+        if (!userStats.RecentUploads.Any())
+        {
+            await connection.SendLineAsync("You haven't uploaded any files yet.");
+            return;
+        }
+
+        await connection.SendLineAsync("Your recent uploads:");
+        for (int i = 0; i < userStats.RecentUploads.Count; i++)
+        {
+            var file = userStats.RecentUploads[i];
+            var status = file.IsApproved ? "APPROVED" : "PENDING";
+            await connection.SendLineAsync($"{i + 1}. {file.OriginalFileName} ({file.SizeFormatted}) - {status}");
+            await connection.SendLineAsync($"   Area: {file.AreaName} | Downloads: {file.DownloadCount}");
+        }
+
+        await connection.SendLineAsync("");
+        await connection.SendAsync("Enter file number to view details (or press Enter to return): ");
+        var input = await connection.ReadLineAsync();
+        
+        if (int.TryParse(input, out int fileIndex) && fileIndex > 0 && fileIndex <= userStats.RecentUploads.Count)
+        {
+            var selectedFile = userStats.RecentUploads[fileIndex - 1];
+            await ShowFileDetails(connection, user, selectedFile);
+        }
+    }
+
+    private async Task UploadFile(TelnetConnection connection, UserProfileDto user)
+    {
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("=== UPLOAD FILE ===");
+        await connection.SendLineAsync("File uploads via telnet are not yet implemented in Phase 5.");
+        await connection.SendLineAsync("This feature requires protocol implementation (ZMODEM/XMODEM/YMODEM).");
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("Available upload areas for your security level:");
+        
+        var areas = await _fileAreaService.GetActiveFileAreasAsync();
+        var uploadableAreas = new List<FileAreaDto>();
+        
+        foreach (var area in areas)
+        {
+            if (await _fileAreaService.CanUserAccessAreaAsync(user.Id, area.Id, isUpload: true))
+            {
+                uploadableAreas.Add(area);
+                await connection.SendLineAsync($"  - {area.Name}: {area.Description ?? "No description"}");
+                await connection.SendLineAsync($"    Max file size: {FormatFileSize(area.MaxFileSize)}");
+            }
+        }
+
+        if (!uploadableAreas.Any())
+        {
+            await connection.SendLineAsync("You do not have upload permissions for any file areas.");
+        }
+        
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("File upload protocol implementation will be added in a future update.");
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1048576) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1073741824) return $"{bytes / 1048576.0:F1} MB";
+        return $"{bytes / 1073741824.0:F1} GB";
     }
 }
