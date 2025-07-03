@@ -11,12 +11,14 @@ public class BbsSessionHandler
     private readonly IUserService _userService;
     private readonly ISessionService _sessionService;
     private readonly ILogger _logger;
+    private readonly string _screensDir;
 
-    public BbsSessionHandler(IUserService userService, ISessionService sessionService, ILogger logger)
+    public BbsSessionHandler(IUserService userService, ISessionService sessionService, ILogger logger, string screensDir)
     {
         _userService = userService;
         _sessionService = sessionService;
         _logger = logger;
+        _screensDir = screensDir;
     }
 
     public async Task HandleSessionAsync(TelnetConnection connection, CancellationToken cancellationToken)
@@ -250,62 +252,88 @@ public class BbsSessionHandler
 
     private async Task HandleAuthenticatedSession(TelnetConnection connection, UserProfileDto user, UserSession session, CancellationToken cancellationToken)
     {
-        await connection.SendLineAsync("");
-        await connection.SendLineAsync("=== MAIN MENU ===");
-        
+        var menuConfigFile = "mainmenu.yml";
+        await ShowMenuLoop(connection, _screensDir, menuConfigFile, user, session, cancellationToken);
+    }
+
+    private async Task ShowMenuLoop(
+        TelnetConnection connection,
+        string screensDir,
+        string menuConfigFile,
+        UserProfileDto user,
+        UserSession session,
+        CancellationToken cancellationToken)
+    {
+        string currentMenu = menuConfigFile;
+
         while (!cancellationToken.IsCancellationRequested)
         {
-            await connection.SendLineAsync("");
-            await connection.SendLineAsync($"Logged in as: {user.Handle} ({user.SecurityLevel})");
-            await connection.SendLineAsync("───────────────────────────────────────");
-            await connection.SendLineAsync("(M)essages");
-            await connection.SendLineAsync("(F)iles");
-            await connection.SendLineAsync("(U)ser Profile");
-            await connection.SendLineAsync("(W)ho's Online");
-            await connection.SendLineAsync("(S)ystem Info");
-            await connection.SendLineAsync("(L)ogoff");
-            await connection.SendLineAsync("");
-            await connection.SendAsync("Choice: ");
-
-            var choice = await connection.ReadLineAsync();
-            if (string.IsNullOrEmpty(choice))
-                continue;
-
-            switch (choice.ToUpper().Trim())
+            // Load menu config
+            var menuConfigPath = Path.Combine(screensDir, currentMenu);
+            if (!File.Exists(menuConfigPath))
             {
-                case "M":
-                case "MESSAGES":
-                    await connection.SendLineAsync("Message system not yet implemented.");
-                    break;
-                case "F":
-                case "FILES":
-                    await connection.SendLineAsync("File system not yet implemented.");
-                    break;
-                case "U":
-                case "USER":
-                case "PROFILE":
-                    await ShowUserProfile(connection, user);
-                    break;
-                case "W":
-                case "WHO":
-                case "WHOS":
-                    await ShowWhoIsOnline(connection);
-                    break;
-                case "S":
-                case "SYSTEM":
-                case "INFO":
-                    await ShowSystemInfo(connection);
-                    break;
-                case "L":
-                case "LOGOFF":
-                case "LOGOUT":
-                    await _sessionService.EndSessionAsync(session.Id);
-                    await connection.SendLineAsync("Thank you for calling Blackboard BBS!");
-                    await connection.SendLineAsync("Session ended. Goodbye!");
-                    return;
-                default:
-                    await connection.SendLineAsync("Invalid choice. Please try again.");
-                    break;
+                await connection.SendLineAsync($"[Menu config not found: {currentMenu}]");
+                return;
+            }
+            var menuConfig = await MenuConfigLoader.LoadAsync(menuConfigPath);
+
+            // Load and send the screen file
+            var screenContent = await MenuConfigLoader.LoadScreenAsync(screensDir, menuConfig.Screen);
+            await connection.SendLineAsync(screenContent);
+
+            // Show prompt and wait for input
+            await connection.SendAsync(menuConfig.Prompt ?? "Choice: ");
+            var input = (await connection.ReadLineAsync() ?? "").Trim().ToLower();
+
+            if (menuConfig.Options != null && menuConfig.Options.TryGetValue(input, out var option))
+            {
+                if (!string.IsNullOrEmpty(option.Screen))
+                {
+                    // If the option points to another menu config, switch to it
+                    if (option.Screen.EndsWith(".yml") || option.Screen.EndsWith(".yaml"))
+                    {
+                        currentMenu = option.Screen;
+                        continue;
+                    }
+                    // Otherwise, just show the screen and loop
+                    var nextScreen = await MenuConfigLoader.LoadScreenAsync(screensDir, option.Screen);
+                    await connection.SendLineAsync(nextScreen);
+                }
+
+                // Handle special actions
+                if (!string.IsNullOrEmpty(option.Action))
+                {
+                    switch (option.Action.ToLower())
+                    {
+                        case "quit":
+                        case "logoff":
+                        case "logout":
+                            await _sessionService.EndSessionAsync(session.Id);
+                            await connection.SendLineAsync("Thank you for calling Blackboard BBS!");
+                            await connection.SendLineAsync("Session ended. Goodbye!");
+                            return;
+                        case "userprofile":
+                            await ShowUserProfile(connection, user);
+                            break;
+                        case "whoisonline":
+                            await ShowWhoIsOnline(connection);
+                            break;
+                        case "systeminfo":
+                            await ShowSystemInfo(connection);
+                            break;
+                        case "messages":
+                            await connection.SendLineAsync("Message system not yet implemented.");
+                            break;
+                        case "files":
+                            await connection.SendLineAsync("File system not yet implemented.");
+                            break;
+                        // Add more actions as needed
+                    }
+                }
+            }
+            else
+            {
+                await connection.SendLineAsync("Invalid choice. Please try again.");
             }
         }
     }

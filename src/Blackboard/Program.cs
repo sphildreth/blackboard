@@ -88,8 +88,12 @@ class Program
             var userService = new UserService(_databaseManager, passwordService, sessionService, auditService, 
                 _configManager.Configuration.Security, _logger);
             
-            // Initialize telnet server
-            _telnetServer = new TelnetServer(_logger, _configManager, userService, sessionService);
+
+            // Determine screens directory from config
+            string screensDir = Path.Combine(rootPath, _configManager.Configuration.System.ScreensPath ?? "screens");
+
+            // Initialize telnet server with screensDir
+            _telnetServer = new TelnetServer(_logger, _configManager, userService, sessionService, screensDir);
 
             // Check if we should auto-start the terminal server
             if (_configManager.Configuration.System.TerminalServerAutoStart)
