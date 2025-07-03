@@ -9,18 +9,21 @@ namespace Blackboard.UI
         private TextView _editor;
         private Action<string>? _onSave;
 
-        public AnsiEditorWindow(string title = "ANSI Message Editor", Action<string>? onSave = null) : base(title)
+        public AnsiEditorWindow(string title = "ANSI Message Editor", Action<string>? onSave = null)
         {
             _onSave = onSave;
-            Width = Dim.Fill();
-            Height = Dim.Fill();
+            Title = title;
+            X = 0;
+            Y = 0;
+            Width = 80;
+            Height = 25;
 
             _editor = new TextView
             {
                 X = 1,
                 Y = 1,
-                Width = Dim.Fill() - 2,
-                Height = Dim.Fill() - 3,
+                Width = 76,
+                Height = 20,
                 WordWrap = false,
                 AllowsTab = true
             };
@@ -30,7 +33,7 @@ namespace Blackboard.UI
             {
                 Text = "Save",
                 X = 10,
-                Y = 20
+                Y = 22
             };
             saveBtn.MouseClick += (s, e) => OnSaveClicked();
             Add(saveBtn);

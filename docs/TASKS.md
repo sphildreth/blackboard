@@ -46,9 +46,8 @@ This checklist is based on the Product Requirements Document (PRD) and is organi
 
 ## Phase 5: File Area Management
 - [ ] Implement file libraries and area management (create/edit, permissions)
-- [ ] Add file upload/download, tagging, search, and virus scan
-- [ ] Integrate ZMODEM/XMODEM/YMODEM and HTTP links
-- [ ] Enforce file encryption (AES-256-GCM, per-user keys)
+- [ ] Add file upload/download, tagging, and search
+- [ ] Integrate ZMODEM/XMODEM/YMODEM
 - [ ] Implement file ratings and comments
 - [ ] Add batch operations and cleanup tools
 
