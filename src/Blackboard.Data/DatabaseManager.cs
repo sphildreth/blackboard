@@ -239,6 +239,55 @@ public class DatabaseManager : IDatabaseManager
                 UNIQUE(FileId, UserId)
             );
 
+            -- File Transfer tracking table (for Phase 5 - ZMODEM/XMODEM/YMODEM support)
+            CREATE TABLE IF NOT EXISTS FileTransfers (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                SessionId TEXT NOT NULL UNIQUE,
+                UserId INTEGER NOT NULL,
+                FileId INTEGER,
+                Protocol TEXT NOT NULL,
+                IsUpload INTEGER NOT NULL,
+                FileName TEXT NOT NULL,
+                FileSize INTEGER NOT NULL,
+                BytesTransferred INTEGER NOT NULL DEFAULT 0,
+                StartTime DATETIME NOT NULL,
+                EndTime DATETIME,
+                IsSuccessful INTEGER,
+                ErrorMessage TEXT,
+                FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+                FOREIGN KEY (FileId) REFERENCES Files(Id) ON DELETE SET NULL
+            );
+
+            -- Download token table for HTTP downloads
+            CREATE TABLE IF NOT EXISTS DownloadTokens (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Token TEXT NOT NULL UNIQUE,
+                FileId INTEGER NOT NULL,
+                UserId INTEGER NOT NULL,
+                CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                ExpiresAt DATETIME NOT NULL,
+                IsUsed INTEGER NOT NULL DEFAULT 0,
+                UsedAt DATETIME,
+                FOREIGN KEY (FileId) REFERENCES Files(Id) ON DELETE CASCADE,
+                FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+            );
+
+            -- Upload token table for HTTP uploads
+            CREATE TABLE IF NOT EXISTS UploadTokens (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Token TEXT NOT NULL UNIQUE,
+                AreaId INTEGER NOT NULL,
+                UserId INTEGER NOT NULL,
+                CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                ExpiresAt DATETIME NOT NULL,
+                IsUsed INTEGER NOT NULL DEFAULT 0,
+                UsedAt DATETIME,
+                ResultingFileId INTEGER,
+                FOREIGN KEY (AreaId) REFERENCES FileAreas(Id) ON DELETE CASCADE,
+                FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+                FOREIGN KEY (ResultingFileId) REFERENCES Files(Id) ON DELETE SET NULL
+            );
+
             -- Create indexes for performance
             CREATE INDEX IF NOT EXISTS idx_users_handle ON Users(Handle);
             CREATE INDEX IF NOT EXISTS idx_users_email ON Users(Email);
@@ -263,6 +312,15 @@ public class DatabaseManager : IDatabaseManager
             CREATE INDEX IF NOT EXISTS idx_files_active ON Files(IsActive);
             CREATE INDEX IF NOT EXISTS idx_file_ratings_file_id ON FileRatings(FileId);
             CREATE INDEX IF NOT EXISTS idx_file_ratings_user_id ON FileRatings(UserId);
+
+            -- File transfer indexes
+            CREATE INDEX IF NOT EXISTS idx_file_transfers_session_id ON FileTransfers(SessionId);
+            CREATE INDEX IF NOT EXISTS idx_file_transfers_user_id ON FileTransfers(UserId);
+            CREATE INDEX IF NOT EXISTS idx_file_transfers_start_time ON FileTransfers(StartTime);
+            CREATE INDEX IF NOT EXISTS idx_download_tokens_token ON DownloadTokens(Token);
+            CREATE INDEX IF NOT EXISTS idx_download_tokens_expires ON DownloadTokens(ExpiresAt);
+            CREATE INDEX IF NOT EXISTS idx_upload_tokens_token ON UploadTokens(Token);
+            CREATE INDEX IF NOT EXISTS idx_upload_tokens_expires ON UploadTokens(ExpiresAt);
 
             -- Create triggers for UpdatedAt
             CREATE TRIGGER IF NOT EXISTS users_updated_at 

@@ -39,6 +39,8 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IAuthorizationService, AuthorizationService>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IFileAreaService, FileAreaService>();
+        services.AddScoped<IFileTransferService, FileTransferService>();
+        services.AddScoped<IFileCompressionService, FileCompressionService>();
 
         // Background Services
         services.AddHostedService<SessionCleanupService>();
@@ -76,6 +78,8 @@ public class ServiceManager
     public IAuthorizationService AuthorizationService => GetService<IAuthorizationService>();
     public IMessageService MessageService => GetService<IMessageService>();
     public IFileAreaService FileAreaService => GetService<IFileAreaService>();
+    public IFileTransferService FileTransferService => GetService<IFileTransferService>();
+    public IFileCompressionService FileCompressionService => GetService<IFileCompressionService>();
     public DatabaseManager DatabaseManager => GetService<DatabaseManager>();
     public SystemConfiguration SystemConfiguration => GetService<SystemConfiguration>();
 }
