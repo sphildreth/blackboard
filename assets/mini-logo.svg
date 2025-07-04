@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="80" height="80" fill="#000" rx="8"/>
+  
+  <!-- Terminal frame -->
+  <rect x="4" y="4" width="72" height="72" fill="#000" stroke="#00ff00" stroke-width="1" rx="4"/>
+  
+  <!-- Scan lines effect (subtle) -->
+  <defs>
+    <pattern id="scanlines" width="100%" height="2" patternUnits="userSpaceOnUse">
+      <rect width="100%" height="1" fill="#000"/>
+      <rect width="100%" height="1" y="1" fill="#001100" opacity="0.3"/>
+    </pattern>
+  </defs>
+  <rect x="5" y="5" width="70" height="70" fill="url(#scanlines)" opacity="0.4"/>
+   <!-- Chalkboard icon (left aligned, vertically centered) -->
+  <g transform="translate(8, 15) scale(0.35)">
+    <!-- Chalkboard frame (wood) -->
+    <rect x="8" y="12" width="64" height="48" fill="#8B4513" stroke="#654321" stroke-width="2" rx="2"/>
+    <!-- Inner frame -->
+    <rect x="12" y="16" width="56" height="40" fill="#654321" stroke="#4A2C17" stroke-width="1" rx="1"/>
+    <!-- Chalkboard surface -->
+    <rect x="14" y="18" width="52" height="36" fill="#2F4F2F" stroke="#1C3A1C" stroke-width="1"/>
+    <!-- Chalk writing "BB" -->
+    <text x="40" y="30" text-anchor="middle" font-family="serif" font-size="12" font-weight="bold" fill="#E0E0E0" opacity="0.9">BB</text>
+    <!-- Chalk writing "BBS" -->
+    <text x="40" y="42" text-anchor="middle" font-family="serif" font-size="8" fill="#D0D0D0" opacity="0.8">BBS</text>
+    <!-- Eraser on ledge -->
+    <rect x="16" y="56" width="8" height="3" fill="#FFB6C1" rx="1"/>
+    <!-- Chalk pieces -->
+    <rect x="28" y="57" width="3" height="1.5" fill="#FFFFFF" rx="0.5"/>
+  </g>
+
+  <!-- Main text (to the right of chalkboard, vertically centered) -->
+  <text x="38" y="38" text-anchor="start" font-family="monospace" font-size="8" font-weight="bold" fill="#00ff00">
+    BLACKBOARD
+  </text>
+  
+  <!-- Subtitle (aligned with title) -->
+  <text x="38" y="48" text-anchor="start" font-family="monospace" font-size="5" fill="#00aa00">
+    BBS SYSTEM
+  </text>
+  
+  <!-- Simple border decoration -->
+  <text x="10" y="68" font-family="monospace" font-size="6" fill="#00aa00">┌──────┐</text>
+  <text x="10" y="74" font-family="monospace" font-size="6" fill="#00aa00">└──────┘</text>
+  
+  <!-- Animated cursor (smaller) -->
+  <rect x="68" y="62" width="4" height="6" fill="#00ff00" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1s" repeatCount="indefinite"/>
+  </rect>
+</svg>

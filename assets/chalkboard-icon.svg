@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Chalkboard frame (wood) -->
+  <rect x="8" y="12" width="64" height="48" fill="#8B4513" stroke="#654321" stroke-width="2" rx="2"/>
+  
+  <!-- Inner frame -->
+  <rect x="12" y="16" width="56" height="40" fill="#654321" stroke="#4A2C17" stroke-width="1" rx="1"/>
+  
+  <!-- Chalkboard surface -->
+  <rect x="14" y="18" width="52" height="36" fill="#2F4F2F" stroke="#1C3A1C" stroke-width="1"/>
+  
+  <!-- Chalk dust texture -->
+  <defs>
+    <pattern id="chalkTexture" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="4" fill="#2F4F2F"/>
+      <circle cx="1" cy="1" r="0.3" fill="#4F6F4F" opacity="0.3"/>
+      <circle cx="3" cy="2" r="0.2" fill="#5F7F5F" opacity="0.4"/>
+      <circle cx="2" cy="3" r="0.25" fill="#3F5F3F" opacity="0.2"/>
+    </pattern>
+  </defs>
+  <rect x="14" y="18" width="52" height="36" fill="url(#chalkTexture)"/>
+  
+  <!-- Chalk writing "BB" -->
+  <text x="40" y="30" text-anchor="middle" font-family="serif" font-size="12" font-weight="bold" fill="#E0E0E0" opacity="0.9">
+    BB
+  </text>
+  
+  <!-- Chalk writing "BBS" (smaller) -->
+  <text x="40" y="42" text-anchor="middle" font-family="serif" font-size="8" fill="#D0D0D0" opacity="0.8">
+    BBS
+  </text>
+  
+  <!-- Chalk smudges/erasure marks -->
+  <ellipse cx="25" cy="48" rx="8" ry="2" fill="#4A6A4A" opacity="0.3"/>
+  <ellipse cx="55" cy="25" rx="6" ry="3" fill="#4A6A4A" opacity="0.2"/>
+  
+  <!-- Eraser on ledge -->
+  <rect x="16" y="56" width="8" height="3" fill="#FFB6C1" rx="1"/>
+  <rect x="16.5" y="56.5" width="7" height="2" fill="#FF69B4" rx="0.5"/>
+  
+  <!-- Chalk pieces on ledge -->
+  <rect x="28" y="57" width="3" height="1.5" fill="#FFFFFF" rx="0.5"/>
+  <rect x="32" y="56.5" width="2" height="1" fill="#F0F0F0" rx="0.3"/>
+  
+  <!-- Frame mounting screws -->
+  <circle cx="16" cy="20" r="1" fill="#4A2C17"/>
+  <circle cx="64" cy="20" r="1" fill="#4A2C17"/>
+  <circle cx="16" cy="50" r="1" fill="#4A2C17"/>
+  <circle cx="64" cy="50" r="1" fill="#4A2C17"/>
+  
+  <!-- Screw details -->
+  <line x1="15.5" y1="19.5" x2="16.5" y2="20.5" stroke="#2F1A0F" stroke-width="0.3"/>
+  <line x1="16.5" y1="19.5" x2="15.5" y2="20.5" stroke="#2F1A0F" stroke-width="0.3"/>
+  <line x1="63.5" y1="19.5" x2="64.5" y2="20.5" stroke="#2F1A0F" stroke-width="0.3"/>
+  <line x1="64.5" y1="19.5" x2="63.5" y2="20.5" stroke="#2F1A0F" stroke-width="0.3"/>
+  <line x1="15.5" y1="49.5" x2="16.5" y2="50.5" stroke="#2F1A0F" stroke-width="0.3"/>
+  <line x1="16.5" y1="49.5" x2="15.5" y2="50.5" stroke="#2F1A0F" stroke-width="0.3"/>
+  <line x1="63.5" y1="49.5" x2="64.5" y2="50.5" stroke="#2F1A0F" stroke-width="0.3"/>
+  <line x1="64.5" y1="49.5" x2="63.5" y2="50.5" stroke="#2F1A0F" stroke-width="0.3"/>
+  
+  <!-- Subtle highlight on frame -->
+  <rect x="9" y="13" width="62" height="1" fill="#A0522D" opacity="0.6" rx="1"/>
+</svg>
