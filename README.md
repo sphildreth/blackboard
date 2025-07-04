@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏴‍☠️ Blackboard BBS
+# 🏴‍☠️ Blackboard
 
 **A modern terminal-based bulletin board system built with .NET 8**
 
@@ -118,7 +118,7 @@ Whether you're a sysop looking to run a retro BBS community or a developer inter
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Telnet Client │────│  Blackboard BBS  │────│ SQLite Database │
+│   Telnet Client │────│  Blackboard      │────│ SQLite Database │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                                 │
                        ┌────────┴────────┐
@@ -281,6 +281,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 **[⬆ Back to Top](#-blackboard-bbs)**
 
-Made with ❤️ by the Blackboard BBS community
+Made with ❤️ by the Blackboard community
 
 </div>
