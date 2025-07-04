@@ -31,8 +31,6 @@ public class MainApplication
     private Label? _connectionsLabel;
     private ListView? _connectionsListView;
     private Button? _startStopButton;
-    private bool _isServerRunning;
-    private DateTime _serverStartTime;
 
     public MainApplication(ILogger logger, ConfigurationManager configManager, 
         DatabaseManager databaseManager, TelnetServer telnetServer)
@@ -207,17 +205,14 @@ public class MainApplication
         {
             try
             {
-                if (_isServerRunning)
+                if (_telnetServer.IsRunning)
                 {
                     await _telnetServer.StopAsync();
-                    _isServerRunning = false;
                     _logger.Information("Telnet server stopped by user");
                 }
                 else
                 {
                     await _telnetServer.StartAsync();
-                    _isServerRunning = true;
-                    _serverStartTime = DateTime.UtcNow;
                     _logger.Information("Telnet server started by user");
                 }
 
@@ -355,21 +350,27 @@ public class MainApplication
     {
         try
         {
+            var isServerRunning = _telnetServer.IsRunning;
+            
             if (_statusLabel != null)
             {
-                _statusLabel.Text = $"Status: {(_isServerRunning ? "Online" : "Offline")}";
+                _statusLabel.Text = $"Status: {(isServerRunning ? "Online" : "Offline")}";
             }
 
-            if (_uptimeLabel != null && _isServerRunning)
+            if (_uptimeLabel != null && isServerRunning && _telnetServer.StartTime.HasValue)
             {
                 // Calculate actual uptime since server start
-                var uptime = DateTime.UtcNow - _serverStartTime;
+                var uptime = DateTime.UtcNow - _telnetServer.StartTime.Value;
                 _uptimeLabel.Text = $"Uptime: {uptime:hh\\:mm\\:ss}";
+            }
+            else if (_uptimeLabel != null)
+            {
+                _uptimeLabel.Text = "Uptime: 00:00:00";
             }
 
             if (_startStopButton != null)
             {
-                _startStopButton.Text = _isServerRunning ? "Stop Server" : "Start Server";
+                _startStopButton.Text = isServerRunning ? "Stop Server" : "Start Server";
             }
 
             UpdateConnectionsList();

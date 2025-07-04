@@ -20,12 +20,14 @@ public class TelnetServer
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly List<TelnetConnection> _activeConnections;
     private bool _isRunning;
+    private DateTime? _startTime;
 
     public event EventHandler<TelnetConnection>? ClientConnected;
     public event EventHandler<TelnetConnection>? ClientDisconnected;
 
     public IReadOnlyList<TelnetConnection> ActiveConnections => _activeConnections.AsReadOnly();
     public bool IsRunning => _isRunning;
+    public DateTime? StartTime => _startTime;
 
     public TelnetServer(ILogger logger, ConfigurationManager configManager, IUserService userService, ISessionService sessionService, IMessageService messageService, IFileAreaService fileAreaService, string screensDir)
     {
@@ -57,6 +59,7 @@ public class TelnetServer
             
             _cancellationTokenSource = new CancellationTokenSource();
             _isRunning = true;
+            _startTime = DateTime.UtcNow;
 
             _logger.Information("Telnet server started on {Address}:{Port}", bindAddress, config.TelnetPort);
 
@@ -80,6 +83,7 @@ public class TelnetServer
         _logger.Information("Stopping Telnet server...");
 
         _isRunning = false;
+        _startTime = null;
         _cancellationTokenSource?.Cancel();
         _listener?.Stop();
 

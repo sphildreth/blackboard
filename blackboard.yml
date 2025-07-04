@@ -7,11 +7,12 @@ system:
   preEnterCode: ""
   maxUsers: 100
   timeZone: "UTC"
+  theme: "Dark"
   rootPath: "/opt/blackboard"
   terminalServerAutoStart: true
 
 network:
-  telnetBindAddress: "127.0.0.1"
+  telnetBindAddress: "192.168.8.130"
   telnetPort: 2323
   maxConcurrentConnections: 10
   connectionTimeoutSeconds: 300
