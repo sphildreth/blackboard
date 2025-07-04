@@ -1,6 +1,8 @@
 using Blackboard.Core.Network;
 using Blackboard.Core.Configuration;
 using Serilog;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace Blackboard.Core.Services;
 
@@ -63,9 +65,8 @@ public class ScreenSequenceService : IScreenSequenceService
                 return false;
             }
 
-            // For now, we'll implement basic conditions later
-            // TODO: Load screen configuration and evaluate conditions
-            var screenConditions = new ScreenConditions(); // Default empty conditions
+            // Load screen configuration and evaluate conditions
+            var screenConditions = await LoadScreenConditionsAsync(screenName);
             
             if (!_ansiScreenService.EvaluateConditions(screenConditions, context))
             {
@@ -127,5 +128,57 @@ public class ScreenSequenceService : IScreenSequenceService
             _logger.Information("Unregistered screen sequence {SequenceName}", sequenceName);
         }
         return removed;
+    }
+
+    /// <summary>
+    /// Loads screen conditions from configuration
+    /// </summary>
+    private async Task<ScreenConditions> LoadScreenConditionsAsync(string screenName)
+    {
+        try
+        {
+            // For now, return basic default conditions
+            // In the future, this could load from YAML config files per screen
+            // or from a central screen configuration database
+            
+            // Check for screen-specific config file
+            // Look for a .conditions.yml file next to the screen file
+            var screenDir = Path.GetDirectoryName(screenName) ?? "";
+            var screenFileName = Path.GetFileNameWithoutExtension(screenName);
+            var conditionsFileName = $"{screenFileName}.conditions.yml";
+            
+            var configPath = Path.Combine(Path.GetDirectoryName(_ansiScreenService.GetType().Assembly.Location) ?? "", 
+                "screens", screenDir, conditionsFileName);
+            
+            if (File.Exists(configPath))
+            {
+                // Load YAML configuration for this screen
+                var yaml = await File.ReadAllTextAsync(configPath);
+                
+                try
+                {
+                    var deserializer = new DeserializerBuilder()
+                        .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                        .Build();
+                    
+                    var screenConditions = deserializer.Deserialize<ScreenConditions>(yaml);
+                    _logger.Debug("Loaded screen conditions for {ScreenName} from {ConfigPath}", screenName, configPath);
+                    return screenConditions ?? new ScreenConditions();
+                }
+                catch (Exception parseEx)
+                {
+                    _logger.Warning(parseEx, "Failed to parse YAML configuration for {ScreenName} at {ConfigPath}", screenName, configPath);
+                    return new ScreenConditions(); // Default to no conditions on parse error
+                }
+            }
+            
+            // Return default empty conditions for now
+            return new ScreenConditions();
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning(ex, "Error loading screen conditions for {ScreenName}", screenName);
+            return new ScreenConditions(); // Default to no conditions
+        }
     }
 }

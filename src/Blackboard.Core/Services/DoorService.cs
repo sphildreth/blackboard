@@ -477,7 +477,7 @@ public class DoorService : IDoorService
             { "{TIME_LEFT}", user.TimeLeft?.ToString() ?? "60" },
             { "{SESSION_ID}", sessionId },
             { "{DOOR_ID}", doorId.ToString() },
-            { "{NODE_NUMBER}", "1" }, // TODO: Implement node management
+            { "{NODE_NUMBER}", (await GetUserNodeNumberAsync(userId)).ToString() },
             { "{BAUD_RATE}", "38400" },
             { "{COM_PORT}", door.SerialPort ?? "COM1" },
             { "{CURRENT_DATE}", DateTime.Now.ToString("MM-dd-yyyy") },
@@ -1279,5 +1279,29 @@ Y
 {NODE_NUMBER}";
     }
 
+    private async Task<int> GetUserNodeNumberAsync(int userId)
+    {
+        try
+        {
+            // Assign node numbers based on active session order
+            // This could be enhanced to use a dedicated node management system
+            const string sql = @"
+                SELECT ROW_NUMBER() OVER (ORDER BY CreatedAt) as NodeNumber
+                FROM UserSessions 
+                WHERE IsActive = 1 AND ExpiresAt > @Now AND UserId = @UserId
+                ORDER BY CreatedAt
+                LIMIT 1";
+            
+            var nodeNumber = await _databaseManager.QueryFirstOrDefaultAsync<int?>(sql, 
+                new { UserId = userId, Now = DateTime.UtcNow });
+            
+            return nodeNumber ?? 1; // Default to node 1 if not found
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error getting node number for user {UserId}", userId);
+            return 1; // Default fallback
+        }
+    }
     #endregion
 }

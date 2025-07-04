@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
         // Core Services
         services.AddTransient<IPasswordService, PasswordService>();
         services.AddTransient<ISessionService, SessionService>();
+        services.AddSingleton<IAuthenticationContextService, AuthenticationContextService>();
         services.AddTransient<IAuditService, AuditService>();
         services.AddTransient<IUserService, UserService>();
         services.AddTransient<IAuthorizationService, AuthorizationService>();
@@ -99,4 +100,5 @@ public class ServiceManager
     public IFossilEmulationService FossilEmulationService => GetService<IFossilEmulationService>();
     public DatabaseManager DatabaseManager => GetService<DatabaseManager>();
     public SystemConfiguration SystemConfiguration => GetService<SystemConfiguration>();
+    public IAuthenticationContextService AuthenticationContextService => GetService<IAuthenticationContextService>();
 }

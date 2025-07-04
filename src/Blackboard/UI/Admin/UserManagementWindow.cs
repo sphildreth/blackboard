@@ -320,19 +320,35 @@ public class UserManagementWindow : Window
         }
     }
 
-    private void DeleteUser()
+    private async void DeleteUser()
     {
         if (_selectedUser == null) return;
         
         // Show confirmation dialog
         var result = MessageBox.Query("Confirm Delete", 
-            $"Are you sure you want to delete user '{_selectedUser.Handle}'?\n\nThis action cannot be undone.", 
+            $"Are you sure you want to deactivate user '{_selectedUser.Handle}'?\n\nThis will:\n- Deactivate the user account\n- End all active sessions\n- Prevent future logins\n\nThis action can be reversed by an administrator.", 
             "Yes", "No");
         
         if (result == 0) // Yes
         {
-            // TODO: Implement user deletion when available in UserService
-            _statusLabel!.Text = $"User deletion not implemented yet";
+            try
+            {
+                var success = await _userService.DeactivateUserAsync(_selectedUser.Id, "Deactivated by admin", 1, "127.0.0.1");
+                if (success)
+                {
+                    _statusLabel!.Text = $"User {_selectedUser.Handle} has been deactivated";
+                    LoadUsers(); // Refresh the list
+                }
+                else
+                {
+                    _statusLabel!.Text = $"Failed to deactivate user {_selectedUser.Handle}";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error deactivating user {UserId}", _selectedUser.Id);
+                _statusLabel!.Text = $"Error deactivating user {_selectedUser.Handle}";
+            }
         }
     }
 

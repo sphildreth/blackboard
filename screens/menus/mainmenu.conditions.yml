@@ -1,0 +1,26 @@
+# Main menu screen conditions
+# This file defines who can access the main menu and under what conditions
+
+# Minimum security level required (0 = new user, 10 = sysop)
+minSecurityLevel: 1
+
+# Maximum security level (null = no limit)
+maxSecurityLevel: null
+
+# Required user groups (null = no requirement)
+requiredGroups: null
+
+# Only show to first-time users? (null = show to all)
+firstTimeUser: null
+
+# Maximum calls today limit (null = no limit)
+maxCallsToday: null
+
+# Minimum time left in session (null = no requirement)
+# Format: "HH:MM:SS"
+minTimeLeft: "00:05:00"
+
+# Date range when this screen is available
+# Format: "YYYY-MM-DD"
+startDate: null
+endDate: null

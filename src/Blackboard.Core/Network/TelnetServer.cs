@@ -196,7 +196,8 @@ public class TelnetServer
             _screenSequenceService,
             _keyboardHandler,
             _logger, 
-            _screensDir);
+            _screensDir,
+            _configManager);
         await sessionHandler.HandleSessionAsync(connection, cancellationToken);
     }
 }

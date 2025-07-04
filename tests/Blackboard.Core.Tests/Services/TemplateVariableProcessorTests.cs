@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Blackboard.Core.Services;
+using Blackboard.Data;
 using Moq;
 using Serilog;
 using Xunit;
@@ -16,7 +17,8 @@ namespace Blackboard.Core.Tests.Services
         public TemplateVariableProcessorTests()
         {
             _loggerMock = new Mock<ILogger>();
-            _processor = new TemplateVariableProcessor(_loggerMock.Object);
+            var databaseManagerMock = new Mock<IDatabaseManager>();
+            _processor = new TemplateVariableProcessor(_loggerMock.Object, databaseManagerMock.Object);
         }
 
         [Fact]

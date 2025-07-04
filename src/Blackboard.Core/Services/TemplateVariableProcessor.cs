@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Blackboard.Core.Models;
+using Blackboard.Data;
 using Serilog;
 
 namespace Blackboard.Core.Services;
@@ -7,12 +8,14 @@ namespace Blackboard.Core.Services;
 public class TemplateVariableProcessor : ITemplateVariableProcessor
 {
     private readonly ILogger _logger;
+    private readonly IDatabaseManager _databaseManager;
     private readonly Dictionary<string, Func<UserContext, Dictionary<string, object>>> _variableProviders;
     private readonly Regex _templateVariableRegex;
 
-    public TemplateVariableProcessor(ILogger logger)
+    public TemplateVariableProcessor(ILogger logger, IDatabaseManager databaseManager)
     {
         _logger = logger;
+        _databaseManager = databaseManager;
         _variableProviders = new Dictionary<string, Func<UserContext, Dictionary<string, object>>>();
         _templateVariableRegex = new Regex(@"\{(\w+)\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         
@@ -71,7 +74,7 @@ public class TemplateVariableProcessor : ITemplateVariableProcessor
             ["USER_REAL_NAME"] = $"{context.User?.FirstName} {context.User?.LastName}".Trim(),
             ["USER_LOCATION"] = context.User?.Location ?? "Unknown",
             ["USER_LEVEL"] = ((int)(context.User?.SecurityLevel ?? SecurityLevel.User)).ToString(),
-            ["USER_CALLS"] = "0", // TODO: Implement call tracking
+            ["USER_CALLS"] = GetUserCallCount(context.User?.Id ?? 0).ToString(),
             ["USER_LASTCALL"] = context.User?.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never",
             ["USER_TIMELEFT"] = CalculateTimeLeft(context).ToString(@"mm") + " mins"
         });
@@ -121,5 +124,22 @@ public class TemplateVariableProcessor : ITemplateVariableProcessor
         var elapsed = DateTime.UtcNow - context.ConnectTime;
         var remaining = sessionTimeLimit - elapsed;
         return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+    }
+
+    private int GetUserCallCount(long userId)
+    {
+        if (userId == 0) return 0;
+        
+        try
+        {
+            // Count total sessions for the user (represents total calls)
+            const string sql = "SELECT COUNT(*) FROM UserSessions WHERE UserId = @UserId";
+            return _databaseManager.QueryFirstAsync<int>(sql, new { UserId = userId }).Result;
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning(ex, "Failed to get call count for user {UserId}", userId);
+            return 0;
+        }
     }
 }

@@ -18,6 +18,7 @@ public class BbsSessionHandler
     private readonly IKeyboardHandlerService _keyboardHandler;
     private readonly ILogger _logger;
     private readonly string _screensDir;
+    private readonly Configuration.ConfigurationManager? _configManager;
 
     public BbsSessionHandler(
         IUserService userService, 
@@ -28,7 +29,8 @@ public class BbsSessionHandler
         IScreenSequenceService screenSequenceService,
         IKeyboardHandlerService keyboardHandler,
         ILogger logger, 
-        string screensDir)
+        string screensDir,
+        Configuration.ConfigurationManager? configManager = null)
     {
         _userService = userService;
         _sessionService = sessionService;
@@ -39,6 +41,7 @@ public class BbsSessionHandler
         _keyboardHandler = keyboardHandler;
         _logger = logger;
         _screensDir = screensDir;
+        _configManager = configManager;
     }
 
     public async Task HandleSessionAsync(TelnetConnection connection, CancellationToken cancellationToken)
@@ -112,7 +115,7 @@ public class BbsSessionHandler
             ConnectTime = DateTime.UtcNow,
             SystemInfo = new Dictionary<string, object>
             {
-                ["BBS_NAME"] = "Blackboard BBS", // TODO: Get from config
+                ["BBS_NAME"] = await GetBbsNameFromConfigAsync(),
                 ["BBS_VERSION"] = "1.0",
                 ["NODE_NUMBER"] = 1
             }
@@ -285,7 +288,7 @@ public class BbsSessionHandler
             ConnectTime = session.CreatedAt,
             SystemInfo = new Dictionary<string, object>
             {
-                ["BBS_NAME"] = "Blackboard BBS", // TODO: Get from config
+                ["BBS_NAME"] = await GetBbsNameFromConfigAsync(),
                 ["BBS_VERSION"] = "1.0",
                 ["NODE_NUMBER"] = 1,
                 ["USERS_ONLINE"] = (await _sessionService.GetAllActiveSessionsAsync()).Count(),
@@ -1340,5 +1343,24 @@ public class BbsSessionHandler
     private async Task<string> ReadInputAsync(TelnetConnection connection, bool echo = true)
     {
         return await _keyboardHandler.ReadLineAsync(connection, echo);
+    }
+
+    private Task<string> GetBbsNameFromConfigAsync()
+    {
+        try
+        {
+            if (_configManager?.Configuration?.System?.BoardName != null)
+            {
+                return Task.FromResult(_configManager.Configuration.System.BoardName);
+            }
+            
+            // Fallback to default
+            return Task.FromResult("Blackboard BBS");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error getting BBS name from configuration");
+            return Task.FromResult("Blackboard BBS"); // Default fallback
+        }
     }
 }

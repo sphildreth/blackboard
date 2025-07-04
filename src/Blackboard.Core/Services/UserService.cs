@@ -19,6 +19,7 @@ public interface IUserService
     Task<bool> LockUserAsync(int userId, TimeSpan? duration = null, string? reason = null, int? adminUserId = null, string? ipAddress = null);
     Task<bool> UnlockUserAsync(int userId, int? adminUserId = null, string? ipAddress = null);
     Task<bool> SetUserSecurityLevelAsync(int userId, SecurityLevel securityLevel, int adminUserId, string? ipAddress = null);
+    Task<bool> DeactivateUserAsync(int userId, string? reason = null, int? adminUserId = null, string? ipAddress = null);
     Task<IEnumerable<UserProfileDto>> GetUsersAsync(int skip = 0, int take = 50);
     Task<IEnumerable<UserProfileDto>> SearchUsersAsync(string searchTerm, int skip = 0, int take = 50);
     Task<bool> ValidatePreEnterCodeAsync(string? preEnterCode);
@@ -465,6 +466,40 @@ public class UserService : IUserService
             await _auditService.LogAsync("USER_UNLOCKED", adminUserId, "User", userId.ToString(), 
                 ipAddress: ipAddress);
             _logger.Information("User unlocked: {UserId} by {AdminUserId}", userId, adminUserId);
+        }
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<bool> DeactivateUserAsync(int userId, string? reason = null, int? adminUserId = null, string? ipAddress = null)
+    {
+        var existingUser = await GetUserByIdAsync(userId);
+        if (existingUser == null)
+            return false;
+
+        if (!existingUser.IsActive)
+            return true; // Already deactivated
+
+        const string sql = @"
+            UPDATE Users 
+            SET IsActive = 0, UpdatedAt = @UpdatedAt
+            WHERE Id = @UserId";
+
+        var rowsAffected = await _database.ExecuteAsync(sql, new
+        {
+            UserId = userId,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        if (rowsAffected > 0)
+        {
+            // End all active sessions for the deactivated user
+            await _sessionService.EndAllUserSessionsAsync(userId);
+
+            await _auditService.LogAsync("USER_DEACTIVATED", adminUserId, "User", userId.ToString(), 
+                newValues: new { Reason = reason, IsActive = false }, ipAddress: ipAddress);
+            _logger.Information("User deactivated: {UserId} by {AdminUserId}. Reason: {Reason}", 
+                userId, adminUserId, reason ?? "No reason provided");
         }
 
         return rowsAffected > 0;

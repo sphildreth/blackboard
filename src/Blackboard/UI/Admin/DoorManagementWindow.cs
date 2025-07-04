@@ -16,6 +16,7 @@ public class DoorManagementWindow : Window
 {
     private readonly IDoorService _doorService;
     private readonly IFossilEmulationService _fossilService;
+    private readonly IAuthenticationContextService _authContext;
     private ListView? _doorsList;
     private ListView? _sessionsList;
     private Label? _statsLabel;
@@ -30,11 +31,12 @@ public class DoorManagementWindow : Window
     private List<DoorDto> _doors = new();
     private List<DoorSessionDto> _sessions = new();
 
-    public DoorManagementWindow(IDoorService doorService, IFossilEmulationService fossilService)
+    public DoorManagementWindow(IDoorService doorService, IFossilEmulationService fossilService, IAuthenticationContextService authContext)
         : base()
     {
         _doorService = doorService ?? throw new ArgumentNullException(nameof(doorService));
         _fossilService = fossilService ?? throw new ArgumentNullException(nameof(fossilService));
+        _authContext = authContext ?? throw new ArgumentNullException(nameof(authContext));
         
         Title = "Door Game System Management";
         X = 0;
@@ -255,7 +257,7 @@ public class DoorManagementWindow : Window
                     DailyLimit = 5
                 };
 
-                await _doorService.CreateDoorAsync(createDto, 1); // TODO: Get actual admin user ID
+                await _doorService.CreateDoorAsync(createDto, GetCurrentAdminUserId()); // Get actual admin user ID from context
                 await RefreshDataAsync();
                 MessageBox.Query("Success", "Test door created successfully!", "OK");
             }
@@ -420,6 +422,25 @@ public class DoorManagementWindow : Window
     private void OnRefresh()
     {
         _ = RefreshDataAsync();
+    }
+
+    /// <summary>
+    /// Gets the current admin user ID
+    /// Uses authentication context to retrieve the current authenticated user
+    /// </summary>
+    private int GetCurrentAdminUserId()
+    {
+        var currentUserId = _authContext.GetCurrentUserId();
+        
+        // If we have a current user and they are an admin, use their ID
+        if (currentUserId.HasValue && _authContext.IsCurrentUserAdmin())
+        {
+            return currentUserId.Value;
+        }
+        
+        // Fallback to default admin ID if no authenticated admin user
+        // This maintains backward compatibility while the authentication system is being integrated
+        return 1; // Default system admin
     }
 
     #endregion

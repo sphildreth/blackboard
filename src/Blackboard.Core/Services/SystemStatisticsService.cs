@@ -73,8 +73,8 @@ public class SystemStatisticsService : ISystemStatisticsService
                 TotalCalls = totalSessions, // Total calls = total sessions
                 CallsToday = usersOnlineToday, // Calls today = users online today
                 RegistrationsToday = registrationsToday,
-                MessagesToday = 0, // TODO: Implement when messaging is added
-                FilesDownloadedToday = 0, // TODO: Implement when file system is added
+                MessagesToday = await GetMessagesTodayAsync(today, tomorrow),
+                FilesDownloadedToday = await GetFilesDownloadedTodayAsync(today, tomorrow),
                 PeakUsersToday = peakUsersToday,
                 FirstOnlineDate = firstOnlineDateResult,
                 SystemUptime = DateTime.UtcNow - _systemStartTime
@@ -135,21 +135,28 @@ public class SystemStatisticsService : ISystemStatisticsService
 
             var sessions = await _database.QueryAsync<dynamic>(sql, new { Now = DateTime.UtcNow });
             var now = DateTime.UtcNow;
+            var result = new List<ActiveSessionDto>();
 
-            return sessions.Select(s => new ActiveSessionDto
+            foreach (var s in sessions)
             {
-                SessionId = s.SessionId,
-                Handle = s.Handle,
-                RealName = !string.IsNullOrWhiteSpace(s.RealName) && s.RealName.Trim() != " " ? s.RealName.Trim() : null,
-                Location = s.Location,
-                IpAddress = s.IpAddress,
-                LoginTime = DateTime.Parse(s.LoginTime.ToString()),
-                LastActivity = DateTime.Parse(s.LastActivity.ToString()),
-                CurrentActivity = "Online", // TODO: Track actual activity when implemented
-                UserAgent = s.UserAgent,
-                SessionDuration = now - DateTime.Parse(s.LoginTime.ToString()),
-                IsActive = Convert.ToBoolean(s.IsActive)
-            });
+                var activity = await GetUserCurrentActivity(s.SessionId?.ToString()) ?? "Online";
+                result.Add(new ActiveSessionDto
+                {
+                    SessionId = s.SessionId,
+                    Handle = s.Handle,
+                    RealName = !string.IsNullOrWhiteSpace(s.RealName) && s.RealName.Trim() != " " ? s.RealName.Trim() : null,
+                    Location = s.Location,
+                    IpAddress = s.IpAddress,
+                    LoginTime = DateTime.Parse(s.LoginTime.ToString()),
+                    LastActivity = DateTime.Parse(s.LastActivity.ToString()),
+                    CurrentActivity = activity,
+                    UserAgent = s.UserAgent,
+                    SessionDuration = now - DateTime.Parse(s.LoginTime.ToString()),
+                    IsActive = Convert.ToBoolean(s.IsActive)
+                });
+            }
+
+            return result;
         }
         catch (Exception ex)
         {
@@ -274,7 +281,7 @@ public class SystemStatisticsService : ISystemStatisticsService
                 DiskTotalBytes = driveInfo.TotalSize,
                 DiskUsagePercent = (double)(driveInfo.TotalSize - driveInfo.AvailableFreeSpace) / driveInfo.TotalSize * 100,
                 ActiveConnections = activeConnections,
-                MaxConnections = 10 // TODO: Get from configuration
+                MaxConnections = await GetMaxConnectionsFromConfigAsync()
             };
         }
         catch (Exception ex)
@@ -302,7 +309,7 @@ public class SystemStatisticsService : ISystemStatisticsService
             {
                 IsConnected = isConnected,
                 ConnectionString = _config.ConnectionString,
-                LastBackup = null, // TODO: Implement backup tracking
+                LastBackup = await GetLastBackupDateAsync(),
                 DatabaseVersion = version,
                 DatabaseSizeBytes = dbFileInfo.Exists ? dbFileInfo.Length : 0,
                 ActiveConnections = 1, // SQLite doesn't have concurrent connections like other DBs
@@ -413,6 +420,119 @@ public class SystemStatisticsService : ISystemStatisticsService
         catch
         {
             return 0;
+        }
+    }
+
+    private async Task<int> GetMessagesTodayAsync(DateTime today, DateTime tomorrow)
+    {
+        try
+        {
+            const string sql = @"
+                SELECT COUNT(*) 
+                FROM Messages 
+                WHERE CreatedAt >= @Today AND CreatedAt < @Tomorrow";
+            
+            return await _database.QueryFirstOrDefaultAsync<int>(sql, new { Today = today, Tomorrow = tomorrow });
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error getting messages count for today");
+            return 0;
+        }
+    }
+
+    private async Task<int> GetFilesDownloadedTodayAsync(DateTime today, DateTime tomorrow)
+    {
+        try
+        {
+            const string sql = @"
+                SELECT COUNT(*) 
+                FROM FileTransfers 
+                WHERE IsUpload = 0 AND IsSuccessful = 1 
+                AND StartTime >= @Today AND StartTime < @Tomorrow";
+            
+            return await _database.QueryFirstOrDefaultAsync<int>(sql, new { Today = today, Tomorrow = tomorrow });
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error getting file downloads count for today");
+            return 0;
+        }
+    }
+
+    private async Task<int> GetMaxConnectionsFromConfigAsync()
+    {
+        try
+        {
+            // Try to get from runtime configuration first
+            const string sql = "SELECT Value FROM RuntimeConfiguration WHERE Key = 'network.maxConcurrentConnections'";
+            var configValue = await _database.QueryFirstOrDefaultAsync<string>(sql);
+            
+            if (!string.IsNullOrEmpty(configValue) && int.TryParse(configValue, out int maxConn))
+            {
+                return maxConn;
+            }
+            
+            // Fallback to default value from database config if available
+            return 10; // Default fallback
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error getting max connections from configuration");
+            return 10; // Default fallback
+        }
+    }
+
+    private async Task<string?> GetUserCurrentActivity(string? sessionId)
+    {
+        if (string.IsNullOrEmpty(sessionId))
+            return "Online";
+
+        try
+        {
+            // Check if user is currently in a door game
+            const string doorSql = @"
+                SELECT d.Name 
+                FROM DoorSessions ds 
+                INNER JOIN Doors d ON ds.DoorId = d.Id 
+                WHERE ds.SessionId = @SessionId AND ds.Status = 'running'
+                ORDER BY ds.StartTime DESC 
+                LIMIT 1";
+            
+            var doorName = await _database.QueryFirstOrDefaultAsync<string>(doorSql, new { SessionId = sessionId });
+            if (!string.IsNullOrEmpty(doorName))
+            {
+                return $"Playing {doorName}";
+            }
+
+            // Add more activity tracking as needed (messages, files, etc.)
+            
+            return "Online";
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error getting user activity for session {SessionId}", sessionId);
+            return "Online";
+        }
+    }
+
+    private async Task<DateTime?> GetLastBackupDateAsync()
+    {
+        try
+        {
+            // Check for backup tracking in system logs or a dedicated backup table
+            const string sql = @"
+                SELECT MAX(Timestamp) 
+                FROM SystemLogs 
+                WHERE Message LIKE '%backup%completed%' OR Message LIKE '%backup%successful%'";
+            
+            var lastBackup = await _database.QueryFirstOrDefaultAsync<DateTime?>(sql);
+            return lastBackup;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error getting last backup date");
+            return null;
         }
     }
 }

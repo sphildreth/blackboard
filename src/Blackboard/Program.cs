@@ -95,7 +95,7 @@ class Program
 
             // Initialize Phase 7 ANSI screen services
             var screensPath = Path.Combine(rootPath, "screens");
-            var templateProcessor = new TemplateVariableProcessor(_logger);
+            var templateProcessor = new TemplateVariableProcessor(_logger, _databaseManager);
             var ansiScreenService = new AnsiScreenService(screensPath, _logger, templateProcessor);
             var screenSequenceService = new ScreenSequenceService(ansiScreenService, _logger);
             var keyboardHandler = new KeyboardHandlerService(_logger);
