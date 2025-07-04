@@ -40,7 +40,7 @@ public class ConfigurationWindow : Window
         _configManager = configManager;
         _logger = logger;
         
-        Title = "System Configuration";
+        Title = "║ System Configuration ║";
         X = 0;
         Y = 0;
         Width = 80;
@@ -86,17 +86,17 @@ public class ConfigurationWindow : Window
         _tabView.AddTab(securityTab, false);
 
         // Action buttons with enhanced styling
-        var saveButton = ThemeManager.CreateStyledButton("Save Configuration", "💾 ");
+        var saveButton = ThemeManager.CreateBorlandButton("Save Configuration", "💾 ");
         saveButton.X = 2;
         saveButton.Y = Pos.Bottom(_tabView) + 1;
         saveButton.MouseClick += (s, e) => SaveConfiguration();
 
-        var reloadButton = ThemeManager.CreateStyledButton("Reload", "🔄 ");
+        var reloadButton = ThemeManager.CreateBorlandButton("Reload", "🔄 ");
         reloadButton.X = 22;
         reloadButton.Y = Pos.Bottom(_tabView) + 1;
         reloadButton.MouseClick += (s, e) => LoadConfiguration();
 
-        var closeButton = ThemeManager.CreateStyledButton("Close", "❌ ");
+        var closeButton = ThemeManager.CreateBorlandButton("Close", "❌ ");
         closeButton.X = 32;
         closeButton.Y = Pos.Bottom(_tabView) + 1;
         closeButton.MouseClick += (s, e) => Application.RequestStop();
@@ -189,7 +189,7 @@ public class ConfigurationWindow : Window
         };
         view.Add(_preEnterCodeField);
 
-        // Visual Enhancement Info (replacing theme selection)
+        // Visual Enhancement Info (Borland-style theme)
         view.Add(new Label() { X = 2, Y = 15, Text = "UI Style:" });
         var themeInfoLabel = new Label()
         {
@@ -197,7 +197,7 @@ public class ConfigurationWindow : Window
             Y = 15,
             Width = 40,
             Height = 2,
-            Text = "🎨 Enhanced Visual Theme\n(Colorful icons & status indicators)"
+            Text = "🎨 Classic Borland Theme\n(Retro 1990s IDE + Modern Icons)"
         };
         view.Add(themeInfoLabel);
 

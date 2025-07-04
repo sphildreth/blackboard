@@ -33,7 +33,7 @@ public class UserManagementWindow : Window
         _auditService = auditService;
         _logger = logger;
         
-        Title = "User Management";
+        Title = "║ User Management ║";
         X = 0;
         Y = 0;
         Width = 80;
@@ -46,7 +46,7 @@ public class UserManagementWindow : Window
     private void InitializeComponent()
     {
         // Enhanced search panel
-        var searchFrame = ThemeManager.CreateStyledFrame("Search Users", "🔍 ");
+        var searchFrame = ThemeManager.CreateBorlandFrame("Search Users", "🔍 ");
         searchFrame.X = 0;
         searchFrame.Y = 0;
         searchFrame.Width = Dim.Fill();
@@ -63,12 +63,12 @@ public class UserManagementWindow : Window
         };
         _searchField.TextChanged += OnSearchTextChanged;
         
-        var searchButton = ThemeManager.CreateStyledButton("Search", "🔍 ");
+        var searchButton = ThemeManager.CreateBorlandButton("Search", "🔍 ");
         searchButton.X = 32;
         searchButton.Y = 1;
         searchButton.MouseClick += (s, e) => SearchUsers();
         
-        _refreshButton = ThemeManager.CreateStyledButton("Refresh", "🔄 ");
+        _refreshButton = ThemeManager.CreateBorlandButton("Refresh", "🔄 ");
         _refreshButton.X = 42;
         _refreshButton.Y = 1;
         _refreshButton.MouseClick += (s, e) => LoadUsers();
@@ -76,7 +76,7 @@ public class UserManagementWindow : Window
         searchFrame.Add(_searchField, searchButton, _refreshButton);
 
         // Enhanced users list
-        var usersFrame = ThemeManager.CreateStyledFrame("Users", ThemeManager.ComponentStyles.UserPrefix);
+        var usersFrame = ThemeManager.CreateBorlandFrame("Users", ThemeManager.ComponentStyles.UserPrefix);
         usersFrame.X = 0;
         usersFrame.Y = Pos.Bottom(searchFrame);
         usersFrame.Width = Dim.Percent(70);

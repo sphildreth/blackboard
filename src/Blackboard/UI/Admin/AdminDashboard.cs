@@ -33,7 +33,7 @@ public class AdminDashboard : Window
         _statisticsService = statisticsService;
         _logger = logger;
         
-        Title = "Admin Dashboard";
+        Title = "║ Admin Dashboard ║";
         X = 0;
         Y = 0;
         Width = 80;
@@ -45,48 +45,46 @@ public class AdminDashboard : Window
 
     private void InitializeComponent()
     {
-        // Statistics Panel with enhanced styling
-        var statsFrame = ThemeManager.CreateStyledFrame("System Statistics", ThemeManager.ComponentStyles.StatisticsPrefix);
+        // Statistics Panel with enhanced Borland styling
+        var statsFrame = ThemeManager.CreateBorlandFrame("System Statistics", ThemeManager.ComponentStyles.StatisticsPrefix);
         statsFrame.X = 0;
         statsFrame.Y = 0;
         statsFrame.Width = Dim.Percent(50);
         statsFrame.Height = 10;
+         statsFrame.Add(ThemeManager.CreateBorlandLabel("System Statistics", "", 0, 0));
         
-        statsFrame.Add(ThemeManager.CreateStyledLabel("System Statistics", "", 0, 0));
-
-        _totalUsersLabel = ThemeManager.CreateStyledLabel("Total Users: 0", ThemeManager.ComponentStyles.UserPrefix, 1, 1);
-        _activeUsersLabel = ThemeManager.CreateStyledLabel("Active Users: 0", "👥 ", 1, 2);
-        _activeSessionsLabel = ThemeManager.CreateStyledLabel("Active Sessions: 0", "🔗 ", 1, 3);
-        _uptimeLabel = ThemeManager.CreateStyledLabel("System Uptime: 0s", "⏰ ", 1, 4);
-        _callsTodayLabel = ThemeManager.CreateStyledLabel("Calls Today: 0", "📞 ", 1, 5);
-        _registrationsTodayLabel = ThemeManager.CreateStyledLabel("Registrations Today: 0", "📝 ", 1, 6);
+        _totalUsersLabel = ThemeManager.CreateBorlandLabel("Total Users: 0", ThemeManager.ComponentStyles.UserPrefix, 1, 1);
+        _activeUsersLabel = ThemeManager.CreateBorlandLabel("Active Users: 0", "👥 ", 1, 2);
+        _activeSessionsLabel = ThemeManager.CreateBorlandLabel("Active Sessions: 0", "🔗 ", 1, 3);
+        _uptimeLabel = ThemeManager.CreateBorlandLabel("System Uptime: 0s", "⏰ ", 1, 4);
+        _callsTodayLabel = ThemeManager.CreateBorlandLabel("Calls Today: 0", "📞 ", 1, 5);
+        _registrationsTodayLabel = ThemeManager.CreateBorlandLabel("Registrations Today: 0", "📝 ", 1, 6);
 
         statsFrame.Add(_totalUsersLabel, _activeUsersLabel, _activeSessionsLabel, 
                       _uptimeLabel, _callsTodayLabel, _registrationsTodayLabel);
 
         // System Resources Panel with enhanced styling
-        var resourcesFrame = ThemeManager.CreateStyledFrame("System Resources", ThemeManager.ComponentStyles.ResourcePrefix);
+        var resourcesFrame = ThemeManager.CreateBorlandFrame("System Resources", ThemeManager.ComponentStyles.ResourcePrefix);
         resourcesFrame.X = Pos.Right(statsFrame);
         resourcesFrame.Y = 0;
         resourcesFrame.Width = Dim.Fill();
         resourcesFrame.Height = 10;
+         resourcesFrame.Add(ThemeManager.CreateBorlandLabel("System Resources", "", 0, 0));
         
-        resourcesFrame.Add(ThemeManager.CreateStyledLabel("System Resources", "", 0, 0));
-
-        _memoryUsageLabel = ThemeManager.CreateStyledLabel("Memory Usage: 0%", "🧠 ", 1, 1);
-        _diskUsageLabel = ThemeManager.CreateStyledLabel("Disk Usage: 0%", "💾 ", 1, 2);
-        _databaseStatusLabel = ThemeManager.CreateStyledLabel("Database: Unknown", "🗄️ ", 1, 3);
+        _memoryUsageLabel = ThemeManager.CreateBorlandLabel("Memory Usage: 0%", "🧠 ", 1, 1);
+        _diskUsageLabel = ThemeManager.CreateBorlandLabel("Disk Usage: 0%", "💾 ", 1, 2);
+        _databaseStatusLabel = ThemeManager.CreateBorlandLabel("Database: Unknown", "🗄️ ", 1, 3);
 
         resourcesFrame.Add(_memoryUsageLabel, _diskUsageLabel, _databaseStatusLabel);
 
         // Active Sessions Panel with enhanced styling
-        var sessionsFrame = ThemeManager.CreateStyledFrame("Active Sessions", "🔗 ");
+        var sessionsFrame = ThemeManager.CreateBorlandFrame("Active Sessions", "🔗 ");
         sessionsFrame.X = 0;
         sessionsFrame.Y = Pos.Bottom(statsFrame);
         sessionsFrame.Width = Dim.Percent(50);
         sessionsFrame.Height = 12;
         
-        sessionsFrame.Add(ThemeManager.CreateStyledLabel("Active Sessions", "", 0, 0));
+        sessionsFrame.Add(ThemeManager.CreateBorlandLabel("Active Sessions", "", 0, 0));
 
         _activeSessionsList = new ListView
         {
@@ -99,13 +97,13 @@ public class AdminDashboard : Window
         sessionsFrame.Add(_activeSessionsList);
 
         // System Alerts Panel with enhanced styling
-        var alertsFrame = ThemeManager.CreateStyledFrame("System Alerts", ThemeManager.ComponentStyles.AlertPrefix);
+        var alertsFrame = ThemeManager.CreateBorlandFrame("System Alerts", ThemeManager.ComponentStyles.AlertPrefix);
         alertsFrame.X = Pos.Right(sessionsFrame);
         alertsFrame.Y = Pos.Bottom(resourcesFrame);
         alertsFrame.Width = 40;
         alertsFrame.Height = 12;
         
-        alertsFrame.Add(ThemeManager.CreateStyledLabel("System Alerts", "", 0, 0));
+        alertsFrame.Add(ThemeManager.CreateBorlandLabel("System Alerts", "", 0, 0));
 
         _alertsList = new ListView
         {

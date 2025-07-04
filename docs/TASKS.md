@@ -83,6 +83,7 @@ This checklist is based on the Product Requirements Document (PRD) and is organi
 - [ ] Design ANSI art screens and menus (classic BBS style)
 - [ ] Implement color coding, real-time updates, and responsive layout
 - [ ] Add keyboard navigation (hotkeys, tab, arrow keys, function keys)
+- [ ] Add ability for ANSI screens to have template variables that are replaced at render time with system, user and connection information
 - [ ] Integrate context menus and quick actions
 
 ---

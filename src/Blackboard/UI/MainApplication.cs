@@ -103,84 +103,90 @@ public class MainApplication
             Y = 0,
             Width = 80,
             Height = 25,
-            Title = "🖥️ Blackboard - System Console"
+            Title = "║ Blackboard - System Console ║"
         };
 
-        // System status panel with enhanced styling
-        var statusPanel = ThemeManager.CreateStyledFrame("System Status", ThemeManager.ComponentStyles.StatusPrefix);
+        // System status panel with enhanced Borland styling
+        var statusPanel = ThemeManager.CreateBorlandFrame("System Status", ThemeManager.ComponentStyles.StatusPrefix);
         statusPanel.X = 1;
         statusPanel.Y = 1;
         statusPanel.Width = 38;
         statusPanel.Height = 8;
         
-        statusPanel.Add(ThemeManager.CreateStyledLabel("System Status", "", 0, 0));
-        _statusLabel = ThemeManager.CreateStyledLabel("Status: Offline", "🔴 ", 1, 1);
-        _uptimeLabel = ThemeManager.CreateStyledLabel("Uptime: 00:00:00", "⏰ ", 1, 2);
-        var boardNameLabel = ThemeManager.CreateStyledLabel($"Board: {_configManager.Configuration.System.BoardName}", "🏢 ", 1, 3);
-        var sysopLabel = ThemeManager.CreateStyledLabel($"Sysop: {_configManager.Configuration.System.SysopName}", "👨‍💼 ", 1, 4);
-        var portLabel = ThemeManager.CreateStyledLabel($"Port: {_configManager.Configuration.Network.TelnetPort}", "🔌 ", 1, 5);
+        statusPanel.Add(ThemeManager.CreateBorlandLabel("System Status", "", 0, 0));
+        _statusLabel = ThemeManager.CreateBorlandLabel("Status: Offline", "🔴 ", 1, 1);
+        _uptimeLabel = ThemeManager.CreateBorlandLabel("Uptime: 00:00:00", "⏰ ", 1, 2);
+        var boardNameLabel = ThemeManager.CreateBorlandLabel($"Board: {_configManager.Configuration.System.BoardName}", "🏢 ", 1, 3);
+        var sysopLabel = ThemeManager.CreateBorlandLabel($"Sysop: {_configManager.Configuration.System.SysopName}", "👨‍💼 ", 1, 4);
+        var portLabel = ThemeManager.CreateBorlandLabel($"Port: {_configManager.Configuration.Network.TelnetPort}", "🔌 ", 1, 5);
         statusPanel.Add(_statusLabel, _uptimeLabel, boardNameLabel, sysopLabel, portLabel);
 
-        // Server control panel with enhanced styling
-        var controlPanel = ThemeManager.CreateStyledFrame("Server Control", ThemeManager.ComponentStyles.ServerPrefix);
+        // Server control panel with enhanced Borland styling
+        var controlPanel = ThemeManager.CreateBorlandFrame("Server Control", ThemeManager.ComponentStyles.ServerPrefix);
         controlPanel.X = 41;
         controlPanel.Y = 1;
         controlPanel.Width = 38;
         controlPanel.Height = 8;
         
-        controlPanel.Add(ThemeManager.CreateStyledLabel("Server Control", "", 0, 0));
-        _startStopButton = ThemeManager.CreateStyledButton("Start Server", "▶️ ");
+        controlPanel.Add(ThemeManager.CreateBorlandLabel("Server Control", "", 0, 0));
+        _startStopButton = ThemeManager.CreateBorlandButton("Start Server", "▶️ ");
         _startStopButton.X = 1;
         _startStopButton.Y = 1;
         _startStopButton.MouseClick += (sender, args) => OnStartStopClicked();
         
-        var configButton = ThemeManager.CreateStyledButton("Configuration", ThemeManager.ComponentStyles.ConfigPrefix);
+        var configButton = ThemeManager.CreateBorlandButton("Configuration", ThemeManager.ComponentStyles.ConfigPrefix);
         configButton.X = 1;
         configButton.Y = 3;
         configButton.MouseClick += (sender, args) => OnConfigurationClicked();
         
-        var exitButton = ThemeManager.CreateStyledButton("Exit", "🚪 ");
+        var exitButton = ThemeManager.CreateBorlandButton("Exit", "🚪 ");
         exitButton.X = 1;
         exitButton.Y = 5;
         exitButton.MouseClick += (sender, args) => OnExitClicked();
         controlPanel.Add(_startStopButton, configButton, exitButton);
 
-        // Active connections panel with enhanced styling
-        var connectionsPanel = ThemeManager.CreateStyledFrame("Active Connections", ThemeManager.ComponentStyles.ConnectionPrefix);
+        // Active connections panel with enhanced Borland styling
+        var connectionsPanel = ThemeManager.CreateBorlandFrame("Active Connections", ThemeManager.ComponentStyles.ConnectionPrefix);
         connectionsPanel.X = 1;
         connectionsPanel.Y = 10;
         connectionsPanel.Width = 78;
         connectionsPanel.Height = 13;
         
-        connectionsPanel.Add(ThemeManager.CreateStyledLabel("Active Connections", "", 0, 0));
-        _connectionsLabel = ThemeManager.CreateStyledLabel("Connections: 0", "📊 ", 1, 1);
+        connectionsPanel.Add(ThemeManager.CreateBorlandLabel("Active Connections", "", 0, 0));
+        _connectionsLabel = ThemeManager.CreateBorlandLabel("Connections: 0", "📊 ", 1, 1);
         _connectionsListView = new ListView { X = 1, Y = 2, Width = 60, Height = 10 };
         connectionsPanel.Add(_connectionsLabel, _connectionsListView);
 
         _mainWindow.Add(statusPanel, controlPanel, connectionsPanel);
 
-        // Enhanced menu bar with icons
+        // Classic Borland-style menu bar with modern emojis
         var menu = new MenuBarv2(new MenuBarItemv2[]
         {
-            new MenuBarItemv2("🖥️ _System", new MenuItemv2[]
+            new MenuBarItemv2("~S~ystem", new MenuItemv2[]
             {
-                new MenuItemv2("▶️ _Start Server", "", () => OnStartStopClicked()),
-                new MenuItemv2("⚙️ _Configuration", "", () => OnConfigurationClicked()),
+                new MenuItemv2("▶️ ~S~tart Server", "", () => OnStartStopClicked()),
+                new MenuItemv2("⚙️ ~C~onfiguration", "", () => OnConfigurationClicked()),
                 null!,
-                new MenuItemv2("🚪 E_xit", "", () => OnExitClicked())
+                new MenuItemv2("🚪 E~x~it", "", () => OnExitClicked())
             }),
-            new MenuBarItemv2("🔧 _Tools", new MenuItemv2[]
+            new MenuBarItemv2("~A~dmin", new MenuItemv2[]
             {
-                new MenuItemv2("📊 _Admin Dashboard", "", () => OnAdminDashboardClicked()),
-                new MenuItemv2("👥 _User Management", "", () => OnUserManagementClicked()),
-                new MenuItemv2("📁 _File Management", "", () => OnFileManagementClicked()),
-                new MenuItemv2("🎨 _Message Composer (ANSI)", "", () => OnAnsiEditorClicked()),
-                new MenuItemv2("📝 _Log Viewer", "", () => ShowNotImplemented("Log Viewer")),
-                new MenuItemv2("💾 _Database Backup", "", () => OnDatabaseBackupClicked())
+                new MenuItemv2("�️ ~D~ashboard", "", () => OnAdminDashboardClicked()),
+                new MenuItemv2("👥 ~U~ser Management", "", () => OnUserManagementClicked()),
+                new MenuItemv2("📁 ~F~ile Management", "", () => OnFileManagementClicked()),
+                null!,
+                new MenuItemv2("💾 ~B~ackup Database", "", () => OnDatabaseBackupClicked())
             }),
-            new MenuBarItemv2("❓ _Help", new MenuItemv2[]
+            new MenuBarItemv2("~T~ools", new MenuItemv2[]
             {
-                new MenuItemv2("ℹ️ _About", "", () => OnAboutClicked())
+                new MenuItemv2("🎨 ~M~essage Composer", "", () => OnAnsiEditorClicked()),
+                new MenuItemv2("📝 ~L~og Viewer", "", () => ShowNotImplemented("Log Viewer")),
+                new MenuItemv2("� ~S~tatistics", "", () => ShowNotImplemented("Statistics"))
+            }),
+            new MenuBarItemv2("~H~elp", new MenuItemv2[]
+            {
+                new MenuItemv2("ℹ️ ~A~bout Blackboard", "", () => OnAboutClicked()),
+                new MenuItemv2("📖 ~D~ocumentation", "", () => ShowNotImplemented("Documentation"))
             })
         });
         _mainWindow.Add(menu);
@@ -387,7 +393,7 @@ public class MainApplication
             {
                 var buttonIcon = isServerRunning ? "⏹️" : "▶️";
                 var buttonText = isServerRunning ? "Stop Server" : "Start Server";
-                _startStopButton.Text = $"{buttonIcon} {buttonText}";
+                _startStopButton.Text = $"{ThemeManager.ComponentStyles.ButtonLeft}{buttonIcon} {buttonText}{ThemeManager.ComponentStyles.ButtonRight}";
             }
 
             UpdateConnectionsList();

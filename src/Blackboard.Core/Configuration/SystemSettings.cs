@@ -32,7 +32,7 @@ public class SystemSettings
     
     /// <summary>
     /// The UI theme to use for the application interface
-    /// Note: Currently uses "Enhanced" theme with custom visual styling, icons, and color-coded indicators
+    /// Note: Currently uses "Borland" theme with classic 1990s IDE aesthetic and modern emoji icons
     /// </summary>
-    public string Theme { get; set; } = "Enhanced";
+    public string Theme { get; set; } = "Borland";
 }
