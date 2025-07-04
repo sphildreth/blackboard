@@ -19,5 +19,15 @@ public class SystemSettings
     /// The folder under RootPath where menu/screen files are stored
     /// </summary>
     public string ScreensPath { get; set; } = "screens";
+    
+    /// <summary>
+    /// Whether the terminal server should start automatically at application startup
+    /// </summary>
     public bool TerminalServerAutoStart { get; set; } = true;
+    
+    /// <summary>
+    /// The Terminal.Gui theme to use for the application interface
+    /// Valid values: Dark, Light, Modern, Terminal, Custom
+    /// </summary>
+    public string Theme { get; set; } = "Modern";
 }

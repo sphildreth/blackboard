@@ -57,6 +57,10 @@ public class MainApplication
         try
         {
             Application.Init();
+            
+            // Apply the configured theme
+            ThemeManager.ApplyTheme(_configManager.Configuration.System.Theme);
+            
             CreateMainWindow();
             SetupEventHandlers();
             UpdateDisplay();
@@ -333,7 +337,11 @@ public class MainApplication
 
     private void OnConfigurationChanged(object? sender, SystemConfiguration config)
     {
-        _logger.Information("Configuration changed, updating display");
+        _logger.Information("Configuration changed, updating display and theme");
+        
+        // Apply the new theme if it changed
+        ThemeManager.ApplyTheme(config.System.Theme);
+        
         Application.Invoke(UpdateDisplay);
     }
 

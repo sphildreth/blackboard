@@ -20,6 +20,7 @@ public class ConfigurationWindow : Window
     private CheckBox? _systemOnlineCheck;
     private CheckBox? _requirePreEnterCodeCheck;
     private TextField? _preEnterCodeField;
+    private ComboBox? _themeField;
     
     private TextField? _telnetPortField;
     private TextField? _bindAddressField;
@@ -197,6 +198,18 @@ public class ConfigurationWindow : Window
         };
         view.Add(_preEnterCodeField);
 
+        // Theme Selection
+        view.Add(new Label() { X = 2, Y = 15, Text = "Theme:" });
+        _themeField = new ComboBox()
+        {
+            X = 20,
+            Y = 15,
+            Width = 20,
+            Height = 5
+        };
+        _themeField.SetSource(new ObservableCollection<string>(ThemeManager.GetAvailableThemes()));
+        view.Add(_themeField);
+
         return view;
     }
 
@@ -328,6 +341,7 @@ public class ConfigurationWindow : Window
             if (_systemOnlineCheck != null) _systemOnlineCheck.CheckedState = config.System.SystemOnline ? CheckState.Checked : CheckState.UnChecked;
             if (_requirePreEnterCodeCheck != null) _requirePreEnterCodeCheck.CheckedState = config.System.RequirePreEnterCode ? CheckState.Checked : CheckState.UnChecked;
             if (_preEnterCodeField != null) _preEnterCodeField.Text = config.System.PreEnterCode;
+            if (_themeField != null) _themeField.Text = config.System.Theme;
 
             // Network settings
             if (_telnetPortField != null) _telnetPortField.Text = config.Network.TelnetPort.ToString();
@@ -370,6 +384,7 @@ public class ConfigurationWindow : Window
             config.System.SystemOnline = _systemOnlineCheck?.CheckedState == CheckState.Checked;
             config.System.RequirePreEnterCode = _requirePreEnterCodeCheck?.CheckedState == CheckState.Checked;
             config.System.PreEnterCode = _preEnterCodeField?.Text?.ToString() ?? config.System.PreEnterCode;
+            config.System.Theme = _themeField?.Text?.ToString() ?? config.System.Theme;
 
             // Update network settings
             if (int.TryParse(_telnetPortField?.Text?.ToString(), out int telnetPort))
@@ -400,6 +415,9 @@ public class ConfigurationWindow : Window
 
             // Save the configuration
             _configManager.SaveConfiguration();
+            
+            // Apply the new theme immediately
+            ThemeManager.ApplyTheme(config.System.Theme);
 
             if (_statusLabel != null) _statusLabel.Text = "Configuration saved successfully";
         }
