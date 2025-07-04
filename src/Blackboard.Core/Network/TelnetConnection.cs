@@ -137,22 +137,129 @@ public class TelnetConnection
 
         try
         {
-            var buffer = new byte[1];
-            var bytesRead = await _stream.ReadAsync(buffer, _cancellationTokenSource.Token);
-            
-            if (bytesRead == 0)
+            while (IsConnected)
             {
-                await DisconnectAsync();
-                return '\0';
+                var buffer = new byte[1];
+                var bytesRead = await _stream.ReadAsync(buffer, _cancellationTokenSource.Token);
+                
+                if (bytesRead == 0)
+                {
+                    await DisconnectAsync();
+                    return '\0';
+                }
+
+                var b = buffer[0];
+
+                // Handle telnet IAC (Interpret As Command) sequences
+                if (b == TelnetCommand.IAC)
+                {
+                    // Read the next byte (the command)
+                    var commandBuffer = new byte[1];
+                    var commandBytesRead = await _stream.ReadAsync(commandBuffer, _cancellationTokenSource.Token);
+                    
+                    if (commandBytesRead == 0)
+                    {
+                        await DisconnectAsync();
+                        return '\0';
+                    }
+
+                    var command = commandBuffer[0];
+
+                    // Handle telnet commands
+                    if (command == TelnetCommand.DO || command == TelnetCommand.DONT ||
+                        command == TelnetCommand.WILL || command == TelnetCommand.WONT)
+                    {
+                        // Read the option byte
+                        var optionBuffer = new byte[1];
+                        var optionBytesRead = await _stream.ReadAsync(optionBuffer, _cancellationTokenSource.Token);
+                        
+                        if (optionBytesRead == 0)
+                        {
+                            await DisconnectAsync();
+                            return '\0';
+                        }
+
+                        var option = optionBuffer[0];
+                        
+                        // Process the telnet negotiation
+                        await ProcessTelnetCommand(command, option);
+                        
+                        // Continue reading for the next character
+                        continue;
+                    }
+                    else if (command == TelnetCommand.IAC)
+                    {
+                        // Escaped IAC (IAC IAC means literal 255)
+                        return (char)255;
+                    }
+                    else
+                    {
+                        // Other commands - just skip for now
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Regular character
+                    return (char)b;
+                }
             }
 
-            return (char)buffer[0];
+            return '\0';
         }
         catch (Exception ex)
         {
             _logger.Debug(ex, "Error reading character from {RemoteEndPoint}", RemoteEndPoint);
             await DisconnectAsync();
             return '\0';
+        }
+    }
+
+    private async Task ProcessTelnetCommand(byte command, byte option)
+    {
+        // Handle telnet option negotiations
+        switch (option)
+        {
+            case TelnetOption.ECHO:
+                if (command == TelnetCommand.DO)
+                {
+                    // Client wants us to echo - we already said WILL ECHO
+                    // No response needed
+                }
+                else if (command == TelnetCommand.DONT)
+                {
+                    // Client doesn't want us to echo
+                    await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.WONT, TelnetOption.ECHO);
+                }
+                break;
+                
+            case TelnetOption.SUPPRESS_GO_AHEAD:
+                if (command == TelnetCommand.DO)
+                {
+                    // Client agrees to suppress go-ahead - good
+                    // No response needed
+                }
+                break;
+                
+            case TelnetOption.TERMINAL_TYPE:
+                if (command == TelnetCommand.WILL)
+                {
+                    // Client will provide terminal type
+                    // No response needed for now
+                }
+                break;
+                
+            default:
+                // For other options, respond with DON'T/WON'T
+                if (command == TelnetCommand.WILL)
+                {
+                    await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.DONT, option);
+                }
+                else if (command == TelnetCommand.DO)
+                {
+                    await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.WONT, option);
+                }
+                break;
         }
     }
 
