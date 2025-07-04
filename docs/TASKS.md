@@ -70,21 +70,22 @@ This checklist is based on the Product Requirements Document (PRD) and is organi
 
 ---
 
-## Phase 7: Inter-BBS Network Support
-- [ ] Implement FidoNet protocol support (FTN, EchoMail, NetMail)
-- [ ] Add QWK/REP and RIME/RelayNet support
-- [ ] Develop network configuration and node management interface
-- [ ] Integrate message routing, import/export, and error handling
-- [ ] Add monitoring tools for network traffic and performance
-
----
-
-## Phase 8: Visual & Usability Enhancements
+## Phase 7: Visual & Usability Enhancements
 - [ ] Design ANSI art screens and menus (classic BBS style)
 - [ ] Implement color coding, real-time updates, and responsive layout
 - [ ] Add keyboard navigation (hotkeys, tab, arrow keys, function keys)
 - [ ] Add ability for ANSI screens to have template variables that are replaced at render time with system, user and connection information
 - [ ] Integrate context menus and quick actions
+- [ ] Ensure user input is echoed back so user sees real time key presses received by server
+
+---
+
+## Phase 8: Inter-BBS Network Support
+- [ ] Implement FidoNet protocol support (FTN, EchoMail, NetMail)
+- [ ] Add QWK/REP and RIME/RelayNet support
+- [ ] Develop network configuration and node management interface
+- [ ] Integrate message routing, import/export, and error handling
+- [ ] Add monitoring tools for network traffic and performance
 
 ---
 
