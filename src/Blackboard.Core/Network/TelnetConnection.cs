@@ -16,8 +16,9 @@ public class TelnetConnection
 
     public event EventHandler? Disconnected;
 
-    public EndPoint? RemoteEndPoint => _tcpClient.Client.RemoteEndPoint;
-    public bool IsConnected => _isConnected && _tcpClient.Connected;
+    public EndPoint? RemoteEndPoint => _tcpClient?.Client?.RemoteEndPoint;
+    public string RemoteEndPointString => RemoteEndPoint?.ToString() ?? "Unknown";
+    public bool IsConnected => _isConnected && _tcpClient?.Connected == true;
     public DateTime ConnectedAt { get; }
 
     public TelnetConnection(TcpClient tcpClient, ILogger logger, int timeoutSeconds)

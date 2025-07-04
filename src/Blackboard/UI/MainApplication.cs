@@ -339,13 +339,13 @@ public class MainApplication
 
     private void OnClientConnected(object? sender, TelnetConnection connection)
     {
-        _logger.Information("Client connected from {RemoteEndPoint}", connection.RemoteEndPoint);
+        _logger.Information("Client connected from {RemoteEndPoint}", connection.RemoteEndPointString);
         Application.Invoke(UpdateConnectionsList);
     }
 
     private void OnClientDisconnected(object? sender, TelnetConnection connection)
     {
-        _logger.Information("Client disconnected from {RemoteEndPoint}", connection.RemoteEndPoint);
+        _logger.Information("Client disconnected from {RemoteEndPoint}", connection.RemoteEndPointString);
         Application.Invoke(UpdateConnectionsList);
     }
 
@@ -415,7 +415,7 @@ public class MainApplication
             _connectionsLabel.Text = $"📊 Connections: {connections.Count}";
 
             var connectionStrings = new ObservableCollection<string>(connections
-                .Select(c => $"🌐 {c.RemoteEndPoint} - Connected: {c.ConnectedAt:HH:mm:ss}")
+                .Select(c => $"🌐 {c.RemoteEndPointString} - Connected: {c.ConnectedAt:HH:mm:ss}")
                 .ToList());
 
             _connectionsListView.SetSource(connectionStrings);
