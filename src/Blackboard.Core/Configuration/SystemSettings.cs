@@ -21,6 +21,11 @@ public class SystemSettings
     public string ScreensPath { get; set; } = "screens";
     
     /// <summary>
+    /// The folder under RootPath where file area files are stored
+    /// </summary>
+    public string FilesPath { get; set; } = "files";
+    
+    /// <summary>
     /// Whether the terminal server should start automatically at application startup
     /// </summary>
     public bool TerminalServerAutoStart { get; set; } = true;

@@ -88,7 +88,10 @@ class Program
             var userService = new UserService(_databaseManager, passwordService, sessionService, auditService, 
                 _configManager.Configuration.Security, _logger);
             var messageService = new MessageService(_databaseManager);
-            var fileAreaService = new FileAreaService(_databaseManager, _logger);
+            
+            // Resolve files path using configuration
+            var filesPath = PathResolver.ResolvePath(_configManager.Configuration.System.FilesPath, rootPath);
+            var fileAreaService = new FileAreaService(_databaseManager, _logger, filesPath);
 
             // Initialize telnet server with screensDir
             _telnetServer = new TelnetServer(_logger, _configManager, userService, sessionService, messageService, fileAreaService, Path.Combine(rootPath, "screens"));

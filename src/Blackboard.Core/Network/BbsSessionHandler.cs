@@ -91,7 +91,7 @@ public class BbsSessionHandler
     private async Task ShowWelcomeScreen(TelnetConnection connection)
     {
         // Try to load and display logon.ans from the screens directory
-        var logonScreen = await MenuConfigLoader.LoadScreenAsync(_screensDir, "logon.ans");
+        var logonScreen = await MenuConfigLoader.LoadScreenAsync(_screensDir, "LOGON.ANS");
         await connection.SendLineAsync(logonScreen);
     }
 

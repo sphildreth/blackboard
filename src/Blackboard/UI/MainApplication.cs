@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Terminal.Gui.App;
 using Terminal.Gui.Views;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Configuration;
 using Serilog;
 using Blackboard.Core.Configuration;
 using Blackboard.Core.Network;
@@ -15,7 +16,7 @@ namespace Blackboard.UI;
 public class MainApplication
 {
     private readonly ILogger _logger;
-    private readonly ConfigurationManager _configManager;
+    private readonly Blackboard.Core.Configuration.ConfigurationManager _configManager;
     private readonly DatabaseManager _databaseManager;
     private readonly TelnetServer _telnetServer;
     
@@ -32,7 +33,7 @@ public class MainApplication
     private ListView? _connectionsListView;
     private Button? _startStopButton;
 
-    public MainApplication(ILogger logger, ConfigurationManager configManager, 
+    public MainApplication(ILogger logger, Blackboard.Core.Configuration.ConfigurationManager configManager, 
         DatabaseManager databaseManager, TelnetServer telnetServer)
     {
         _logger = logger;
@@ -55,6 +56,9 @@ public class MainApplication
         try
         {
             Application.Init();
+            
+            // Enable Terminal.Gui's ConfigurationManager for theme support
+            Terminal.Gui.Configuration.ConfigurationManager.Enable(Terminal.Gui.Configuration.ConfigLocations.All);
             
             // Apply the configured theme
             ThemeManager.ApplyTheme(_configManager.Configuration.System.Theme);

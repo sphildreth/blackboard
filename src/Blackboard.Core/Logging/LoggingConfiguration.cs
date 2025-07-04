@@ -50,7 +50,7 @@ public static class LoggingConfiguration
                 outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
 
             // Separate error log
-            var errorLogPath = Path.Combine(loggingConfig.LogPath, "blackboard-errors-.log");
+            var errorLogPath = Path.Combine(resolvedLogPath, "blackboard-errors-.log");
             loggerConfig = loggerConfig.WriteTo.File(
                 path: errorLogPath,
                 restrictedToMinimumLevel: LogEventLevel.Error,

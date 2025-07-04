@@ -8,8 +8,10 @@ system:
   maxUsers: 100
   timeZone: "UTC"
   theme: "Dark"
-  rootPath: "/opt/blackboard"
   terminalServerAutoStart: true
+  rootPath: "/opt/blackboard"
+  screensPath: "screens"
+  filesPath: "files"
 
 network:
   telnetBindAddress: "192.168.8.130"

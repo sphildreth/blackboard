@@ -38,7 +38,18 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IUserService, UserService>();
         services.AddTransient<IAuthorizationService, AuthorizationService>();
         services.AddScoped<IMessageService, MessageService>();
-        services.AddScoped<IFileAreaService, FileAreaService>();
+        
+        // Register FileAreaService with configuration-based path
+        services.AddScoped<IFileAreaService>(provider =>
+        {
+            var databaseManager = provider.GetRequiredService<DatabaseManager>();
+            var logger = provider.GetRequiredService<ILogger>();
+            var configuration = provider.GetRequiredService<SystemConfiguration>();
+            
+            var filesPath = PathResolver.ResolvePath(configuration.System.FilesPath, configuration.System.RootPath);
+            return new FileAreaService(databaseManager, logger, filesPath);
+        });
+        
         services.AddScoped<IFileTransferService, FileTransferService>();
         services.AddScoped<IFileCompressionService, FileCompressionService>();
 
