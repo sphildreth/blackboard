@@ -93,8 +93,9 @@ class Program
             var filesPath = PathResolver.ResolvePath(_configManager.Configuration.System.FilesPath, rootPath);
             var fileAreaService = new FileAreaService(_databaseManager, _logger, filesPath);
 
-            // Initialize Phase 7 ANSI screen services
-            var screensPath = Path.Combine(rootPath, "screens");
+            // Initialize Phase 7 ANSI screen services - resolve screens path using configuration
+            var screensPath = PathResolver.ResolvePath(_configManager.Configuration.System.ScreensPath, rootPath);
+            _logger.Information("Resolved screens path: {ScreensPath}", screensPath);
             var templateProcessor = new TemplateVariableProcessor(_logger, _databaseManager);
             var ansiScreenService = new AnsiScreenService(screensPath, _logger, templateProcessor);
             var screenSequenceService = new ScreenSequenceService(ansiScreenService, _logger);

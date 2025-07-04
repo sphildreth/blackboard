@@ -33,11 +33,11 @@ database:
   enableWalMode: true
   connectionTimeoutSeconds: 30
   enableBackup: true
-  backupPath: "{RootPath}/backups"
+  backupPath: "backups"
 
 logging:
   logLevel: "Information"
-  logPath: "{RootPath}/logs"
+  logPath: "logs"
   maxLogFileSizeMB: 100
   retainedLogFiles: 7
   enableConsoleLogging: true
