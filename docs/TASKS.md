@@ -70,13 +70,15 @@ This checklist is based on the Product Requirements Document (PRD) and is organi
 
 ---
 
-## Phase 7: Visual & Usability Enhancements
+## Phase 7: Visual & Usability Enhancements (BBS User Experience)
+**Note: These enhancements are for users connecting to the BBS via telnet/terminal clients, not the admin interface**
 - [ ] Design ANSI art screens and menus (classic BBS style)
 - [ ] Implement color coding, real-time updates, and responsive layout
 - [ ] Add keyboard navigation (hotkeys, tab, arrow keys, function keys)
 - [ ] Add ability for ANSI screens to have template variables that are replaced at render time with system, user and connection information
 - [ ] Integrate context menus and quick actions
 - [ ] Ensure user input is echoed back so user sees real time key presses received by server
+- [ ] Ensure that ANSI screen files are sent to connected user in a way that their terminal can display properly
 
 ---
 
