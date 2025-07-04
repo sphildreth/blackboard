@@ -93,8 +93,15 @@ class Program
             var filesPath = PathResolver.ResolvePath(_configManager.Configuration.System.FilesPath, rootPath);
             var fileAreaService = new FileAreaService(_databaseManager, _logger, filesPath);
 
-            // Initialize telnet server with screensDir
-            _telnetServer = new TelnetServer(_logger, _configManager, userService, sessionService, messageService, fileAreaService, Path.Combine(rootPath, "screens"));
+            // Initialize Phase 7 ANSI screen services
+            var screensPath = Path.Combine(rootPath, "screens");
+            var templateProcessor = new TemplateVariableProcessor(_logger);
+            var ansiScreenService = new AnsiScreenService(screensPath, _logger, templateProcessor);
+            var screenSequenceService = new ScreenSequenceService(ansiScreenService, _logger);
+            var keyboardHandler = new KeyboardHandlerService(_logger);
+
+            // Initialize telnet server with screensDir and new services
+            _telnetServer = new TelnetServer(_logger, _configManager, userService, sessionService, messageService, fileAreaService, ansiScreenService, screenSequenceService, keyboardHandler, screensPath);
 
             // Check if we should auto-start the terminal server
             if (_configManager.Configuration.System.TerminalServerAutoStart)

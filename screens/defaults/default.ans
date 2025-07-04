@@ -1,0 +1,17 @@
+[2J[H[1;37;40m
+╔══════════════════════════════════════════════════════════════════════════╗
+║                                                                          ║
+║                        [1;31m▀▀▀ SCREEN NOT FOUND ▀▀▀[0;1;37;40m                     ║
+║                                                                          ║
+║  [1;33mThe requested ANSI screen is not available at this time.[0;1;37;40m          ║
+║                                                                          ║
+║  [1;36mThis is a fallback message shown when a custom screen[0;1;37;40m            ║
+║  [1;36mis missing or cannot be loaded.[0;1;37;40m                                 ║
+║                                                                          ║
+║  [1;32mSystem administrators can place custom ANSI screens in:[0;1;37;40m          ║
+║  [1;37m• screens/login/   - Login sequence screens[0;1;37;40m                     ║
+║  [1;37m• screens/menus/   - Menu screens[0;1;37;40m                               ║
+║  [1;37m• screens/system/  - System message screens[0;1;37;40m                     ║
+║                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+[0m

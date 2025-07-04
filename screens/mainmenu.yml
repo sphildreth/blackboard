@@ -1,0 +1,43 @@
+screen: "menus/mainmenu.ans"
+prompt: "Enter your choice: "
+options:
+  m:
+    label: "Message Areas"
+    action: "messages"
+    screen: ""
+  f:
+    label: "File Areas"
+    action: "files"
+    screen: ""
+  d:
+    label: "Door Games"
+    action: "doors"
+    screen: ""
+  u:
+    label: "User Information"
+    action: "userprofile"
+    screen: ""
+  w:
+    label: "Who's Online"
+    action: "whoisonline"
+    screen: ""
+  s:
+    label: "System Info"
+    action: "systeminfo"
+    screen: ""
+  c:
+    label: "Chat with Sysop"
+    action: "chat"
+    screen: ""
+  a:
+    label: "Announcements"
+    action: "announcements"
+    screen: ""
+  h:
+    label: "Help"
+    action: "help"
+    screen: ""
+  l:
+    label: "Logoff"
+    action: "logoff"
+    screen: ""

@@ -1,0 +1,28 @@
+[2J[H[1;37;42m
+╔══════════════════════════════════════════════════════════════════════════╗
+║                                                                          ║
+║                    [1;33mWelcome Back, {USER_NAME}![0;1;37;42m                         ║
+║                                                                          ║
+║  [1;31m▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓[0;1;37;42m  ║
+║                                                                          ║
+║  [1;36mUser Information:[0;1;37;42m                                                  ║
+║  [1;32m• Handle...........: [1;37m{USER_NAME}[0;1;37;42m                                  ║
+║  [1;32m• Real Name.......: [1;37m{USER_REAL_NAME}[0;1;37;42m                             ║
+║  [1;32m• Location........: [1;37m{USER_LOCATION}[0;1;37;42m                               ║
+║  [1;32m• Security Level..: [1;37m{USER_LEVEL}[0;1;37;42m                                  ║
+║  [1;32m• Last Call.......: [1;37m{USER_LASTCALL}[0;1;37;42m                              ║
+║  [1;32m• Total Calls.....: [1;37m{USER_CALLS}[0;1;37;42m                                 ║
+║                                                                          ║
+║  [1;31m▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓[0;1;37;42m  ║
+║                                                                          ║
+║  [1;36mSession Information:[0;1;37;42m                                               ║
+║  [1;32m• Time Online.....: [1;37m{SESSION_LENGTH}[0;1;37;42m                             ║
+║  [1;32m• Time Remaining..: [1;37m{USER_TIMELEFT}[0;1;37;42m                              ║
+║  [1;32m• Connected Via...: [1;37mTelnet[0;1;37;42m                                      ║
+║                                                                          ║
+║  [1;35mLogin successful! Loading system...[0;1;37;42m                              ║
+║                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+[0m
+
+[1;33mPress any key to continue to the main menu...[0m

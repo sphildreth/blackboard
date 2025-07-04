@@ -15,6 +15,9 @@ public class TelnetServer
     private readonly ISessionService _sessionService;
     private readonly IMessageService _messageService;
     private readonly IFileAreaService _fileAreaService;
+    private readonly IAnsiScreenService _ansiScreenService;
+    private readonly IScreenSequenceService _screenSequenceService;
+    private readonly IKeyboardHandlerService _keyboardHandler;
     private readonly string _screensDir;
     private TcpListener? _listener;
     private CancellationTokenSource? _cancellationTokenSource;
@@ -29,7 +32,17 @@ public class TelnetServer
     public bool IsRunning => _isRunning;
     public DateTime? StartTime => _startTime;
 
-    public TelnetServer(ILogger logger, ConfigurationManager configManager, IUserService userService, ISessionService sessionService, IMessageService messageService, IFileAreaService fileAreaService, string screensDir)
+    public TelnetServer(
+        ILogger logger, 
+        ConfigurationManager configManager, 
+        IUserService userService, 
+        ISessionService sessionService, 
+        IMessageService messageService, 
+        IFileAreaService fileAreaService,
+        IAnsiScreenService ansiScreenService,
+        IScreenSequenceService screenSequenceService,
+        IKeyboardHandlerService keyboardHandler,
+        string screensDir)
     {
         _logger = logger;
         _configManager = configManager;
@@ -37,6 +50,9 @@ public class TelnetServer
         _sessionService = sessionService;
         _messageService = messageService;
         _fileAreaService = fileAreaService;
+        _ansiScreenService = ansiScreenService;
+        _screenSequenceService = screenSequenceService;
+        _keyboardHandler = keyboardHandler;
         _screensDir = screensDir;
         _activeConnections = new List<TelnetConnection>();
     }
@@ -171,7 +187,16 @@ public class TelnetServer
 
     private async Task HandleSessionAsync(TelnetConnection connection, CancellationToken cancellationToken)
     {
-        var sessionHandler = new BbsSessionHandler(_userService, _sessionService, _messageService, _fileAreaService, _logger, _screensDir);
+        var sessionHandler = new BbsSessionHandler(
+            _userService, 
+            _sessionService, 
+            _messageService, 
+            _fileAreaService,
+            _ansiScreenService,
+            _screenSequenceService,
+            _keyboardHandler,
+            _logger, 
+            _screensDir);
         await sessionHandler.HandleSessionAsync(connection, cancellationToken);
     }
 }

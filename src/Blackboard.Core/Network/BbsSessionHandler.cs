@@ -13,15 +13,30 @@ public class BbsSessionHandler
     private readonly ISessionService _sessionService;
     private readonly IMessageService _messageService;
     private readonly IFileAreaService _fileAreaService;
+    private readonly IAnsiScreenService _ansiScreenService;
+    private readonly IScreenSequenceService _screenSequenceService;
+    private readonly IKeyboardHandlerService _keyboardHandler;
     private readonly ILogger _logger;
     private readonly string _screensDir;
 
-    public BbsSessionHandler(IUserService userService, ISessionService sessionService, IMessageService messageService, IFileAreaService fileAreaService, ILogger logger, string screensDir)
+    public BbsSessionHandler(
+        IUserService userService, 
+        ISessionService sessionService, 
+        IMessageService messageService, 
+        IFileAreaService fileAreaService,
+        IAnsiScreenService ansiScreenService,
+        IScreenSequenceService screenSequenceService,
+        IKeyboardHandlerService keyboardHandler,
+        ILogger logger, 
+        string screensDir)
     {
         _userService = userService;
         _sessionService = sessionService;
         _messageService = messageService;
         _fileAreaService = fileAreaService;
+        _ansiScreenService = ansiScreenService;
+        _screenSequenceService = screenSequenceService;
+        _keyboardHandler = keyboardHandler;
         _logger = logger;
         _screensDir = screensDir;
     }
@@ -90,9 +105,21 @@ public class BbsSessionHandler
 
     private async Task ShowWelcomeScreen(TelnetConnection connection)
     {
-        // Try to load and display logon.ans from the screens directory
-        var logonScreen = await MenuConfigLoader.LoadScreenAsync(_screensDir, "LOGON.ANS");
-        await connection.SendLineAsync(logonScreen);
+        // Create basic context for welcome screen
+        var userContext = new UserContext
+        {
+            CallerIp = connection.RemoteEndPoint?.ToString(),
+            ConnectTime = DateTime.UtcNow,
+            SystemInfo = new Dictionary<string, object>
+            {
+                ["BBS_NAME"] = "Blackboard BBS", // TODO: Get from config
+                ["BBS_VERSION"] = "1.0",
+                ["NODE_NUMBER"] = 1
+            }
+        };
+
+        // Show pre-login screen sequence (CONNECT, LOGON1)
+        await _screenSequenceService.ShowSequenceAsync("PRELOGIN", connection, userContext);
     }
 
     private async Task<(UserProfileDto?, UserSession?)> HandleLogin(TelnetConnection connection)
@@ -249,8 +276,25 @@ public class BbsSessionHandler
 
     private async Task HandleAuthenticatedSession(TelnetConnection connection, UserProfileDto user, UserSession session, CancellationToken cancellationToken)
     {
-        // Send all the LOGON*.ANS screens in in order
-        
+        // Create user context for template processing
+        var userContext = new UserContext
+        {
+            User = user,
+            Session = session,
+            CallerIp = connection.RemoteEndPoint?.ToString(),
+            ConnectTime = session.CreatedAt,
+            SystemInfo = new Dictionary<string, object>
+            {
+                ["BBS_NAME"] = "Blackboard BBS", // TODO: Get from config
+                ["BBS_VERSION"] = "1.0",
+                ["NODE_NUMBER"] = 1,
+                ["USERS_ONLINE"] = (await _sessionService.GetAllActiveSessionsAsync()).Count(),
+                ["TOTAL_USERS"] = (await _userService.GetUsersAsync(0, int.MaxValue)).Count()
+            }
+        };
+
+        // Show post-login screen sequence (LOGON2, LOGON3)
+        await _screenSequenceService.ShowSequenceAsync("POSTLOGIN", connection, userContext);
 
         var menuConfigFile = "mainmenu.yml";
         await ShowMenuLoop(connection, _screensDir, menuConfigFile, user, session, cancellationToken);
