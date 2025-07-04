@@ -96,30 +96,19 @@ public static class ThemeManager
     /// <summary>
     /// Applies the specified theme to the application
     /// </summary>
-    /// <param name="themeName">Name of the theme to apply</param>
+    /// <param name="themeName">Name of the theme to apply (now always "Enhanced")</param>
     public static void ApplyTheme(string themeName)
     {
         try
         {
-            // Apply visual enhancements first
+            // Apply visual enhancements - our custom theme is always active
             ApplyVisualEnhancements();
             
-            // Normalize theme name to match Terminal.Gui's built-in themes
-            var normalizedTheme = NormalizeThemeName(themeName);
-            
-            Console.WriteLine($"Applying theme: {normalizedTheme}");
-            
-            // Set the theme using Terminal.Gui v2's ThemeManager
-            Terminal.Gui.Configuration.ThemeManager.Theme = normalizedTheme;
-            
-            // Apply the configuration
-            ConfigurationManager.Apply();
-            
-            Console.WriteLine($"Theme '{normalizedTheme}' applied successfully");
+            Console.WriteLine($"Applied Enhanced Visual Theme with custom styling and icons");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Warning: Failed to apply theme '{themeName}': {ex.Message}");
+            Console.WriteLine($"Warning: Failed to apply enhanced theme: {ex.Message}");
         }
     }
 
@@ -128,17 +117,8 @@ public static class ThemeManager
     /// </summary>
     public static string[] GetAvailableThemes()
     {
-        try
-        {
-            // Get themes from Terminal.Gui's ThemeManager
-            var themeNames = Terminal.Gui.Configuration.ThemeManager.GetThemeNames();
-            return themeNames.ToArray();
-        }
-        catch (Exception)
-        {
-            // Fallback to known built-in themes
-            return new[] { "Default", "Dark", "Light" };
-        }
+        // Since we now use custom visual enhancements, we only offer our enhanced theme
+        return new[] { "Enhanced" };
     }
 
     /// <summary>
@@ -146,16 +126,10 @@ public static class ThemeManager
     /// </summary>
     /// <param name="defaultTheme">Default theme if none is set</param>
     /// <returns>Current theme name</returns>
-    public static string GetCurrentTheme(string defaultTheme = "Default")
+    public static string GetCurrentTheme(string defaultTheme = "Enhanced")
     {
-        try
-        {
-            return Terminal.Gui.Configuration.ThemeManager.GetCurrentThemeName() ?? defaultTheme;
-        }
-        catch (Exception)
-        {
-            return defaultTheme;
-        }
+        // We now use a custom enhanced theme
+        return "Enhanced";
     }
 
     /// <summary>
@@ -169,25 +143,13 @@ public static class ThemeManager
     }
 
     /// <summary>
-    /// Normalizes theme names to match Terminal.Gui's built-in themes
+    /// Normalizes theme names to match our custom enhanced theme
     /// </summary>
     /// <param name="themeName">The theme name to normalize</param>
     /// <returns>Normalized theme name</returns>
     private static string NormalizeThemeName(string themeName)
     {
-        if (string.IsNullOrEmpty(themeName))
-            return "Default";
-
-        return themeName.ToLowerInvariant() switch
-        {
-            "dark" => "Dark",
-            "light" => "Light", 
-            "default" => "Default",
-            "modern" => "Default", // Map modern to default
-            "terminal" => "Default", // Map terminal to default
-            "custom" => "Default", // Map custom to default for now
-            "blackboard" => "Default", // Map blackboard to default for now
-            _ => "Default"
-        };
+        // All theme names now map to our enhanced theme since we override visuals
+        return "Enhanced";
     }
 }

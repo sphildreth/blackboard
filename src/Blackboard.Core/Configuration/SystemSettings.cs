@@ -31,8 +31,8 @@ public class SystemSettings
     public bool TerminalServerAutoStart { get; set; } = true;
     
     /// <summary>
-    /// The Terminal.Gui theme to use for the application interface
-    /// Valid values: Dark, Light, Modern, Terminal, Custom
+    /// The UI theme to use for the application interface
+    /// Note: Currently uses "Enhanced" theme with custom visual styling, icons, and color-coded indicators
     /// </summary>
-    public string Theme { get; set; } = "Modern";
+    public string Theme { get; set; } = "Enhanced";
 }

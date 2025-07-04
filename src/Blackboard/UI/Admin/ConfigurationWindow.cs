@@ -20,7 +20,7 @@ public class ConfigurationWindow : Window
     private CheckBox? _systemOnlineCheck;
     private CheckBox? _requirePreEnterCodeCheck;
     private TextField? _preEnterCodeField;
-    private ComboBox? _themeField;
+    // Note: Theme field removed - using custom enhanced visual theme
     
     private TextField? _telnetPortField;
     private TextField? _bindAddressField;
@@ -189,17 +189,17 @@ public class ConfigurationWindow : Window
         };
         view.Add(_preEnterCodeField);
 
-        // Theme Selection
-        view.Add(new Label() { X = 2, Y = 15, Text = "Theme:" });
-        _themeField = new ComboBox()
+        // Visual Enhancement Info (replacing theme selection)
+        view.Add(new Label() { X = 2, Y = 15, Text = "UI Style:" });
+        var themeInfoLabel = new Label()
         {
             X = 20,
             Y = 15,
-            Width = 20,
-            Height = 5
+            Width = 40,
+            Height = 2,
+            Text = "🎨 Enhanced Visual Theme\n(Colorful icons & status indicators)"
         };
-        _themeField.SetSource(new ObservableCollection<string>(ThemeManager.GetAvailableThemes()));
-        view.Add(_themeField);
+        view.Add(themeInfoLabel);
 
         return view;
     }
@@ -332,7 +332,7 @@ public class ConfigurationWindow : Window
             if (_systemOnlineCheck != null) _systemOnlineCheck.CheckedState = config.System.SystemOnline ? CheckState.Checked : CheckState.UnChecked;
             if (_requirePreEnterCodeCheck != null) _requirePreEnterCodeCheck.CheckedState = config.System.RequirePreEnterCode ? CheckState.Checked : CheckState.UnChecked;
             if (_preEnterCodeField != null) _preEnterCodeField.Text = config.System.PreEnterCode;
-            if (_themeField != null) _themeField.Text = config.System.Theme;
+            // Note: Theme is now fixed to "Enhanced" - no user configuration needed
 
             // Network settings
             if (_telnetPortField != null) _telnetPortField.Text = config.Network.TelnetPort.ToString();
@@ -375,7 +375,7 @@ public class ConfigurationWindow : Window
             config.System.SystemOnline = _systemOnlineCheck?.CheckedState == CheckState.Checked;
             config.System.RequirePreEnterCode = _requirePreEnterCodeCheck?.CheckedState == CheckState.Checked;
             config.System.PreEnterCode = _preEnterCodeField?.Text?.ToString() ?? config.System.PreEnterCode;
-            config.System.Theme = _themeField?.Text?.ToString() ?? config.System.Theme;
+            // Note: Theme is now fixed to "Enhanced" for custom visual styling
 
             // Update network settings
             if (int.TryParse(_telnetPortField?.Text?.ToString(), out int telnetPort))

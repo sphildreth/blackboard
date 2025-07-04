@@ -7,7 +7,7 @@ system:
   preEnterCode: ""
   maxUsers: 100
   timeZone: "UTC"
-  theme: "Modern"
+  theme: "Enhanced"
   terminalServerAutoStart: true
   rootPath: "/opt/blackboard"
   screensPath: "screens"
