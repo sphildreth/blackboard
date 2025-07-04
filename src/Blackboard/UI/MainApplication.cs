@@ -162,31 +162,31 @@ public class MainApplication
         // Classic Borland-style menu bar with modern emojis
         var menu = new MenuBarv2(new MenuBarItemv2[]
         {
-            new MenuBarItemv2("~S~ystem", new MenuItemv2[]
+            new MenuBarItemv2("System", new MenuItemv2[]
             {
-                new MenuItemv2("▶️ ~S~tart Server", "", () => OnStartStopClicked()),
-                new MenuItemv2("⚙️ ~C~onfiguration", "", () => OnConfigurationClicked()),
+                new MenuItemv2("▶️ Start Server", "", () => OnStartStopClicked()),
+                new MenuItemv2("⚙️ Configuration", "", () => OnConfigurationClicked()),
                 null!,
-                new MenuItemv2("🚪 E~x~it", "", () => OnExitClicked())
+                new MenuItemv2("🚪 Exit", "", () => OnExitClicked())
             }),
-            new MenuBarItemv2("~A~dmin", new MenuItemv2[]
+            new MenuBarItemv2("Admin", new MenuItemv2[]
             {
-                new MenuItemv2("�️ ~D~ashboard", "", () => OnAdminDashboardClicked()),
-                new MenuItemv2("👥 ~U~ser Management", "", () => OnUserManagementClicked()),
-                new MenuItemv2("📁 ~F~ile Management", "", () => OnFileManagementClicked()),
+                new MenuItemv2("🛡️ Dashboard", "", () => OnAdminDashboardClicked()),
+                new MenuItemv2("👥 User Management", "", () => OnUserManagementClicked()),
+                new MenuItemv2("📁 File Management", "", () => OnFileManagementClicked()),
                 null!,
-                new MenuItemv2("💾 ~B~ackup Database", "", () => OnDatabaseBackupClicked())
+                new MenuItemv2("💾 Backup Database", "", () => OnDatabaseBackupClicked())
             }),
-            new MenuBarItemv2("~T~ools", new MenuItemv2[]
+            new MenuBarItemv2("Tools", new MenuItemv2[]
             {
-                new MenuItemv2("🎨 ~M~essage Composer", "", () => OnAnsiEditorClicked()),
-                new MenuItemv2("📝 ~L~og Viewer", "", () => ShowNotImplemented("Log Viewer")),
-                new MenuItemv2("� ~S~tatistics", "", () => ShowNotImplemented("Statistics"))
+                new MenuItemv2("🎨 Message Composer", "", () => OnAnsiEditorClicked()),
+                new MenuItemv2("📝 Log Viewer", "", () => ShowNotImplemented("Log Viewer")),
+                new MenuItemv2("📊 Statistics", "", () => ShowNotImplemented("Statistics"))
             }),
-            new MenuBarItemv2("~H~elp", new MenuItemv2[]
+            new MenuBarItemv2("Help", new MenuItemv2[]
             {
-                new MenuItemv2("ℹ️ ~A~bout Blackboard", "", () => OnAboutClicked()),
-                new MenuItemv2("📖 ~D~ocumentation", "", () => ShowNotImplemented("Documentation"))
+                new MenuItemv2("ℹ️ About Blackboard", "", () => OnAboutClicked()),
+                new MenuItemv2("📖 Documentation", "", () => ShowNotImplemented("Documentation"))
             })
         });
         _mainWindow.Add(menu);
