@@ -2,7 +2,7 @@
 
 ![Blackboard Logo](assets/logo.svg)
 
-# 🏴‍☠️ Blackboard
+# Blackboard
 
 **A modern terminal-based bulletin board system built with .NET 8**
 
