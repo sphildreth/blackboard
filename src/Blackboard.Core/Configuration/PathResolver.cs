@@ -49,7 +49,7 @@ public static class PathResolver
             }
         }
     }
-// ...existing code...
+
     /// <summary>
     /// Resolves a path string with the {RootPath} placeholder
     /// </summary>
@@ -100,5 +100,43 @@ public static class PathResolver
         {
             Directory.CreateDirectory(directory);
         }
+    }
+
+    /// <summary>
+    /// Resolves the root path, handling special cases like ".", "~", and relative paths
+    /// </summary>
+    /// <param name="rootPath">The configured root path</param>
+    /// <returns>Absolute path for the root directory</returns>
+    public static string ResolveRootPath(string rootPath)
+    {
+        if (string.IsNullOrEmpty(rootPath))
+            return Directory.GetCurrentDirectory();
+            
+        // Handle special cases
+        if (rootPath == "." || rootPath == "./")
+        {
+            return Directory.GetCurrentDirectory();
+        }
+        
+        if (rootPath.StartsWith("~/"))
+        {
+            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return Path.Combine(homeDir, rootPath.Substring(2));
+        }
+        
+        if (rootPath == "~")
+        {
+            return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        }
+        
+        // If it's already an absolute path, use it as-is
+        if (Path.IsPathRooted(rootPath))
+        {
+            return rootPath;
+        }
+        
+        // For relative paths, make them relative to the application directory
+        var appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        return Path.GetFullPath(Path.Combine(appDirectory, rootPath));
     }
 }

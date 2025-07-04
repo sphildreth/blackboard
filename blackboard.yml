@@ -9,7 +9,7 @@ system:
   timeZone: "UTC"
   theme: "Borland"
   terminalServerAutoStart: true
-  rootPath: "/opt/blackboard"
+  rootPath: "./bbs"
   screensPath: "screens"
   filesPath: "files"
 
@@ -18,8 +18,6 @@ network:
   telnetPort: 2323
   maxConcurrentConnections: 10
   connectionTimeoutSeconds: 300
-  enableSsh: false
-  sshPort: 2222
 
 security:
   maxLoginAttempts: 3

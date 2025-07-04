@@ -52,77 +52,103 @@ public class UserService : IUserService
 
     public async Task<UserProfileDto?> RegisterUserAsync(UserRegistrationDto registration, string? ipAddress = null, string? userAgent = null)
     {
-        // Validate pre-enter code if provided
-        if (!string.IsNullOrEmpty(registration.PreEnterCode) && !await ValidatePreEnterCodeAsync(registration.PreEnterCode))
-        {
-            _logger.Warning("Invalid pre-enter code provided during registration: {Handle}", registration.Handle);
-            return null;
-        }
-
-        // Validate password complexity
-        if (!_passwordService.ValidatePasswordComplexity(registration.Password, _securitySettings))
-        {
-            _logger.Warning("Password complexity validation failed for registration: {Handle}", registration.Handle);
-            return null;
-        }
-
-        // Check if handle already exists
-        var existingUser = await GetUserByHandleAsync(registration.Handle);
-        if (existingUser != null)
-        {
-            _logger.Warning("Attempted registration with existing handle: {Handle}", registration.Handle);
-            return null;
-        }
-
-        // Check if email already exists (if provided)
-        if (!string.IsNullOrEmpty(registration.Email))
-        {
-            var userWithEmail = await GetUserByEmailAsync(registration.Email);
-            if (userWithEmail != null)
-            {
-                _logger.Warning("Attempted registration with existing email: {Email}", registration.Email);
-                return null;
-            }
-        }
-
         try
         {
-            var salt = _passwordService.GenerateSalt();
-            var passwordHash = _passwordService.HashPassword(registration.Password, salt);
-            var passwordExpiry = _securitySettings.PasswordExpirationDays > 0 
-                ? DateTime.UtcNow.AddDays(_securitySettings.PasswordExpirationDays) 
-                : (DateTime?)null;
-
-            const string sql = @"
-                INSERT INTO Users (Handle, Email, PasswordHash, Salt, FirstName, LastName, Location, PhoneNumber, 
-                                 SecurityLevel, IsActive, CreatedAt, UpdatedAt, PasswordExpiresAt)
-                VALUES (@Handle, @Email, @PasswordHash, @Salt, @FirstName, @LastName, @Location, @PhoneNumber, 
-                        @SecurityLevel, @IsActive, @CreatedAt, @UpdatedAt, @PasswordExpiresAt);
-                SELECT last_insert_rowid();";
-
-            var userId = await _database.QueryFirstAsync<int>(sql, new
+            // Validate pre-enter code if provided
+            if (!string.IsNullOrEmpty(registration.PreEnterCode) && !await ValidatePreEnterCodeAsync(registration.PreEnterCode))
             {
-                registration.Handle,
-                registration.Email,
-                PasswordHash = passwordHash,
-                Salt = salt,
-                registration.FirstName,
-                registration.LastName,
-                registration.Location,
-                registration.PhoneNumber,
-                SecurityLevel = (int)SecurityLevel.User,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                PasswordExpiresAt = passwordExpiry
-            });
+                _logger.Warning("Invalid pre-enter code provided during registration: {Handle}", registration.Handle);
+                return null;
+            }
 
-            await _auditService.LogAsync("USER_REGISTERED", userId, "User", userId.ToString(), 
-                ipAddress: ipAddress, userAgent: userAgent);
+            // Validate password complexity
+            if (!_passwordService.ValidatePasswordComplexity(registration.Password, _securitySettings))
+            {
+                _logger.Warning("Password complexity validation failed for registration: {Handle}", registration.Handle);
+                return null;
+            }
 
-            _logger.Information("User registered successfully: {Handle} (ID: {UserId})", registration.Handle, userId);
+            // Check if handle already exists
+            try
+            {
+                var existingUser = await GetUserByHandleAsync(registration.Handle);
+                if (existingUser != null)
+                {
+                    _logger.Warning("Attempted registration with existing handle: {Handle}", registration.Handle);
+                    return null;
+                }
+                _logger.Debug("Handle check passed for {Handle}", registration.Handle);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error checking for existing handle during registration: {Handle}", registration.Handle);
+                return null;
+            }
 
-            return await GetUserByIdAsync(userId);
+            // Check if email already exists (if provided and not empty)
+            if (!string.IsNullOrWhiteSpace(registration.Email))
+            {
+                try
+                {
+                    var userWithEmail = await GetUserByEmailAsync(registration.Email);
+                    if (userWithEmail != null)
+                    {
+                        _logger.Warning("Attempted registration with existing email: {Email}", registration.Email);
+                        return null;
+                    }
+                    _logger.Debug("Email check passed for {Email}", registration.Email);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Error checking for existing email during registration: {Email}", registration.Email);
+                    return null;
+                }
+            }
+
+            try
+            {
+                var salt = _passwordService.GenerateSalt();
+                var passwordHash = _passwordService.HashPassword(registration.Password, salt);
+                var passwordExpiry = _securitySettings.PasswordExpirationDays > 0 
+                    ? DateTime.UtcNow.AddDays(_securitySettings.PasswordExpirationDays) 
+                    : (DateTime?)null;
+
+                const string sql = @"
+                    INSERT INTO Users (Handle, Email, PasswordHash, Salt, FirstName, LastName, Location, PhoneNumber, 
+                                     SecurityLevel, IsActive, CreatedAt, UpdatedAt, PasswordExpiresAt)
+                    VALUES (@Handle, @Email, @PasswordHash, @Salt, @FirstName, @LastName, @Location, @PhoneNumber, 
+                            @SecurityLevel, @IsActive, @CreatedAt, @UpdatedAt, @PasswordExpiresAt);
+                    SELECT last_insert_rowid();";
+
+                var userId = await _database.QueryFirstAsync<int>(sql, new
+                {
+                    registration.Handle,
+                    Email = string.IsNullOrWhiteSpace(registration.Email) ? null : registration.Email,
+                    PasswordHash = passwordHash,
+                    Salt = salt,
+                    FirstName = string.IsNullOrWhiteSpace(registration.FirstName) ? null : registration.FirstName,
+                    LastName = string.IsNullOrWhiteSpace(registration.LastName) ? null : registration.LastName,
+                    Location = string.IsNullOrWhiteSpace(registration.Location) ? null : registration.Location,
+                    PhoneNumber = string.IsNullOrWhiteSpace(registration.PhoneNumber) ? null : registration.PhoneNumber,
+                    SecurityLevel = (int)SecurityLevel.User,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    PasswordExpiresAt = passwordExpiry
+                });
+
+                await _auditService.LogAsync("USER_REGISTERED", userId, "User", userId.ToString(), 
+                    ipAddress: ipAddress, userAgent: userAgent);
+
+                _logger.Information("User registered successfully: {Handle} (ID: {UserId})", registration.Handle, userId);
+
+                return await GetUserByIdAsync(userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to insert user during registration: {Handle}", registration.Handle);
+                return null;
+            }
         }
         catch (Exception ex)
         {

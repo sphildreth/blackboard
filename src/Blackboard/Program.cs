@@ -36,7 +36,7 @@ class Program
             _logger.Information("Configuration loaded from {ConfigPath}", configPath);
 
             // Initialize database
-            string rootPath = _configManager.Configuration.System.RootPath;
+            string rootPath = PathResolver.ResolveRootPath(_configManager.Configuration.System.RootPath);
             
             // Ensure the rootPath directory exists
             if (!Directory.Exists(rootPath))
