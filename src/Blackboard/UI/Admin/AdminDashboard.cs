@@ -45,51 +45,48 @@ public class AdminDashboard : Window
 
     private void InitializeComponent()
     {
-        // Statistics Panel
-        var statsFrame = new FrameView()
-        {
-            X = 0,
-            Y = 0,
-            Width = Dim.Percent(50),
-            Height = 10
-        };
-        statsFrame.Add(new Label { X = 0, Y = 0, Text = "System Statistics" });
+        // Statistics Panel with enhanced styling
+        var statsFrame = ThemeManager.CreateStyledFrame("System Statistics", ThemeManager.ComponentStyles.StatisticsPrefix);
+        statsFrame.X = 0;
+        statsFrame.Y = 0;
+        statsFrame.Width = Dim.Percent(50);
+        statsFrame.Height = 10;
+        
+        statsFrame.Add(ThemeManager.CreateStyledLabel("System Statistics", "", 0, 0));
 
-        _totalUsersLabel = new Label { X = 1, Y = 1, Text = "Total Users: 0" };
-        _activeUsersLabel = new Label { X = 1, Y = 2, Text = "Active Users: 0" };
-        _activeSessionsLabel = new Label { X = 1, Y = 3, Text = "Active Sessions: 0" };
-        _uptimeLabel = new Label { X = 1, Y = 4, Text = "System Uptime: 0s" };
-        _callsTodayLabel = new Label { X = 1, Y = 5, Text = "Calls Today: 0" };
-        _registrationsTodayLabel = new Label { X = 1, Y = 6, Text = "Registrations Today: 0" };
+        _totalUsersLabel = ThemeManager.CreateStyledLabel("Total Users: 0", ThemeManager.ComponentStyles.UserPrefix, 1, 1);
+        _activeUsersLabel = ThemeManager.CreateStyledLabel("Active Users: 0", "👥 ", 1, 2);
+        _activeSessionsLabel = ThemeManager.CreateStyledLabel("Active Sessions: 0", "🔗 ", 1, 3);
+        _uptimeLabel = ThemeManager.CreateStyledLabel("System Uptime: 0s", "⏰ ", 1, 4);
+        _callsTodayLabel = ThemeManager.CreateStyledLabel("Calls Today: 0", "📞 ", 1, 5);
+        _registrationsTodayLabel = ThemeManager.CreateStyledLabel("Registrations Today: 0", "📝 ", 1, 6);
 
         statsFrame.Add(_totalUsersLabel, _activeUsersLabel, _activeSessionsLabel, 
                       _uptimeLabel, _callsTodayLabel, _registrationsTodayLabel);
 
-        // System Resources Panel
-        var resourcesFrame = new FrameView()
-        {
-            X = Pos.Right(statsFrame),
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = 10
-        };
-        resourcesFrame.Add(new Label { X = 0, Y = 0, Text = "System Resources" });
+        // System Resources Panel with enhanced styling
+        var resourcesFrame = ThemeManager.CreateStyledFrame("System Resources", ThemeManager.ComponentStyles.ResourcePrefix);
+        resourcesFrame.X = Pos.Right(statsFrame);
+        resourcesFrame.Y = 0;
+        resourcesFrame.Width = Dim.Fill();
+        resourcesFrame.Height = 10;
+        
+        resourcesFrame.Add(ThemeManager.CreateStyledLabel("System Resources", "", 0, 0));
 
-        _memoryUsageLabel = new Label { X = 1, Y = 1, Text = "Memory Usage: 0%" };
-        _diskUsageLabel = new Label { X = 1, Y = 2, Text = "Disk Usage: 0%" };
-        _databaseStatusLabel = new Label { X = 1, Y = 3, Text = "Database: Unknown" };
+        _memoryUsageLabel = ThemeManager.CreateStyledLabel("Memory Usage: 0%", "🧠 ", 1, 1);
+        _diskUsageLabel = ThemeManager.CreateStyledLabel("Disk Usage: 0%", "💾 ", 1, 2);
+        _databaseStatusLabel = ThemeManager.CreateStyledLabel("Database: Unknown", "🗄️ ", 1, 3);
 
         resourcesFrame.Add(_memoryUsageLabel, _diskUsageLabel, _databaseStatusLabel);
 
-        // Active Sessions Panel
-        var sessionsFrame = new FrameView()
-        {
-            X = 0,
-            Y = Pos.Bottom(statsFrame),
-            Width = Dim.Percent(50),
-            Height = 12
-        };
-        sessionsFrame.Add(new Label { X = 0, Y = 0, Text = "Active Sessions" });
+        // Active Sessions Panel with enhanced styling
+        var sessionsFrame = ThemeManager.CreateStyledFrame("Active Sessions", "🔗 ");
+        sessionsFrame.X = 0;
+        sessionsFrame.Y = Pos.Bottom(statsFrame);
+        sessionsFrame.Width = Dim.Percent(50);
+        sessionsFrame.Height = 12;
+        
+        sessionsFrame.Add(ThemeManager.CreateStyledLabel("Active Sessions", "", 0, 0));
 
         _activeSessionsList = new ListView
         {
@@ -101,15 +98,14 @@ public class AdminDashboard : Window
 
         sessionsFrame.Add(_activeSessionsList);
 
-        // System Alerts Panel
-        var alertsFrame = new FrameView()
-        {
-            X = Pos.Right(sessionsFrame),
-            Y = Pos.Bottom(resourcesFrame),
-            Width = 40,
-            Height = 12
-        };
-        alertsFrame.Add(new Label { X = 0, Y = 0, Text = "System Alerts" });
+        // System Alerts Panel with enhanced styling
+        var alertsFrame = ThemeManager.CreateStyledFrame("System Alerts", ThemeManager.ComponentStyles.AlertPrefix);
+        alertsFrame.X = Pos.Right(sessionsFrame);
+        alertsFrame.Y = Pos.Bottom(resourcesFrame);
+        alertsFrame.Width = 40;
+        alertsFrame.Height = 12;
+        
+        alertsFrame.Add(ThemeManager.CreateStyledLabel("System Alerts", "", 0, 0));
 
         _alertsList = new ListView
         {
@@ -157,40 +153,44 @@ public class AdminDashboard : Window
     private void UpdateStatistics(SystemStatisticsDto stats)
     {
         if (_totalUsersLabel != null)
-            _totalUsersLabel.Text = $"Total Users: {stats.TotalUsers}";
+            _totalUsersLabel.Text = $"👤 Total Users: {stats.TotalUsers}";
         
         if (_activeUsersLabel != null)
-            _activeUsersLabel.Text = $"Active Users: {stats.ActiveUsers}";
+            _activeUsersLabel.Text = $"👥 Active Users: {stats.ActiveUsers}";
         
         if (_activeSessionsLabel != null)
-            _activeSessionsLabel.Text = $"Active Sessions: {stats.ActiveSessions}";
+            _activeSessionsLabel.Text = $"🔗 Active Sessions: {stats.ActiveSessions}";
         
         if (_uptimeLabel != null)
-            _uptimeLabel.Text = $"System Uptime: {FormatTimeSpan(stats.SystemUptime)}";
+            _uptimeLabel.Text = $"⏰ System Uptime: {FormatTimeSpan(stats.SystemUptime)}";
         
         if (_callsTodayLabel != null)
-            _callsTodayLabel.Text = $"Calls Today: {stats.CallsToday}";
+            _callsTodayLabel.Text = $"📞 Calls Today: {stats.CallsToday}";
         
         if (_registrationsTodayLabel != null)
-            _registrationsTodayLabel.Text = $"Registrations Today: {stats.RegistrationsToday}";
+            _registrationsTodayLabel.Text = $"📝 Registrations Today: {stats.RegistrationsToday}";
     }
 
     private void UpdateResourceInfo(SystemResourcesDto resources)
     {
+        var memoryIcon = resources.MemoryUsagePercent > 80 ? "🔴" : resources.MemoryUsagePercent > 60 ? "🟡" : "🟢";
+        var diskIcon = resources.DiskUsagePercent > 80 ? "🔴" : resources.DiskUsagePercent > 60 ? "🟡" : "🟢";
+        
         if (_memoryUsageLabel != null)
-            _memoryUsageLabel.Text = $"Memory Usage: {resources.MemoryUsagePercent:F1}% ({FormatBytes(resources.MemoryUsedBytes)})";
+            _memoryUsageLabel.Text = $"🧠 Memory Usage: {memoryIcon} {resources.MemoryUsagePercent:F1}% ({FormatBytes(resources.MemoryUsedBytes)})";
         
         if (_diskUsageLabel != null)
-            _diskUsageLabel.Text = $"Disk Usage: {resources.DiskUsagePercent:F1}% ({FormatBytes(resources.DiskUsedBytes)})";
+            _diskUsageLabel.Text = $"💾 Disk Usage: {diskIcon} {resources.DiskUsagePercent:F1}% ({FormatBytes(resources.DiskUsedBytes)})";
     }
 
     private void UpdateDatabaseStatus(DatabaseStatusDto dbStatus)
     {
         if (_databaseStatusLabel != null)
         {
+            var statusIcon = dbStatus.IsConnected ? "🟢" : "🔴";
             var status = dbStatus.IsConnected ? "Connected" : "Disconnected";
             var walStatus = dbStatus.WalModeEnabled ? " (WAL)" : "";
-            _databaseStatusLabel.Text = $"Database: {status}{walStatus} - {FormatBytes(dbStatus.DatabaseSizeBytes)}";
+            _databaseStatusLabel.Text = $"🗄️ Database: {statusIcon} {status}{walStatus} - {FormatBytes(dbStatus.DatabaseSizeBytes)}";
         }
     }
 
@@ -199,12 +199,12 @@ public class AdminDashboard : Window
         if (_activeSessionsList != null)
         {
             var sessionItems = sessions.Select(s => 
-                $"{s.Handle,-15} {s.IpAddress,-15} {FormatTimeSpan(s.SessionDuration),-10} {s.CurrentActivity}"
+                $"🔗 {s.Handle,-15} {s.IpAddress,-15} {FormatTimeSpan(s.SessionDuration),-10} {s.CurrentActivity}"
             ).ToList();
             
             if (sessionItems.Count == 0)
             {
-                sessionItems.Add("No active sessions");
+                sessionItems.Add("📭 No active sessions");
             }
             
             var observableItems = new ObservableCollection<string>(sessionItems);
@@ -217,8 +217,17 @@ public class AdminDashboard : Window
         if (_alertsList != null)
         {
             var alertItems = alerts.Take(10).Select(a => 
-                $"[{a.Severity}] {a.Title}: {a.Message}"
-            ).ToList();
+            {
+                var icon = a.Severity switch
+                {
+                    Blackboard.Core.DTOs.AlertSeverity.Error => "🔴",
+                    Blackboard.Core.DTOs.AlertSeverity.Critical => "🔴",
+                    Blackboard.Core.DTOs.AlertSeverity.Warning => "🟡",
+                    Blackboard.Core.DTOs.AlertSeverity.Info => "🔵",
+                    _ => "⚠️"
+                };
+                return $"{icon} [{a.Severity}] {a.Title}: {a.Message}";
+            }).ToList();
             
             if (alertItems.Count == 0)
             {

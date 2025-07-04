@@ -48,7 +48,11 @@ public class MainApplication
         _userService = new UserService(databaseManager, passwordService, sessionService, _auditService, 
             configManager.Configuration.Security, logger);
         _statisticsService = new SystemStatisticsService(databaseManager, configManager.Configuration.Database, logger);
-        _fileAreaService = new FileAreaService(databaseManager, logger);
+        
+        // Resolve files path using configuration - same as in Program.cs and ServiceManager
+        var rootPath = configManager.Configuration.System.RootPath;
+        var filesPath = PathResolver.ResolvePath(configManager.Configuration.System.FilesPath, rootPath);
+        _fileAreaService = new FileAreaService(databaseManager, logger, filesPath);
     }
 
     public void Run()
@@ -99,79 +103,84 @@ public class MainApplication
             Y = 0,
             Width = 80,
             Height = 25,
-            Title = "Blackboard - System Console"
+            Title = "🖥️ Blackboard - System Console"
         };
 
-        // System status panel
-        var statusPanel = new FrameView()
-        {
-            X = 1,
-            Y = 1,
-            Width = 38,
-            Height = 8
-        };
-        statusPanel.Add(new Label { X = 0, Y = 0, Text = "System Status" });
-        _statusLabel = new Label { X = 1, Y = 1, Text = "Status: Offline" };
-        _uptimeLabel = new Label { X = 1, Y = 2, Text = "Uptime: 00:00:00" };
-        var boardNameLabel = new Label { X = 1, Y = 3, Text = $"Board: {_configManager.Configuration.System.BoardName}" };
-        var sysopLabel = new Label { X = 1, Y = 4, Text = $"Sysop: {_configManager.Configuration.System.SysopName}" };
-        var portLabel = new Label { X = 1, Y = 5, Text = $"Port: {_configManager.Configuration.Network.TelnetPort}" };
+        // System status panel with enhanced styling
+        var statusPanel = ThemeManager.CreateStyledFrame("System Status", ThemeManager.ComponentStyles.StatusPrefix);
+        statusPanel.X = 1;
+        statusPanel.Y = 1;
+        statusPanel.Width = 38;
+        statusPanel.Height = 8;
+        
+        statusPanel.Add(ThemeManager.CreateStyledLabel("System Status", "", 0, 0));
+        _statusLabel = ThemeManager.CreateStyledLabel("Status: Offline", "🔴 ", 1, 1);
+        _uptimeLabel = ThemeManager.CreateStyledLabel("Uptime: 00:00:00", "⏰ ", 1, 2);
+        var boardNameLabel = ThemeManager.CreateStyledLabel($"Board: {_configManager.Configuration.System.BoardName}", "🏢 ", 1, 3);
+        var sysopLabel = ThemeManager.CreateStyledLabel($"Sysop: {_configManager.Configuration.System.SysopName}", "👨‍💼 ", 1, 4);
+        var portLabel = ThemeManager.CreateStyledLabel($"Port: {_configManager.Configuration.Network.TelnetPort}", "🔌 ", 1, 5);
         statusPanel.Add(_statusLabel, _uptimeLabel, boardNameLabel, sysopLabel, portLabel);
 
-        // Server control panel
-        var controlPanel = new FrameView()
-        {
-            X = 41,
-            Y = 1,
-            Width = 38,
-            Height = 8
-        };
-        controlPanel.Add(new Label { X = 0, Y = 0, Text = "Server Control" });
-        _startStopButton = new Button { X = 1, Y = 1, Text = "Start Server" };
+        // Server control panel with enhanced styling
+        var controlPanel = ThemeManager.CreateStyledFrame("Server Control", ThemeManager.ComponentStyles.ServerPrefix);
+        controlPanel.X = 41;
+        controlPanel.Y = 1;
+        controlPanel.Width = 38;
+        controlPanel.Height = 8;
+        
+        controlPanel.Add(ThemeManager.CreateStyledLabel("Server Control", "", 0, 0));
+        _startStopButton = ThemeManager.CreateStyledButton("Start Server", "▶️ ");
+        _startStopButton.X = 1;
+        _startStopButton.Y = 1;
         _startStopButton.MouseClick += (sender, args) => OnStartStopClicked();
-        var configButton = new Button { X = 1, Y = 3, Text = "Configuration" };
+        
+        var configButton = ThemeManager.CreateStyledButton("Configuration", ThemeManager.ComponentStyles.ConfigPrefix);
+        configButton.X = 1;
+        configButton.Y = 3;
         configButton.MouseClick += (sender, args) => OnConfigurationClicked();
-        var exitButton = new Button { X = 1, Y = 5, Text = "Exit" };
+        
+        var exitButton = ThemeManager.CreateStyledButton("Exit", "🚪 ");
+        exitButton.X = 1;
+        exitButton.Y = 5;
         exitButton.MouseClick += (sender, args) => OnExitClicked();
         controlPanel.Add(_startStopButton, configButton, exitButton);
 
-        // Active connections panel
-        var connectionsPanel = new FrameView()
-        {
-            X = 1,
-            Y = 10,
-            Width = 78,
-            Height = 13
-        };
-        connectionsPanel.Add(new Label { X = 0, Y = 0, Text = "Active Connections" });
-        _connectionsLabel = new Label { X = 1, Y = 1, Text = "Connections: 0" };
+        // Active connections panel with enhanced styling
+        var connectionsPanel = ThemeManager.CreateStyledFrame("Active Connections", ThemeManager.ComponentStyles.ConnectionPrefix);
+        connectionsPanel.X = 1;
+        connectionsPanel.Y = 10;
+        connectionsPanel.Width = 78;
+        connectionsPanel.Height = 13;
+        
+        connectionsPanel.Add(ThemeManager.CreateStyledLabel("Active Connections", "", 0, 0));
+        _connectionsLabel = ThemeManager.CreateStyledLabel("Connections: 0", "📊 ", 1, 1);
         _connectionsListView = new ListView { X = 1, Y = 2, Width = 60, Height = 10 };
         connectionsPanel.Add(_connectionsLabel, _connectionsListView);
 
         _mainWindow.Add(statusPanel, controlPanel, connectionsPanel);
 
-        // Menu bar
+        // Enhanced menu bar with icons
         var menu = new MenuBarv2(new MenuBarItemv2[]
         {
-            new MenuBarItemv2("_System", new MenuItemv2[]
+            new MenuBarItemv2("🖥️ _System", new MenuItemv2[]
             {
-                new MenuItemv2("_Start Server", "", () => OnStartStopClicked()),
-                new MenuItemv2("_Configuration", "", () => OnConfigurationClicked()),
+                new MenuItemv2("▶️ _Start Server", "", () => OnStartStopClicked()),
+                new MenuItemv2("⚙️ _Configuration", "", () => OnConfigurationClicked()),
                 null!,
-                new MenuItemv2("E_xit", "", () => OnExitClicked())
+                new MenuItemv2("🚪 E_xit", "", () => OnExitClicked())
             }),
-            new MenuBarItemv2("_Tools", new MenuItemv2[]
+            new MenuBarItemv2("🔧 _Tools", new MenuItemv2[]
             {
-                new MenuItemv2("_Admin Dashboard", "", () => OnAdminDashboardClicked()),
-                new MenuItemv2("_User Management", "", () => OnUserManagementClicked()),
-                new MenuItemv2("_File Management", "", () => OnFileManagementClicked()),
-                new MenuItemv2("_Message Composer (ANSI)", "", () => OnAnsiEditorClicked()),
-                new MenuItemv2("_Log Viewer", "", () => ShowNotImplemented("Log Viewer")),
-                new MenuItemv2("_Database Backup", "", () => OnDatabaseBackupClicked())
+                new MenuItemv2("📊 _Admin Dashboard", "", () => OnAdminDashboardClicked()),
+                new MenuItemv2("👥 _User Management", "", () => OnUserManagementClicked()),
+                new MenuItemv2("📁 _File Management", "", () => OnFileManagementClicked()),
+                new MenuItemv2("🎨 _Message Composer (ANSI)", "", () => OnAnsiEditorClicked()),
+                new MenuItemv2("📝 _Log Viewer", "", () => ShowNotImplemented("Log Viewer")),
+                new MenuItemv2("💾 _Database Backup", "", () => OnDatabaseBackupClicked())
             }),
-            new MenuBarItemv2("_Help", new MenuItemv2[]
+            new MenuBarItemv2("❓ _Help", new MenuItemv2[]
             {
-                new MenuItemv2("_About", "", () => OnAboutClicked())
+                new MenuItemv2("ℹ️ _About", "", () => OnAboutClicked())
             })
         });
         _mainWindow.Add(menu);
@@ -358,23 +367,27 @@ public class MainApplication
             
             if (_statusLabel != null)
             {
-                _statusLabel.Text = $"Status: {(isServerRunning ? "Online" : "Offline")}";
+                var statusIcon = isServerRunning ? "🟢" : "🔴";
+                var statusText = isServerRunning ? "Online" : "Offline";
+                _statusLabel.Text = $"{statusIcon} Status: {statusText}";
             }
 
             if (_uptimeLabel != null && isServerRunning && _telnetServer.StartTime.HasValue)
             {
                 // Calculate actual uptime since server start
                 var uptime = DateTime.UtcNow - _telnetServer.StartTime.Value;
-                _uptimeLabel.Text = $"Uptime: {uptime:hh\\:mm\\:ss}";
+                _uptimeLabel.Text = $"⏰ Uptime: {uptime:hh\\:mm\\:ss}";
             }
             else if (_uptimeLabel != null)
             {
-                _uptimeLabel.Text = "Uptime: 00:00:00";
+                _uptimeLabel.Text = "⏰ Uptime: 00:00:00";
             }
 
             if (_startStopButton != null)
             {
-                _startStopButton.Text = isServerRunning ? "Stop Server" : "Start Server";
+                var buttonIcon = isServerRunning ? "⏹️" : "▶️";
+                var buttonText = isServerRunning ? "Stop Server" : "Start Server";
+                _startStopButton.Text = $"{buttonIcon} {buttonText}";
             }
 
             UpdateConnectionsList();
@@ -393,10 +406,10 @@ public class MainApplication
                 return;
 
             var connections = _telnetServer.ActiveConnections;
-            _connectionsLabel.Text = $"Connections: {connections.Count}";
+            _connectionsLabel.Text = $"📊 Connections: {connections.Count}";
 
             var connectionStrings = new ObservableCollection<string>(connections
-                .Select(c => $"{c.RemoteEndPoint} - Connected: {c.ConnectedAt:HH:mm:ss}")
+                .Select(c => $"🌐 {c.RemoteEndPoint} - Connected: {c.ConnectedAt:HH:mm:ss}")
                 .ToList());
 
             _connectionsListView.SetSource(connectionStrings);

@@ -45,15 +45,14 @@ public class UserManagementWindow : Window
 
     private void InitializeComponent()
     {
-        // Search panel
-        var searchFrame = new FrameView()
-        {
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = 3
-        };
-        searchFrame.Add(new Label { X = 0, Y = 0, Text = "Search Users" });
+        // Enhanced search panel
+        var searchFrame = ThemeManager.CreateStyledFrame("Search Users", "🔍 ");
+        searchFrame.X = 0;
+        searchFrame.Y = 0;
+        searchFrame.Width = Dim.Fill();
+        searchFrame.Height = 3;
+        
+        searchFrame.Add(ThemeManager.CreateStyledLabel("Search Users", "", 0, 0));
         
         _searchField = new TextField()
         {
@@ -64,33 +63,26 @@ public class UserManagementWindow : Window
         };
         _searchField.TextChanged += OnSearchTextChanged;
         
-        var searchButton = new Button()
-        {
-            X = 32,
-            Y = 1,
-            Text = "Search"
-        };
+        var searchButton = ThemeManager.CreateStyledButton("Search", "🔍 ");
+        searchButton.X = 32;
+        searchButton.Y = 1;
         searchButton.MouseClick += (s, e) => SearchUsers();
         
-        _refreshButton = new Button()
-        {
-            X = 42,
-            Y = 1,
-            Text = "Refresh"
-        };
+        _refreshButton = ThemeManager.CreateStyledButton("Refresh", "🔄 ");
+        _refreshButton.X = 42;
+        _refreshButton.Y = 1;
         _refreshButton.MouseClick += (s, e) => LoadUsers();
         
         searchFrame.Add(_searchField, searchButton, _refreshButton);
 
-        // Users list
-        var usersFrame = new FrameView()
-        {
-            X = 0,
-            Y = Pos.Bottom(searchFrame),
-            Width = Dim.Percent(70),
-            Height = 18
-        };
-        usersFrame.Add(new Label { X = 0, Y = 0, Text = "Users" });
+        // Enhanced users list
+        var usersFrame = ThemeManager.CreateStyledFrame("Users", ThemeManager.ComponentStyles.UserPrefix);
+        usersFrame.X = 0;
+        usersFrame.Y = Pos.Bottom(searchFrame);
+        usersFrame.Width = Dim.Percent(70);
+        usersFrame.Height = 18;
+        
+        usersFrame.Add(ThemeManager.CreateStyledLabel("Users", "", 0, 0));
         
         _usersList = new ListView()
         {

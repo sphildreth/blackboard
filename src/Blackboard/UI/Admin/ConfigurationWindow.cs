@@ -85,29 +85,20 @@ public class ConfigurationWindow : Window
         _tabView.AddTab(networkTab, false);
         _tabView.AddTab(securityTab, false);
 
-        // Action buttons
-        var saveButton = new Button()
-        {
-            X = 2,
-            Y = Pos.Bottom(_tabView) + 1,
-            Text = "Save Configuration"
-        };
+        // Action buttons with enhanced styling
+        var saveButton = ThemeManager.CreateStyledButton("Save Configuration", "💾 ");
+        saveButton.X = 2;
+        saveButton.Y = Pos.Bottom(_tabView) + 1;
         saveButton.MouseClick += (s, e) => SaveConfiguration();
 
-        var reloadButton = new Button()
-        {
-            X = 22,
-            Y = Pos.Bottom(_tabView) + 1,
-            Text = "Reload"
-        };
+        var reloadButton = ThemeManager.CreateStyledButton("Reload", "🔄 ");
+        reloadButton.X = 22;
+        reloadButton.Y = Pos.Bottom(_tabView) + 1;
         reloadButton.MouseClick += (s, e) => LoadConfiguration();
 
-        var closeButton = new Button()
-        {
-            X = 32,
-            Y = Pos.Bottom(_tabView) + 1,
-            Text = "Close"
-        };
+        var closeButton = ThemeManager.CreateStyledButton("Close", "❌ ");
+        closeButton.X = 32;
+        closeButton.Y = Pos.Bottom(_tabView) + 1;
         closeButton.MouseClick += (s, e) => Application.RequestStop();
 
         // Status label
@@ -116,7 +107,7 @@ public class ConfigurationWindow : Window
             X = 45,
             Y = Pos.Bottom(_tabView) + 1,
             Width = Dim.Fill(),
-            Text = "Ready"
+            Text = "📋 Ready"
         };
 
         Add(_tabView, saveButton, reloadButton, closeButton, _statusLabel);
