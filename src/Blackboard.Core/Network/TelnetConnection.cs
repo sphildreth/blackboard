@@ -82,22 +82,8 @@ public class TelnetConnection : ITelnetConnection
 
         try
         {
-            // Choose encoding based on terminal capabilities
-            Encoding encodingToUse;
-            if (_isModernTerminal && !_supportsCP437)
-            {
-                // Modern terminals that need Unicode conversion should use UTF-8
-                encodingToUse = Encoding.UTF8;
-                _logger.Information("Using UTF-8 encoding for modern terminal");
-            }
-            else
-            {
-                // Use CP437 for retro BBS clients or CP437-capable terminals
-                encodingToUse = _encoding;
-                _logger.Information("Using CP437 encoding for retro/CP437-capable terminal");
-            }
-            
-            var bytes = encodingToUse.GetBytes(data);
+            // For ANSI content, send raw bytes using Latin-1 encoding to preserve byte values
+            var bytes = Encoding.GetEncoding("ISO-8859-1").GetBytes(data);
             await _stream.WriteAsync(bytes, _cancellationTokenSource.Token);
             await _stream.FlushAsync(_cancellationTokenSource.Token);
         }
@@ -709,6 +695,23 @@ public class TelnetConnection : ITelnetConnection
         {
             _logger.Error(ex, "Error converting CP437 to Unicode");
             return cp437Content; // Return original on error
+        }
+    }
+
+    public async Task SendBytesAsync(byte[] data)
+    {
+        if (!IsConnected || data == null || data.Length == 0) return;
+
+        try
+        {
+            // Send raw bytes directly - no encoding conversion
+            await _stream.WriteAsync(data, _cancellationTokenSource.Token);
+            await _stream.FlushAsync(_cancellationTokenSource.Token);
+        }
+        catch (Exception ex)
+        {
+            _logger.Debug(ex, "Error sending raw bytes to {RemoteEndPoint}", RemoteEndPoint);
+            await DisconnectAsync();
         }
     }
 }

@@ -18,6 +18,7 @@ public interface ITelnetConnection
     
     Task InitializeAsync();
     Task SendAsync(string data);
+    Task SendBytesAsync(byte[] data);
     Task SendLineAsync(string line);
     Task SendAnsiAsync(string ansiSequence);
     Task<string> ReadLineAsync();

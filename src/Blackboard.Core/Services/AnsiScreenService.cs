@@ -71,8 +71,9 @@ public class AnsiScreenService : IAnsiScreenService
         var defaultPath = Path.Combine(_screensDirectory, "defaults", "default.ans");
         if (File.Exists(defaultPath))
         {
-            var cp437Encoding = Encoding.GetEncoding(437);
-            return await File.ReadAllTextAsync(defaultPath, cp437Encoding);
+            // Read as raw bytes and convert using Latin-1 to preserve byte values
+            var fileBytes = await File.ReadAllBytesAsync(defaultPath);
+            return Encoding.GetEncoding("ISO-8859-1").GetString(fileBytes);
         }
 
         // Return a simple text fallback
@@ -146,8 +147,9 @@ public class AnsiScreenService : IAnsiScreenService
         }
 
         // Read ANSI files using CP437 encoding to preserve box drawing characters
-        var cp437Encoding = Encoding.GetEncoding(437);
-        var content = await File.ReadAllTextAsync(filePath, cp437Encoding);
+        // Read the ANSI file as raw bytes and convert using Latin-1 to preserve byte values
+        var fileBytes = await File.ReadAllBytesAsync(filePath);
+        var content = Encoding.GetEncoding("ISO-8859-1").GetString(fileBytes);
         _screenCache.TryAdd(screenName, content);
         return content;
     }
