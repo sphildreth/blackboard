@@ -13,12 +13,16 @@ public class TelnetConnection : ITelnetConnection
     private readonly int _timeoutSeconds;
     private readonly CancellationTokenSource _cancellationTokenSource;
     private bool _isConnected;
+    private bool _supportsAnsi = true; // Default to supporting ANSI
+    private string _terminalType = "ANSI";
 
     public event EventHandler? Disconnected;
 
     public EndPoint? RemoteEndPoint => _tcpClient?.Client?.RemoteEndPoint;
     public string RemoteEndPointString => RemoteEndPoint?.ToString() ?? "Unknown";
     public bool IsConnected => _isConnected && _tcpClient?.Connected == true;
+    public bool SupportsAnsi => _supportsAnsi;
+    public string TerminalType => _terminalType;
     public DateTime ConnectedAt { get; }
 
     public TelnetConnection(TcpClient tcpClient, ILogger logger, int timeoutSeconds)
@@ -44,8 +48,16 @@ public class TelnetConnection : ITelnetConnection
             await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.WILL, TelnetOption.ECHO);
             await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.WILL, TelnetOption.SUPPRESS_GO_AHEAD);
             await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.DO, TelnetOption.TERMINAL_TYPE);
+            await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.DO, TelnetOption.WINDOW_SIZE);
             
-            _logger.Debug("Telnet connection initialized for {RemoteEndPoint}", RemoteEndPoint);
+            // Send a small delay to allow negotiations to complete
+            await Task.Delay(100);
+            
+            // Test ANSI support by sending a query
+            await TestAnsiSupportAsync();
+            
+            _logger.Debug("Telnet connection initialized for {RemoteEndPoint} - Terminal: {TerminalType}, ANSI: {SupportsAnsi}", 
+                RemoteEndPoint, _terminalType, _supportsAnsi);
         }
         catch (Exception ex)
         {
@@ -78,7 +90,16 @@ public class TelnetConnection : ITelnetConnection
 
     public async Task SendAnsiAsync(string ansiSequence)
     {
-        await SendAsync(ansiSequence);
+        if (_supportsAnsi)
+        {
+            await SendAsync(ansiSequence);
+        }
+        else
+        {
+            // Strip ANSI codes for non-ANSI terminals
+            var plainText = StripAnsiCodes(ansiSequence);
+            await SendAsync(plainText);
+        }
     }
 
     public async Task<string> ReadLineAsync()
@@ -301,6 +322,87 @@ public class TelnetConnection : ITelnetConnection
         }
         
         return Task.CompletedTask;
+    }
+
+    private async Task TestAnsiSupportAsync()
+    {
+        try
+        {
+            // Send a simple ANSI query to test support
+            // This sends ESC[6n (Device Status Report) which ANSI terminals respond to
+            await SendAsync("\x1b[6n");
+            
+            // Give a short timeout for response
+            var timeout = Task.Delay(500);
+            var readTask = ReadResponseAsync();
+            var completedTask = await Task.WhenAny(readTask, timeout);
+            
+            if (completedTask == readTask)
+            {
+                var response = readTask.Result;
+                // If we get a response like ESC[row;colR, terminal supports ANSI
+                if (response.Contains("[") && response.Contains("R"))
+                {
+                    _supportsAnsi = true;
+                    _terminalType = "ANSI";
+                    _logger.Debug("Terminal supports ANSI: {Response}", response);
+                }
+                else
+                {
+                    _supportsAnsi = false;
+                    _terminalType = "TTY";
+                    _logger.Debug("Terminal does not support ANSI");
+                }
+            }
+            else
+            {
+                // No response - assume basic terminal
+                _supportsAnsi = false;
+                _terminalType = "TTY";
+                _logger.Debug("No ANSI response from terminal");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Debug(ex, "Error testing ANSI support, defaulting to ANSI enabled");
+            _supportsAnsi = true; // Default to ANSI if test fails
+        }
+    }
+
+    private async Task<string> ReadResponseAsync()
+    {
+        var response = new StringBuilder();
+        try
+        {
+            while (response.Length < 20) // Limit response length
+            {
+                var ch = await ReadCharAsync();
+                if (ch == '\0') break;
+                response.Append(ch);
+                if (ch == 'R') break; // End of ANSI response
+            }
+            return response.ToString();
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private string StripAnsiCodes(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+            
+        // Remove ANSI escape sequences using regex
+        // This pattern matches ESC[ followed by any characters and ending with a letter
+        var ansiPattern = @"\x1b\[[0-9;]*[a-zA-Z]";
+        var result = System.Text.RegularExpressions.Regex.Replace(text, ansiPattern, "");
+        
+        // Also remove other escape sequences
+        result = System.Text.RegularExpressions.Regex.Replace(result, @"\x1b\[[0-9;]*", "");
+        
+        return result;
     }
 
     public void Dispose()

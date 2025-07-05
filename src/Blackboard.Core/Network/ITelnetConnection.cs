@@ -9,6 +9,8 @@ public interface ITelnetConnection
     EndPoint? RemoteEndPoint { get; }
     string RemoteEndPointString { get; }
     bool IsConnected { get; }
+    bool SupportsAnsi { get; }
+    string TerminalType { get; }
     DateTime ConnectedAt { get; }
     
     Task InitializeAsync();
