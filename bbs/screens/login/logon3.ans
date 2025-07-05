@@ -1,28 +1,28 @@
 [2J[H[1;37;46m
-โ•”โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•—
-โ•‘                                                                          โ•‘
-โ•‘                        [1;31mโ–€โ–€โ–€ SYSTEM NEWS โ–€โ–€โ–€[0;1;37;46m                          โ•‘
-โ•‘                                                                          โ•‘
-โ•‘  [1;33mโ€ข Welcome to {BBS_NAME} v{BBS_VERSION}![0;1;37;46m                              โ•‘
-โ•‘  [1;33mโ€ข Current system time: {CURRENT_TIME} on {CURRENT_DATE}[0;1;37;46m             โ•‘
-โ•‘  [1;33mโ€ข You are user #{USER_CALLS} to call today[0;1;37;46m                        โ•‘
-โ•‘  [1;33mโ€ข There are currently {USERS_ONLINE} users online[0;1;37;46m                   โ•‘
-โ•‘                                                                          โ•‘
-โ•‘  [1;35mโ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€[0;1;37;46m    โ•‘
-โ•‘                                                                          โ•‘
-โ•‘  [1;32mRECENT UPDATES:[0;1;37;46m                                                   โ•‘
-โ•‘  [1;37mโ€ข Enhanced ANSI screen system now active[0;1;37;46m                        โ•‘
-โ•‘  [1;37mโ€ข Template variables available in all screens[0;1;37;46m                   โ•‘
-โ•‘  [1;37mโ€ข Improved keyboard navigation support[0;1;37;46m                          โ•‘
-โ•‘  [1;37mโ€ข New file transfer protocols available[0;1;37;46m                         โ•‘
-โ•‘                                                                          โ•‘
-โ•‘  [1;35mโ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€[0;1;37;46m    โ•‘
-โ•‘                                                                          โ•‘
-โ•‘  [1;34mSYSOP MESSAGE:[0;1;37;46m                                                   โ•‘
-โ•‘  [1;37mWelcome to Blackboard BBS! Enjoy exploring all the[0;1;37;46m           โ•‘
-โ•‘  [1;37mfeatures we have to offer. Don't forget to check out[0;1;37;46m            โ•‘
-โ•‘  [1;37mthe message boards and file areas.[0;1;37;46m                              โ•‘
-โ•‘                                                                          โ•‘
-โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
+ษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ                                                                          บ
+บ                        [1;31m฿฿฿ SYSTEM NEWS ฿฿฿[0;1;37;46m                          บ
+บ                                                                          บ
+บ  [1;33mo Welcome to {BBS_NAME} v{BBS_VERSION}![0;1;37;46m                              บ
+บ  [1;33mo Current system time: {CURRENT_TIME} on {CURRENT_DATE}[0;1;37;46m             บ
+บ  [1;33mo You are user #{USER_CALLS} to call today[0;1;37;46m                        บ
+บ  [1;33mo There are currently {USERS_ONLINE} users online[0;1;37;46m                   บ
+บ                                                                          บ
+บ  [1;35mฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ[0;1;37;46m    บ
+บ                                                                          บ
+บ  [1;32mRECENT UPDATES:[0;1;37;46m                                                   บ
+บ  [1;37mo Enhanced ANSI screen system now active[0;1;37;46m                        บ
+บ  [1;37mo Template variables available in all screens[0;1;37;46m                   บ
+บ  [1;37mo Improved keyboard navigation support[0;1;37;46m                          บ
+บ  [1;37mo New file transfer protocols available[0;1;37;46m                         บ
+บ                                                                          บ
+บ  [1;35mฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ[0;1;37;46m    บ
+บ                                                                          บ
+บ  [1;34mSYSOP MESSAGE:[0;1;37;46m                                                   บ
+บ  [1;37mWelcome to Blackboard BBS! Enjoy exploring all the[0;1;37;46m           บ
+บ  [1;37mfeatures we have to offer. Don't forget to check out[0;1;37;46m            บ
+บ  [1;37mthe message boards and file areas.[0;1;37;46m                              บ
+บ                                                                          บ
+ศออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
 [0m
 
