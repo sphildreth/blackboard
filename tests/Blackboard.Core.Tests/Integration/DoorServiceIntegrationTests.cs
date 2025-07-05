@@ -423,8 +423,8 @@ public class DoorServiceIntegrationTests : IDisposable
         // 8. Check system statistics
         var systemStats = await _doorService.GetDoorSystemStatisticsAsync();
         systemStats.Should().NotBeNull();
-        systemStats.TotalDoors.Should().BeGreaterOrEqualTo(1);
-        systemStats.TotalSessions.Should().BeGreaterOrEqualTo(5);
+        systemStats.TotalDoors.Should().BeGreaterThanOrEqualTo(1);
+        systemStats.TotalSessions.Should().BeGreaterThanOrEqualTo(5);
     }
 
     #endregion
@@ -504,11 +504,11 @@ public class DoorServiceIntegrationTests : IDisposable
 
         // 4. Retrieve all logs for the door
         var logs = await _doorService.GetDoorLogsAsync(doorId: door.Id);
-        logs.Should().HaveCountGreaterOrEqualTo(3); // At least our manual logs plus session logs
+        logs.Should().HaveCountGreaterThanOrEqualTo(3); // At least our manual logs plus session logs
 
         // 5. Filter logs by level
         var errorLogs = await _doorService.GetDoorLogsAsync(doorId: door.Id, level: "error");
-        errorLogs.Should().HaveCountGreaterOrEqualTo(1);
+        errorLogs.Should().HaveCountGreaterThanOrEqualTo(1);
 
         var errorLog = errorLogs.First(l => l.Message == "Connection lost");
         errorLog.LogLevel.Should().Be("error");

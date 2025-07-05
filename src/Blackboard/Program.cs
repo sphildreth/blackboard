@@ -27,7 +27,8 @@ class Program
             // Initialize configuration
             var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "blackboard.yml");
             _configManager = new ConfigurationManager(configPath, Log.Logger);
-
+            string rootPath = PathResolver.ResolveRootPath(_configManager.Configuration.System.RootPath);
+            
             // Initialize logging
             _logger = LoggingConfiguration.CreateLogger(_configManager.Configuration);
             Log.Logger = _logger;
@@ -36,7 +37,7 @@ class Program
             _logger.Information("Configuration loaded from {ConfigPath}", configPath);
 
             // Initialize database
-            string rootPath = PathResolver.ResolveRootPath(_configManager.Configuration.System.RootPath);
+            _logger.Information("Root path set to{RootPath}", rootPath);
             
             // Ensure the rootPath directory exists
             if (!Directory.Exists(rootPath))

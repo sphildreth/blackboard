@@ -56,6 +56,100 @@ namespace Blackboard.Core.Tests.Services
             Assert.False(exists);
         }
 
+        [Theory]
+        [InlineData("connect", "connect.ans")]
+        [InlineData("Connect", "connect.ans")]
+        [InlineData("CONNECT", "connect.ans")]
+        [InlineData("CoNnEcT", "connect.ans")]
+        public async Task ScreenExistsAsync_FindsScreenRegardlessOfCase_LowercaseFile(string screenName, string fileName)
+        {
+            // Arrange
+            var screenPath = Path.Combine(_tempScreensDir, fileName);
+            await File.WriteAllTextAsync(screenPath, "Connect screen content");
+
+            // Act
+            var exists = await _service.ScreenExistsAsync(screenName);
+
+            // Assert
+            Assert.True(exists, $"Should find screen '{screenName}' when file '{fileName}' exists");
+        }
+
+        [Theory]
+        [InlineData("connect", "CONNECT.ans")]
+        [InlineData("Connect", "CONNECT.ans")]
+        [InlineData("CONNECT", "CONNECT.ans")]
+        [InlineData("CoNnEcT", "CONNECT.ans")]
+        public async Task ScreenExistsAsync_FindsScreenRegardlessOfCase_UppercaseFile(string screenName, string fileName)
+        {
+            // Arrange
+            var screenPath = Path.Combine(_tempScreensDir, fileName);
+            await File.WriteAllTextAsync(screenPath, "Connect screen content");
+
+            // Act
+            var exists = await _service.ScreenExistsAsync(screenName);
+
+            // Assert
+            Assert.True(exists, $"Should find screen '{screenName}' when file '{fileName}' exists");
+        }
+
+        [Theory]
+        [InlineData("connect", "Connect.ans")]
+        [InlineData("Connect", "Connect.ans")]
+        [InlineData("CONNECT", "Connect.ans")]
+        [InlineData("CoNnEcT", "Connect.ans")]
+        public async Task ScreenExistsAsync_FindsScreenRegardlessOfCase_MixedCaseFile(string screenName, string fileName)
+        {
+            // Arrange
+            var screenPath = Path.Combine(_tempScreensDir, fileName);
+            await File.WriteAllTextAsync(screenPath, "Connect screen content");
+
+            // Act
+            var exists = await _service.ScreenExistsAsync(screenName);
+
+            // Assert
+            Assert.True(exists, $"Should find screen '{screenName}' when file '{fileName}' exists");
+        }
+
+        [Theory]
+        [InlineData("connect")]
+        [InlineData("Connect")]
+        [InlineData("CONNECT")]
+        [InlineData("CoNnEcT")]
+        public async Task ScreenExistsAsync_FindsScreenInSubdirectories_CaseInsensitive(string screenName)
+        {
+            // Arrange
+            var loginDir = Path.Combine(_tempScreensDir, "login");
+            Directory.CreateDirectory(loginDir);
+            var screenPath = Path.Combine(loginDir, "connect.ans");
+            await File.WriteAllTextAsync(screenPath, "Login connect screen content");
+
+            // Act
+            var exists = await _service.ScreenExistsAsync(screenName);
+
+            // Assert
+            Assert.True(exists, $"Should find screen '{screenName}' in login subdirectory");
+        }
+
+        [Fact]
+        public async Task ScreenExistsAsync_HandlesScreenNameWithAnsExtension_CaseInsensitive()
+        {
+            // Arrange
+            var screenPath = Path.Combine(_tempScreensDir, "mainmenu.ans");
+            await File.WriteAllTextAsync(screenPath, "Main menu content");
+
+            // Act
+            var existsWithExtension = await _service.ScreenExistsAsync("mainmenu.ans");
+            var existsWithoutExtension = await _service.ScreenExistsAsync("mainmenu");
+            var existsUpperCase = await _service.ScreenExistsAsync("MAINMENU");
+            var existsMixedCase = await _service.ScreenExistsAsync("MainMenu");
+
+            // Assert
+            Assert.True(existsWithExtension, "Should find screen when searching with .ans extension");
+            Assert.True(existsWithoutExtension, "Should find screen when searching without extension");
+            Assert.True(existsUpperCase, "Should find screen with uppercase name");
+            Assert.True(existsMixedCase, "Should find screen with mixed case name");
+        }
+
         [Fact]
         public async Task RenderScreenAsync_ProcessesTemplateVariables()
         {

@@ -9,7 +9,7 @@ system:
   timeZone: "UTC"
   theme: "Borland"
   terminalServerAutoStart: true
-  rootPath: "./bbs"
+  rootPath: "/opt/blackboard"
 
 network:
   telnetBindAddress: "192.168.8.130"
@@ -27,7 +27,7 @@ security:
   enableEncryption: true
 
 database:
-  connectionString: "Data Source={RootPath}/data/blackboard.db"
+  connectionString: "Data Source={RootPath}/database/blackboard.db"
   enableWalMode: true
   connectionTimeoutSeconds: 30
   enableBackup: true  

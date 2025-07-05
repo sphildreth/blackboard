@@ -10,7 +10,7 @@ public static class LoggingConfiguration
     public static ILogger CreateLogger(SystemConfiguration configuration)
     {
         var loggingConfig = configuration.Logging;
-        string rootPath = configuration.System.RootPath;
+        string rootPath = PathResolver.ResolveRootPath(configuration.System.RootPath);
         
         var loggerConfig = new LoggerConfiguration()
             .MinimumLevel.Is(ParseLogLevel(loggingConfig.LogLevel))

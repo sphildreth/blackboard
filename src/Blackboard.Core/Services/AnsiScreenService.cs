@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Blackboard.Core.Configuration;
 using Blackboard.Core.Models;
@@ -158,15 +159,35 @@ public class AnsiScreenService : IAnsiScreenService
         var subDirs = new[] { "login", "menus", "system", "doors", "" };
         foreach (var subDir in subDirs)
         {
-            var path = string.IsNullOrEmpty(subDir) 
-                ? Path.Combine(_screensDirectory, fileName)
-                : Path.Combine(_screensDirectory, subDir, fileName);
+            var directoryPath = string.IsNullOrEmpty(subDir) 
+                ? _screensDirectory
+                : Path.Combine(_screensDirectory, subDir);
                 
-            if (File.Exists(path))
-                return path;
+            if (!Directory.Exists(directoryPath))
+                continue;
+
+            // First try exact match (for performance)
+            var exactPath = Path.Combine(directoryPath, fileName);
+            if (File.Exists(exactPath))
+                return exactPath;
+
+            // Then try case-insensitive search
+            try
+            {
+                var files = Directory.GetFiles(directoryPath, "*.ans", SearchOption.TopDirectoryOnly);
+                var matchingFile = files.FirstOrDefault(f => 
+                    string.Equals(Path.GetFileName(f), fileName, StringComparison.OrdinalIgnoreCase));
+                
+                if (matchingFile != null)
+                    return matchingFile;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Error searching for screen file in directory {Directory}", directoryPath);
+            }
         }
 
-        // Default to root screens directory
+        // Default to root screens directory (for backwards compatibility)
         return Path.Combine(_screensDirectory, fileName);
     }
 
