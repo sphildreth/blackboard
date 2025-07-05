@@ -26,12 +26,12 @@ public class TelnetConnection : ITelnetConnection
     public string TerminalType => _terminalType;
     public DateTime ConnectedAt { get; }
 
-    public TelnetConnection(TcpClient tcpClient, ILogger logger, int timeoutSeconds, string encodingName = "ASCII")
+    public TelnetConnection(TcpClient tcpClient, ILogger logger, int timeoutSeconds)
     {
         _tcpClient = tcpClient ?? throw new ArgumentNullException(nameof(tcpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _timeoutSeconds = timeoutSeconds;
-        _encoding = GetEncodingByName(encodingName);
+        _encoding = GetEncodingByName("CP437"); // Default to CP437 for authentic BBS experience
         _stream = tcpClient.GetStream();
         _cancellationTokenSource = new CancellationTokenSource();
         _isConnected = true;
@@ -423,10 +423,8 @@ public class TelnetConnection : ITelnetConnection
         
         return encodingName.ToUpperInvariant() switch
         {
-            "ASCII" => Encoding.ASCII,
             "UTF-8" => Encoding.UTF8,
-            "CP437" => GetCP437Encoding(),
-            _ => Encoding.ASCII // Default fallback
+            _ => GetCP437Encoding() // Default fallback
         };
     }
 
@@ -440,8 +438,8 @@ public class TelnetConnection : ITelnetConnection
         }
         catch
         {
-            // Fallback to ASCII if CP437 is not available
-            return Encoding.ASCII;
+            // Fallback to UTF8 if CP437 is not available
+            return Encoding.UTF8;
         }
     }
 }

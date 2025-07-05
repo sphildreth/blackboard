@@ -132,7 +132,7 @@ public class TelnetServer
                     continue;
                 }
 
-                var connection = new TelnetConnection(tcpClient, _logger, config.ConnectionTimeoutSeconds, "UTF-8");
+                var connection = new TelnetConnection(tcpClient, _logger, config.ConnectionTimeoutSeconds);
                 _activeConnections.Add(connection);
 
                 connection.Disconnected += (sender, args) =>
