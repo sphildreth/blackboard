@@ -15,7 +15,7 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         _escapeSequences = InitializeEscapeSequences();
     }
 
-    public async Task<KeyInput> ReadKeyAsync(TelnetConnection connection)
+    public async Task<KeyInput> ReadKeyAsync(ITelnetConnection connection)
     {
         try
         {
@@ -44,7 +44,7 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         }
     }
 
-    public async Task<string> ReadLineAsync(TelnetConnection connection, bool echoInput = true)
+    public async Task<string> ReadLineAsync(ITelnetConnection connection, bool echoInput = true)
     {
         var input = new StringBuilder();
         
@@ -115,7 +115,7 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         return key.IsSpecial;
     }
 
-    public async Task SetEchoModeAsync(TelnetConnection connection, bool enabled)
+    public async Task SetEchoModeAsync(ITelnetConnection connection, bool enabled)
     {
         try
         {
@@ -136,7 +136,7 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         }
     }
 
-    private async Task<KeyInput> ReadEscapeSequenceAsync(TelnetConnection connection)
+    private async Task<KeyInput> ReadEscapeSequenceAsync(ITelnetConnection connection)
     {
         try
         {
@@ -178,7 +178,7 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         }
     }
 
-    private async Task<KeyInput> ReadAnsiEscapeSequenceAsync(TelnetConnection connection, StringBuilder sequence)
+    private async Task<KeyInput> ReadAnsiEscapeSequenceAsync(ITelnetConnection connection, StringBuilder sequence)
     {
         try
         {
@@ -217,7 +217,7 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         }
     }
 
-    private async Task<KeyInput> ReadFunctionKeySequenceAsync(TelnetConnection connection, StringBuilder sequence)
+    private async Task<KeyInput> ReadFunctionKeySequenceAsync(ITelnetConnection connection, StringBuilder sequence)
     {
         try
         {

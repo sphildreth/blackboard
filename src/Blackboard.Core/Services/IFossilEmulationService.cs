@@ -12,7 +12,7 @@ namespace Blackboard.Core.Services;
 public interface IFossilEmulationService
 {
     // FOSSIL Session Management
-    Task<FossilEmulationDto> CreateFossilSessionAsync(string sessionId, TelnetConnection telnetConnection);
+    Task<FossilEmulationDto> CreateFossilSessionAsync(string sessionId, ITelnetConnection telnetConnection);
     Task<bool> CloseFossilSessionAsync(string sessionId);
     Task<FossilEmulationDto?> GetFossilSessionAsync(string sessionId);
     Task<IEnumerable<FossilEmulationDto>> GetActiveFossilSessionsAsync();

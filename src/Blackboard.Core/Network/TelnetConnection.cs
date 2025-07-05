@@ -5,7 +5,7 @@ using Serilog;
 
 namespace Blackboard.Core.Network;
 
-public class TelnetConnection
+public class TelnetConnection : ITelnetConnection
 {
     private readonly TcpClient _tcpClient;
     private readonly NetworkStream _stream;

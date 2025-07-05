@@ -109,6 +109,7 @@ public class DatabaseManager : IDatabaseManager
                 Salt TEXT NOT NULL,
                 FirstName TEXT,
                 LastName TEXT,
+                RealName TEXT,
                 Location TEXT,
                 PhoneNumber TEXT,
                 SecurityLevel INTEGER NOT NULL DEFAULT 0,

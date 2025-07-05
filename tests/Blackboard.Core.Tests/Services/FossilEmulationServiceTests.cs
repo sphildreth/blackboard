@@ -12,13 +12,13 @@ public class FossilEmulationServiceTests : IDisposable
 {
     private readonly Mock<ILogger> _mockLogger;
     private readonly FossilEmulationService _fossilService;
-    private readonly Mock<TelnetConnection> _mockTelnetConnection;
+    private readonly Mock<ITelnetConnection> _mockTelnetConnection;
 
     public FossilEmulationServiceTests()
     {
         _mockLogger = new Mock<ILogger>();
         _fossilService = new FossilEmulationService(_mockLogger.Object);
-        _mockTelnetConnection = new Mock<TelnetConnection>();
+        _mockTelnetConnection = new Mock<ITelnetConnection>();
     }
 
     public void Dispose()

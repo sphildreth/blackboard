@@ -250,35 +250,36 @@ public class FileAreaService : IFileAreaService
         var fileResults = new List<BbsFileDto>();
         foreach (var fileData in files)
         {
+            var fileDict = (IDictionary<string, object>)fileData;
             var file = new BbsFileDto
             {
-                Id = fileData.Id,
-                AreaId = fileData.AreaId,
-                AreaName = fileData.AreaName,
-                FileName = fileData.FileName,
-                OriginalFileName = fileData.OriginalFileName,
-                Description = fileData.Description,
-                FilePath = fileData.FilePath,
-                Size = fileData.Size,
-                MimeType = fileData.MimeType,
-                UploadDate = fileData.UploadDate,
-                UploaderId = fileData.UploaderId,
-                UploaderHandle = fileData.UploaderHandle,
-                DownloadCount = fileData.DownloadCount,
-                LastDownloadAt = fileData.LastDownloadAt,
-                IsApproved = fileData.IsApproved,
-                ApprovedBy = fileData.ApprovedBy,
-                ApproverHandle = fileData.ApproverHandle,
-                ApprovedAt = fileData.ApprovedAt,
-                IsActive = fileData.IsActive,
-                ExpiresAt = fileData.ExpiresAt,
-                AverageRating = fileData.AverageRating,
-                RatingCount = fileData.RatingCount,
-                Checksum = fileData.Checksum ?? string.Empty
+                Id = Convert.ToInt32(fileDict["Id"]),
+                AreaId = Convert.ToInt32(fileDict["AreaId"]),
+                AreaName = fileDict["AreaName"]?.ToString() ?? string.Empty,
+                FileName = fileDict["FileName"]?.ToString() ?? string.Empty,
+                OriginalFileName = fileDict["OriginalFileName"]?.ToString() ?? string.Empty,
+                Description = fileDict["Description"]?.ToString(),
+                FilePath = fileDict["FilePath"]?.ToString() ?? string.Empty,
+                Size = Convert.ToInt64(fileDict["Size"]),
+                MimeType = fileDict["MimeType"]?.ToString(),
+                UploadDate = Convert.ToDateTime(fileDict["UploadDate"]),
+                UploaderId = fileDict["UploaderId"] != null ? Convert.ToInt32(fileDict["UploaderId"]) : null,
+                UploaderHandle = fileDict["UploaderHandle"]?.ToString(),
+                DownloadCount = Convert.ToInt32(fileDict["DownloadCount"]),
+                LastDownloadAt = fileDict["LastDownloadAt"] != null ? Convert.ToDateTime(fileDict["LastDownloadAt"]) : null,
+                IsApproved = Convert.ToBoolean(fileDict["IsApproved"]),
+                ApprovedBy = fileDict["ApprovedBy"] != null ? Convert.ToInt32(fileDict["ApprovedBy"]) : null,
+                ApproverHandle = fileDict["ApproverHandle"]?.ToString(),
+                ApprovedAt = fileDict["ApprovedAt"] != null ? Convert.ToDateTime(fileDict["ApprovedAt"]) : null,
+                IsActive = Convert.ToBoolean(fileDict["IsActive"]),
+                ExpiresAt = fileDict["ExpiresAt"] != null ? Convert.ToDateTime(fileDict["ExpiresAt"]) : null,
+                AverageRating = fileDict.ContainsKey("AverageRating") && fileDict["AverageRating"] != null ? Convert.ToDouble(fileDict["AverageRating"]) : 0.0,
+                RatingCount = fileDict.ContainsKey("RatingCount") && fileDict["RatingCount"] != null ? Convert.ToInt32(fileDict["RatingCount"]) : 0,
+                Checksum = fileDict["Checksum"]?.ToString() ?? string.Empty
             };
 
             // Process tags
-            string? tagsJson = fileData.Tags;
+            string? tagsJson = fileDict["Tags"]?.ToString();
             file.Tags = string.IsNullOrEmpty(tagsJson) ? Array.Empty<string>() : 
                        JsonSerializer.Deserialize<string[]>(tagsJson) ?? Array.Empty<string>();
             file.SizeFormatted = FormatFileSize(file.Size);

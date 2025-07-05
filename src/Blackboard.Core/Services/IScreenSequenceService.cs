@@ -7,7 +7,7 @@ public interface IScreenSequenceService
     /// <summary>
     /// Shows a sequence of screens (e.g., LOGON1, LOGON2, LOGON3)
     /// </summary>
-    Task ShowSequenceAsync(string sequenceName, TelnetConnection connection, UserContext context);
+    Task ShowSequenceAsync(string sequenceName, ITelnetConnection connection, UserContext context);
     
     /// <summary>
     /// Gets the stages for a specific sequence
@@ -17,5 +17,5 @@ public interface IScreenSequenceService
     /// <summary>
     /// Shows a single screen from a sequence if conditions are met
     /// </summary>
-    Task<bool> ShowScreenIfConditionsMetAsync(string screenName, TelnetConnection connection, UserContext context);
+    Task<bool> ShowScreenIfConditionsMetAsync(string screenName, ITelnetConnection connection, UserContext context);
 }

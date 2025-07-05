@@ -7,12 +7,12 @@ public interface IKeyboardHandlerService
     /// <summary>
     /// Reads a single key input with support for special keys
     /// </summary>
-    Task<KeyInput> ReadKeyAsync(TelnetConnection connection);
+    Task<KeyInput> ReadKeyAsync(ITelnetConnection connection);
     
     /// <summary>
     /// Reads a line with character echo control
     /// </summary>
-    Task<string> ReadLineAsync(TelnetConnection connection, bool echoInput = true);
+    Task<string> ReadLineAsync(ITelnetConnection connection, bool echoInput = true);
     
     /// <summary>
     /// Checks if the key is a special function key
@@ -22,7 +22,7 @@ public interface IKeyboardHandlerService
     /// <summary>
     /// Enables or disables local echo
     /// </summary>
-    Task SetEchoModeAsync(TelnetConnection connection, bool enabled);
+    Task SetEchoModeAsync(ITelnetConnection connection, bool enabled);
 }
 
 /// <summary>

@@ -30,6 +30,7 @@ public static class ServiceCollectionExtensions
 
         // Database
         services.AddSingleton<DatabaseManager>();
+        services.AddSingleton<IDatabaseManager>(provider => provider.GetRequiredService<DatabaseManager>());
 
         // Core Services
         services.AddTransient<IPasswordService, PasswordService>();

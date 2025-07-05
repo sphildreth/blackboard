@@ -33,7 +33,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
 
     #region FOSSIL Session Management
 
-    public async Task<FossilEmulationDto> CreateFossilSessionAsync(string sessionId, TelnetConnection telnetConnection)
+    public async Task<FossilEmulationDto> CreateFossilSessionAsync(string sessionId, ITelnetConnection telnetConnection)
     {
         lock (_lockObject)
         {
@@ -831,7 +831,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     private class FossilSession
     {
         public string SessionId { get; set; } = string.Empty;
-        public TelnetConnection? TelnetConnection { get; set; }
+        public ITelnetConnection? TelnetConnection { get; set; }
         public DateTime StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public string ComPort { get; set; } = "COM1";

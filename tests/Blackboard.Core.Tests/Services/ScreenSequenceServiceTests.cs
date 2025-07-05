@@ -25,7 +25,7 @@ namespace Blackboard.Core.Tests.Services
         public async Task ShowSequenceAsync_ShowsAllStagesInOrder()
         {
             // Arrange
-            var connectionMock = new Mock<TelnetConnection>();
+            var connectionMock = new Mock<ITelnetConnection>();
             var userContext = new UserContext();
             
             _ansiScreenServiceMock.Setup(x => x.ScreenExistsAsync(It.IsAny<string>()))
@@ -49,7 +49,7 @@ namespace Blackboard.Core.Tests.Services
         public async Task ShowSequenceAsync_SkipsNonExistentScreens()
         {
             // Arrange
-            var connectionMock = new Mock<TelnetConnection>();
+            var connectionMock = new Mock<ITelnetConnection>();
             var userContext = new UserContext();
             
             _ansiScreenServiceMock.Setup(x => x.ScreenExistsAsync("CONNECT"))
@@ -100,7 +100,7 @@ namespace Blackboard.Core.Tests.Services
         public async Task ShowScreenIfConditionsMetAsync_ReturnsTrueWhenSuccessful()
         {
             // Arrange
-            var connectionMock = new Mock<TelnetConnection>();
+            var connectionMock = new Mock<ITelnetConnection>();
             var userContext = new UserContext();
             
             _ansiScreenServiceMock.Setup(x => x.ScreenExistsAsync("TEST"))
@@ -121,7 +121,7 @@ namespace Blackboard.Core.Tests.Services
         public async Task ShowScreenIfConditionsMetAsync_ReturnsFalseWhenScreenNotFound()
         {
             // Arrange
-            var connectionMock = new Mock<TelnetConnection>();
+            var connectionMock = new Mock<ITelnetConnection>();
             var userContext = new UserContext();
             
             _ansiScreenServiceMock.Setup(x => x.ScreenExistsAsync("NONEXISTENT"))

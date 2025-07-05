@@ -22,7 +22,7 @@ public class ScreenSequenceService : IScreenSequenceService
         InitializeDefaultSequences();
     }
 
-    public async Task ShowSequenceAsync(string sequenceName, TelnetConnection connection, UserContext context)
+    public async Task ShowSequenceAsync(string sequenceName, ITelnetConnection connection, UserContext context)
     {
         try
         {
@@ -54,7 +54,7 @@ public class ScreenSequenceService : IScreenSequenceService
         return Task.FromResult(stages ?? Array.Empty<string>());
     }
 
-    public async Task<bool> ShowScreenIfConditionsMetAsync(string screenName, TelnetConnection connection, UserContext context)
+    public async Task<bool> ShowScreenIfConditionsMetAsync(string screenName, ITelnetConnection connection, UserContext context)
     {
         try
         {
