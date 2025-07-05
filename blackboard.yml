@@ -16,7 +16,6 @@ network:
   telnetPort: 2323
   maxConcurrentConnections: 10
   connectionTimeoutSeconds: 300
-  telnetEncoding: "ASCII"  # Options: ASCII, UTF-8, CP437 (for authentic BBS experience)
 
 security:
   maxLoginAttempts: 3
