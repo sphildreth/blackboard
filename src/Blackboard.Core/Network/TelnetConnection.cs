@@ -102,9 +102,13 @@ public class TelnetConnection : ITelnetConnection
 
     public async Task SendAnsiAsync(string ansiSequence)
     {
+        _logger.Information("SendAnsiAsync - SupportsAnsi: {SupportsAnsi}, IsModernTerminal: {IsModernTerminal}, SupportsCP437: {SupportsCP437}, ClientSoftware: {ClientSoftware}", 
+            _supportsAnsi, _isModernTerminal, _supportsCP437, _clientSoftware);
+
         if (!_supportsAnsi)
         {
             // Strip ANSI codes for non-ANSI terminals
+            _logger.Information("Stripping ANSI codes for non-ANSI terminal");
             var plainText = StripAnsiCodes(ansiSequence);
             await SendAsync(plainText);
             return;
@@ -114,12 +118,14 @@ public class TelnetConnection : ITelnetConnection
         if (_isModernTerminal && !_supportsCP437)
         {
             // Modern terminal - convert CP437 box drawing to Unicode
+            _logger.Information("Converting CP437 to Unicode for modern terminal");
             var adaptedContent = ConvertCP437ToUnicode(ansiSequence);
             await SendAsync(adaptedContent);
         }
         else
         {
             // Send raw CP437 content for retro BBS clients or CP437-capable terminals
+            _logger.Information("Sending raw CP437 content for retro/CP437-capable terminal");
             await SendAsync(ansiSequence);
         }
     }
@@ -350,6 +356,8 @@ public class TelnetConnection : ITelnetConnection
     {
         try
         {
+            _logger.Information("Testing ANSI support for terminal");
+            
             // Send a simple ANSI query to test support
             // This sends ESC[6n (Device Status Report) which ANSI terminals respond to
             await SendAsync("\x1b[6n");
@@ -362,39 +370,54 @@ public class TelnetConnection : ITelnetConnection
             if (completedTask == readTask)
             {
                 var response = readTask.Result;
+                _logger.Information("ANSI test response received: {Response}", response);
+                
                 // If we get a response like ESC[row;colR, terminal supports ANSI
                 if (response.Contains("[") && response.Contains("R"))
                 {
                     _supportsAnsi = true;
                     _terminalType = "ANSI";
-                    _logger.Debug("Terminal supports ANSI: {Response}", response);
+                    _logger.Information("Terminal supports ANSI: {Response}", response);
                     
                     // Additional capability detection
                     await DetectClientCapabilitiesAsync();
                 }
                 else
                 {
-                    _supportsAnsi = false;
-                    _terminalType = "TTY";
-                    _supportsCP437 = false;
-                    _isModernTerminal = false;
-                    _logger.Debug("Terminal does not support ANSI");
+                    // Modern terminals often support ANSI even if they don't respond to device queries
+                    _supportsAnsi = true; // Default to true for better compatibility
+                    _terminalType = "ANSI";
+                    _logger.Information("Terminal response received but not recognized, defaulting to ANSI support");
+                    
+                    // Additional capability detection
+                    await DetectClientCapabilitiesAsync();
                 }
             }
             else
             {
-                // No response - assume basic terminal
-                _supportsAnsi = false;
-                _terminalType = "TTY";
-                _supportsCP437 = false;
-                _isModernTerminal = false;
-                _logger.Debug("No ANSI response from terminal");
+                // No response - but modern terminals via telnet often support ANSI
+                _supportsAnsi = true; // Default to true for better compatibility
+                _terminalType = "ANSI";
+                _logger.Information("No ANSI response from terminal, but defaulting to ANSI support for modern compatibility");
+                
+                // Additional capability detection
+                await DetectClientCapabilitiesAsync();
             }
         }
         catch (Exception ex)
         {
-            _logger.Debug(ex, "Error testing ANSI support, defaulting to ANSI enabled");
+            _logger.Error(ex, "Error testing ANSI support, defaulting to ANSI enabled");
             _supportsAnsi = true; // Default to ANSI if test fails
+            _terminalType = "ANSI";
+            
+            try
+            {
+                await DetectClientCapabilitiesAsync();
+            }
+            catch (Exception ex2)
+            {
+                _logger.Error(ex2, "Error in capability detection");
+            }
         }
     }
 
@@ -402,6 +425,8 @@ public class TelnetConnection : ITelnetConnection
     {
         try
         {
+            _logger.Information("Starting client capability detection");
+            
             // Test for modern terminal detection using Primary Device Attributes
             await SendAsync("\x1b[c");
             
@@ -412,15 +437,20 @@ public class TelnetConnection : ITelnetConnection
             if (completedTask == readTask)
             {
                 var response = readTask.Result;
-                _logger.Debug("Terminal device attributes: {Response}", response);
+                _logger.Information("Terminal device attributes: {Response}", response);
                 
                 // Analyze response to determine terminal capabilities
                 AnalyzeTerminalCapabilities(response);
+            }
+            else
+            {
+                _logger.Information("No terminal device attributes response received");
             }
             
             // Test for UTF-8 support by checking locale
             // Modern terminals typically support UTF-8, older BBS clients prefer CP437
             var remoteEndPointStr = RemoteEndPointString.ToLower();
+            _logger.Information("Remote endpoint: {RemoteEndPoint}", remoteEndPointStr);
             
             // Heuristics for client detection
             if (remoteEndPointStr.Contains("syncterm") || 
@@ -430,22 +460,26 @@ public class TelnetConnection : ITelnetConnection
                 _supportsCP437 = true;
                 _isModernTerminal = false;
                 _clientSoftware = "BBS Terminal";
-                _logger.Debug("Detected BBS terminal client");
+                _logger.Information("Detected BBS terminal client");
             }
             else
             {
                 // Assume modern terminal (telnet, ssh client, etc.)
                 _isModernTerminal = true;
                 _clientSoftware = "Modern Terminal";
+                _logger.Information("Detected modern terminal");
                 
                 // Modern terminals may not properly display CP437 characters
                 // Test with a CP437 specific character
                 await TestCP437SupportAsync();
             }
+            
+            _logger.Information("Detection complete - SupportsAnsi: {SupportsAnsi}, IsModernTerminal: {IsModernTerminal}, SupportsCP437: {SupportsCP437}", 
+                _supportsAnsi, _isModernTerminal, _supportsCP437);
         }
         catch (Exception ex)
         {
-            _logger.Debug(ex, "Error detecting client capabilities");
+            _logger.Error(ex, "Error detecting client capabilities");
         }
     }
 
@@ -453,6 +487,8 @@ public class TelnetConnection : ITelnetConnection
     {
         try
         {
+            _logger.Information("Testing CP437 support for terminal type: {TerminalType}", _terminalType);
+            
             // Send a CP437 box drawing character and see if we can detect issues
             // This is a heuristic approach since direct detection is difficult
             
@@ -465,20 +501,22 @@ public class TelnetConnection : ITelnetConnection
             
             if (_terminalType == "ANSI")
             {
-                // Default to CP437 for ANSI terminals unless proven otherwise
-                _supportsCP437 = true;
+                // For modern terminals connecting via telnet, assume they need Unicode conversion
+                _supportsCP437 = false;
+                _logger.Information("ANSI terminal detected - setting CP437 support to false for Unicode conversion");
             }
             else
             {
                 _supportsCP437 = false;
+                _logger.Information("Non-ANSI terminal detected - setting CP437 support to false");
             }
             
-            _logger.Debug("CP437 support detection: {SupportsCP437}", _supportsCP437);
+            _logger.Information("CP437 support detection result: {SupportsCP437}", _supportsCP437);
         }
         catch (Exception ex)
         {
-            _logger.Debug(ex, "Error testing CP437 support");
-            _supportsCP437 = true; // Default assumption
+            _logger.Error(ex, "Error testing CP437 support");
+            _supportsCP437 = false; // Default to Unicode conversion for safety
         }
         
         return Task.CompletedTask;
@@ -581,40 +619,32 @@ public class TelnetConnection : ITelnetConnection
 
         try
         {
-            // Convert CP437 box drawing characters to modern Unicode equivalents
-            // These are the actual characters we get when CP437 is properly decoded
+            _logger.Information("Converting content with length {Length}, first 50 chars: {Preview}", 
+                cp437Content.Length, cp437Content.Substring(0, Math.Min(50, cp437Content.Length)));
+
+            // Convert CP437 box drawing characters to standard Unicode box drawing
             var result = cp437Content
-                // Single line box drawing characters from CP437
-                .Replace('│', '│')  // Vertical line (179/0xB3) - already correct
-                .Replace('─', '─')  // Horizontal line (196/0xC4) - already correct  
-                .Replace('┌', '┌')  // Top-left corner (218/0xDA) - already correct
-                .Replace('┐', '┐')  // Top-right corner (191/0xBF) - already correct
-                .Replace('└', '└')  // Bottom-left corner (192/0xC0) - already correct
-                .Replace('┘', '┘')  // Bottom-right corner (217/0xD9) - already correct
-                .Replace('├', '├')  // Left T-junction (195/0xC3) - already correct
-                .Replace('┤', '┤')  // Right T-junction (180/0xB4) - already correct
-                .Replace('┬', '┬')  // Top T-junction (194/0xC2) - already correct
-                .Replace('┴', '┴')  // Bottom T-junction (193/0xC1) - already correct
-                .Replace('┼', '┼')  // Cross (197/0xC5) - already correct
-                
-                // Double line box drawing characters from CP437
-                .Replace('║', '║')  // Double vertical (186/0xBA) - already correct
-                .Replace('═', '═')  // Double horizontal (205/0xCD) - already correct
-                .Replace('╔', '╔')  // Double top-left (201/0xC9) - already correct
-                .Replace('╗', '╗')  // Double top-right (187/0xBB) - already correct
-                .Replace('╚', '╚')  // Double bottom-left (200/0xC8) - already correct
-                .Replace('╝', '╝')  // Double bottom-right (188/0xBC) - already correct
-                .Replace('╠', '╠')  // Double left T (204/0xCC) - already correct
-                .Replace('╣', '╣')  // Double right T (185/0xB9) - already correct
-                .Replace('╦', '╦')  // Double top T (203/0xCB) - already correct
-                .Replace('╩', '╩')  // Double bottom T (202/0xCA) - already correct
-                .Replace('╬', '╬'); // Double cross (206/0xCE) - already correct
+                // Double line box drawing characters (CP437 -> Unicode)
+                .Replace('╔', '┌')  // Double top-left -> single top-left
+                .Replace('╗', '┐')  // Double top-right -> single top-right
+                .Replace('╚', '└')  // Double bottom-left -> single bottom-left
+                .Replace('╝', '┘')  // Double bottom-right -> single bottom-right
+                .Replace('║', '│')  // Double vertical -> single vertical
+                .Replace('═', '─')  // Double horizontal -> single horizontal
+                .Replace('╠', '├')  // Double left T -> single left T
+                .Replace('╣', '┤')  // Double right T -> single right T
+                .Replace('╦', '┬')  // Double top T -> single top T
+                .Replace('╩', '┴')  // Double bottom T -> single bottom T
+                .Replace('╬', '┼'); // Double cross -> single cross
+
+            _logger.Information("Conversion result first 50 chars: {Result}", 
+                result.Substring(0, Math.Min(50, result.Length)));
 
             return result;
         }
         catch (Exception ex)
         {
-            _logger.Debug(ex, "Error converting CP437 to Unicode");
+            _logger.Error(ex, "Error converting CP437 to Unicode");
             return cp437Content; // Return original on error
         }
     }
