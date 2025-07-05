@@ -115,9 +115,9 @@ public class UserService : IUserService
 
                 const string sql = @"
                     INSERT INTO Users (Handle, Email, PasswordHash, Salt, FirstName, LastName, Location, PhoneNumber, 
-                                     SecurityLevel, IsActive, CreatedAt, UpdatedAt, PasswordExpiresAt)
+                                     SecurityLevel, IsActive, TimeLeft, CreatedAt, UpdatedAt, PasswordExpiresAt)
                     VALUES (@Handle, @Email, @PasswordHash, @Salt, @FirstName, @LastName, @Location, @PhoneNumber, 
-                            @SecurityLevel, @IsActive, @CreatedAt, @UpdatedAt, @PasswordExpiresAt);
+                            @SecurityLevel, @IsActive, @TimeLeft, @CreatedAt, @UpdatedAt, @PasswordExpiresAt);
                     SELECT last_insert_rowid();";
 
                 var userId = await _database.QueryFirstAsync<int>(sql, new
@@ -132,6 +132,7 @@ public class UserService : IUserService
                     PhoneNumber = string.IsNullOrWhiteSpace(registration.PhoneNumber) ? null : registration.PhoneNumber,
                     SecurityLevel = (int)SecurityLevel.User,
                     IsActive = true,
+                    TimeLeft = 60, // Default session time
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     PasswordExpiresAt = passwordExpiry
@@ -265,7 +266,7 @@ public class UserService : IUserService
     {
         const string sql = @"
             SELECT Id, Handle, Email, PasswordHash, Salt, FirstName, LastName, Location, PhoneNumber, 
-                   SecurityLevel, IsActive, LastLoginAt, CreatedAt, UpdatedAt, PasswordExpiresAt, 
+                   SecurityLevel, IsActive, TimeLeft, LastLoginAt, CreatedAt, UpdatedAt, PasswordExpiresAt, 
                    FailedLoginAttempts, LockedUntil
             FROM Users 
             WHERE Handle = @Handle COLLATE NOCASE";
@@ -278,7 +279,7 @@ public class UserService : IUserService
     {
         const string sql = @"
             SELECT Id, Handle, Email, PasswordHash, Salt, FirstName, LastName, Location, PhoneNumber, 
-                   SecurityLevel, IsActive, LastLoginAt, CreatedAt, UpdatedAt, PasswordExpiresAt, 
+                   SecurityLevel, IsActive, TimeLeft, LastLoginAt, CreatedAt, UpdatedAt, PasswordExpiresAt, 
                    FailedLoginAttempts, LockedUntil
             FROM Users 
             WHERE Id = @UserId";
@@ -291,7 +292,7 @@ public class UserService : IUserService
     {
         const string sql = @"
             SELECT Id, Handle, Email, PasswordHash, Salt, FirstName, LastName, Location, PhoneNumber, 
-                   SecurityLevel, IsActive, LastLoginAt, CreatedAt, UpdatedAt, PasswordExpiresAt, 
+                   SecurityLevel, IsActive, TimeLeft, LastLoginAt, CreatedAt, UpdatedAt, PasswordExpiresAt, 
                    FailedLoginAttempts, LockedUntil
             FROM Users 
             WHERE Email = @Email COLLATE NOCASE";
@@ -565,7 +566,7 @@ public class UserService : IUserService
     {
         const string sql = @"
             SELECT Id, Handle, Email, FirstName, LastName, Location, PhoneNumber, SecurityLevel, 
-                   IsActive, LastLoginAt, CreatedAt, UpdatedAt, PasswordExpiresAt, FailedLoginAttempts, LockedUntil
+                   IsActive, TimeLeft, LastLoginAt, CreatedAt, UpdatedAt, PasswordExpiresAt, FailedLoginAttempts, LockedUntil
             FROM Users 
             ORDER BY Handle
             LIMIT @Take OFFSET @Skip";

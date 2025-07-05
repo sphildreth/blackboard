@@ -13,6 +13,7 @@ public class User
     public string? PhoneNumber { get; set; }
     public SecurityLevel SecurityLevel { get; set; } = SecurityLevel.User;
     public bool IsActive { get; set; } = true;
+    public int TimeLeft { get; set; } = 60; // Session time remaining in minutes
     public DateTime? LastLoginAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

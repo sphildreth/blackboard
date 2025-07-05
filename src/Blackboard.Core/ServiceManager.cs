@@ -39,10 +39,10 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IAuditService, AuditService>();
         services.AddTransient<IUserService, UserService>();
         services.AddTransient<IAuthorizationService, AuthorizationService>();
-        services.AddScoped<IMessageService, MessageService>();
+        services.AddTransient<IMessageService, MessageService>();
         
         // Register FileAreaService with configuration-based path
-        services.AddScoped<IFileAreaService>(provider =>
+        services.AddTransient<IFileAreaService>(provider =>
         {
             var databaseManager = provider.GetRequiredService<DatabaseManager>();
             var logger = provider.GetRequiredService<ILogger>();
@@ -52,12 +52,12 @@ public static class ServiceCollectionExtensions
             return new FileAreaService(databaseManager, logger, filesPath);
         });
         
-        services.AddScoped<IFileTransferService, FileTransferService>();
-        services.AddScoped<IFileCompressionService, FileCompressionService>();
+        services.AddTransient<IFileTransferService, FileTransferService>();
+        services.AddTransient<IFileCompressionService, FileCompressionService>();
 
         // Door Game System Services (Phase 6)
-        services.AddScoped<IDoorService, DoorService>();
-        services.AddScoped<IFossilEmulationService, FossilEmulationService>();
+        services.AddTransient<IDoorService, DoorService>();
+        services.AddTransient<IFossilEmulationService, FossilEmulationService>();
 
         // Background Services
         services.AddHostedService<SessionCleanupService>();

@@ -177,6 +177,8 @@ public class DoorServiceIntegrationTests : IDisposable
             CREATE TABLE IF NOT EXISTS Users (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Handle TEXT NOT NULL UNIQUE,
+                PasswordHash TEXT NOT NULL,
+                Salt TEXT NOT NULL,
                 RealName TEXT,
                 Location TEXT,
                 SecurityLevel INTEGER DEFAULT 10,
@@ -189,8 +191,8 @@ public class DoorServiceIntegrationTests : IDisposable
 
         // Insert test user
         var insertUserSql = @"
-            INSERT INTO Users (Handle, RealName, Location, SecurityLevel, TimeLeft)
-            VALUES ('TestUser', 'Test User', 'Test City', 50, 60)";
+            INSERT INTO Users (Handle, PasswordHash, Salt, RealName, Location, SecurityLevel, TimeLeft)
+            VALUES ('TestUser', 'hashedpassword123', 'testsalt123', 'Test User', 'Test City', 50, 60)";
         _databaseManager.ExecuteAsync(insertUserSql).Wait();
     }
 

@@ -460,21 +460,31 @@ public class DoorService : IDoorService
 
         // Get user information
         const string userSql = @"
-            SELECT Handle, RealName, Location, SecurityLevel, TimeLeft, LastLoginAt
+            SELECT Handle, FirstName, LastName, Location, SecurityLevel, TimeLeft, LastLoginAt
             FROM Users WHERE Id = @UserId";
         var user = await _databaseManager.QueryFirstOrDefaultAsync<dynamic>(userSql, new { UserId = userId });
 
         if (user == null)
             throw new ArgumentException("User not found", nameof(userId));
 
+        // Use reflection to safely access properties
+        var userType = user.GetType();
+
+        // Build real name from FirstName and LastName
+        var firstName = userType.GetProperty("FirstName")?.GetValue(user)?.ToString() ?? "";
+        var lastName = userType.GetProperty("LastName")?.GetValue(user)?.ToString() ?? "";
+        var realName = $"{firstName} {lastName}".Trim();
+        if (string.IsNullOrEmpty(realName))
+            realName = userType.GetProperty("Handle")?.GetValue(user)?.ToString() ?? "Unknown";
+
         // Replace template variables
         var variables = new Dictionary<string, string>
         {
-            { "{USER_HANDLE}", user.Handle ?? "Unknown" },
-            { "{USER_REAL_NAME}", user.RealName ?? "Unknown" },
-            { "{USER_LOCATION}", user.Location ?? "Unknown" },
-            { "{SECURITY_LEVEL}", user.SecurityLevel?.ToString() ?? "0" },
-            { "{TIME_LEFT}", user.TimeLeft?.ToString() ?? "60" },
+            { "{USER_HANDLE}", userType.GetProperty("Handle")?.GetValue(user)?.ToString() ?? "Unknown" },
+            { "{USER_REAL_NAME}", realName },
+            { "{USER_LOCATION}", userType.GetProperty("Location")?.GetValue(user)?.ToString() ?? "Unknown" },
+            { "{SECURITY_LEVEL}", userType.GetProperty("SecurityLevel")?.GetValue(user)?.ToString() ?? "0" },
+            { "{TIME_LEFT}", userType.GetProperty("TimeLeft")?.GetValue(user)?.ToString() ?? "60" },
             { "{SESSION_ID}", sessionId },
             { "{DOOR_ID}", doorId.ToString() },
             { "{NODE_NUMBER}", (await GetUserNodeNumberAsync(userId)).ToString() },
@@ -1121,39 +1131,45 @@ public class DoorService : IDoorService
 
     private DoorDto MapToDoorDto(dynamic data)
     {
+        if (data == null)
+            throw new ArgumentNullException(nameof(data));
+
+        // Use reflection to safely access properties
+        var dataType = data.GetType();
+        
         return new DoorDto
         {
-            Id = data.Id,
-            Name = data.Name,
-            Description = data.Description,
-            Category = data.Category,
-            ExecutablePath = data.ExecutablePath,
-            CommandLine = data.CommandLine,
-            WorkingDirectory = data.WorkingDirectory,
-            DropFileType = data.DropFileType,
-            DropFileLocation = data.DropFileLocation,
-            IsActive = data.IsActive,
-            RequiresDosBox = data.RequiresDosBox,
-            DosBoxConfigPath = data.DosBoxConfigPath,
-            SerialPort = data.SerialPort,
-            MemorySize = data.MemorySize,
-            MinimumLevel = data.MinimumLevel,
-            MaximumLevel = data.MaximumLevel,
-            TimeLimit = data.TimeLimit,
-            DailyLimit = data.DailyLimit,
-            Cost = data.Cost,
-            SchedulingEnabled = data.SchedulingEnabled,
-            AvailableHours = data.AvailableHours,
-            TimeZone = data.TimeZone,
-            MultiNodeEnabled = data.MultiNodeEnabled,
-            MaxPlayers = data.MaxPlayers,
-            InterBbsEnabled = data.InterBbsEnabled,
-            CreatedAt = data.CreatedAt,
-            UpdatedAt = data.UpdatedAt,
-            CreatedBy = data.CreatedBy,
-            ActiveSessions = data.ActiveSessions ?? 0,
-            TotalSessions = data.TotalSessions ?? 0,
-            LastPlayed = data.LastPlayed,
+            Id = Convert.ToInt32(dataType.GetProperty("Id")?.GetValue(data) ?? 0),
+            Name = dataType.GetProperty("Name")?.GetValue(data)?.ToString() ?? string.Empty,
+            Description = dataType.GetProperty("Description")?.GetValue(data)?.ToString(),
+            Category = dataType.GetProperty("Category")?.GetValue(data)?.ToString() ?? string.Empty,
+            ExecutablePath = dataType.GetProperty("ExecutablePath")?.GetValue(data)?.ToString() ?? string.Empty,
+            CommandLine = dataType.GetProperty("CommandLine")?.GetValue(data)?.ToString(),
+            WorkingDirectory = dataType.GetProperty("WorkingDirectory")?.GetValue(data)?.ToString(),
+            DropFileType = dataType.GetProperty("DropFileType")?.GetValue(data)?.ToString() ?? "DOOR.SYS",
+            DropFileLocation = dataType.GetProperty("DropFileLocation")?.GetValue(data)?.ToString(),
+            IsActive = Convert.ToBoolean(dataType.GetProperty("IsActive")?.GetValue(data) ?? false),
+            RequiresDosBox = Convert.ToBoolean(dataType.GetProperty("RequiresDosBox")?.GetValue(data) ?? false),
+            DosBoxConfigPath = dataType.GetProperty("DosBoxConfigPath")?.GetValue(data)?.ToString(),
+            SerialPort = dataType.GetProperty("SerialPort")?.GetValue(data)?.ToString() ?? "COM1",
+            MemorySize = Convert.ToInt32(dataType.GetProperty("MemorySize")?.GetValue(data) ?? 16),
+            MinimumLevel = Convert.ToInt32(dataType.GetProperty("MinimumLevel")?.GetValue(data) ?? 0),
+            MaximumLevel = Convert.ToInt32(dataType.GetProperty("MaximumLevel")?.GetValue(data) ?? 255),
+            TimeLimit = Convert.ToInt32(dataType.GetProperty("TimeLimit")?.GetValue(data) ?? 60),
+            DailyLimit = Convert.ToInt32(dataType.GetProperty("DailyLimit")?.GetValue(data) ?? 5),
+            Cost = Convert.ToInt32(dataType.GetProperty("Cost")?.GetValue(data) ?? 0),
+            SchedulingEnabled = Convert.ToBoolean(dataType.GetProperty("SchedulingEnabled")?.GetValue(data) ?? false),
+            AvailableHours = dataType.GetProperty("AvailableHours")?.GetValue(data)?.ToString(),
+            TimeZone = dataType.GetProperty("TimeZone")?.GetValue(data)?.ToString(),
+            MultiNodeEnabled = Convert.ToBoolean(dataType.GetProperty("MultiNodeEnabled")?.GetValue(data) ?? false),
+            MaxPlayers = Convert.ToInt32(dataType.GetProperty("MaxPlayers")?.GetValue(data) ?? 1),
+            InterBbsEnabled = Convert.ToBoolean(dataType.GetProperty("InterBbsEnabled")?.GetValue(data) ?? false),
+            CreatedAt = Convert.ToDateTime(dataType.GetProperty("CreatedAt")?.GetValue(data) ?? DateTime.UtcNow),
+            UpdatedAt = Convert.ToDateTime(dataType.GetProperty("UpdatedAt")?.GetValue(data) ?? DateTime.UtcNow),
+            CreatedBy = dataType.GetProperty("CreatedBy")?.GetValue(data) as int?,
+            ActiveSessions = Convert.ToInt32(dataType.GetProperty("ActiveSessions")?.GetValue(data) ?? 0),
+            TotalSessions = Convert.ToInt32(dataType.GetProperty("TotalSessions")?.GetValue(data) ?? 0),
+            LastPlayed = dataType.GetProperty("LastPlayed")?.GetValue(data) as DateTime?,
             IsAvailable = true, // Will be calculated dynamically
             UnavailableReason = null
         };
@@ -1161,24 +1177,30 @@ public class DoorService : IDoorService
 
     private DoorSessionDto MapToDoorSessionDto(dynamic data)
     {
+        // Use reflection to safely access properties
+        var dataType = data.GetType();
+        
+        var endTime = dataType.GetProperty("EndTime")?.GetValue(data) as DateTime?;
+        var startTime = Convert.ToDateTime(dataType.GetProperty("StartTime")?.GetValue(data) ?? DateTime.UtcNow);
+        
         return new DoorSessionDto
         {
-            Id = data.Id,
-            SessionId = data.SessionId,
-            DoorId = data.DoorId,
-            DoorName = data.DoorName,
-            UserId = data.UserId,
-            UserHandle = data.UserHandle,
-            NodeNumber = data.NodeNumber,
-            StartTime = data.StartTime,
-            EndTime = data.EndTime,
-            Duration = data.EndTime != null ? 
-                (int)(data.EndTime - data.StartTime).TotalSeconds : 
-                (int)(DateTime.UtcNow - data.StartTime).TotalSeconds,
-            ExitCode = data.ExitCode,
-            Status = data.Status,
-            ErrorMessage = data.ErrorMessage,
-            LastActivity = data.LastActivity
+            Id = Convert.ToInt32(dataType.GetProperty("Id")?.GetValue(data) ?? 0),
+            SessionId = dataType.GetProperty("SessionId")?.GetValue(data)?.ToString() ?? string.Empty,
+            DoorId = Convert.ToInt32(dataType.GetProperty("DoorId")?.GetValue(data) ?? 0),
+            DoorName = dataType.GetProperty("DoorName")?.GetValue(data)?.ToString() ?? string.Empty,
+            UserId = Convert.ToInt32(dataType.GetProperty("UserId")?.GetValue(data) ?? 0),
+            UserHandle = dataType.GetProperty("UserHandle")?.GetValue(data)?.ToString() ?? string.Empty,
+            NodeNumber = dataType.GetProperty("NodeNumber")?.GetValue(data) as int?,
+            StartTime = startTime,
+            EndTime = endTime,
+            Duration = endTime != null ? 
+                (int)(endTime.Value - startTime).TotalSeconds : 
+                (int)(DateTime.UtcNow - startTime).TotalSeconds,
+            ExitCode = dataType.GetProperty("ExitCode")?.GetValue(data) as int?,
+            Status = dataType.GetProperty("Status")?.GetValue(data)?.ToString() ?? string.Empty,
+            ErrorMessage = dataType.GetProperty("ErrorMessage")?.GetValue(data)?.ToString(),
+            LastActivity = Convert.ToDateTime(dataType.GetProperty("LastActivity")?.GetValue(data) ?? DateTime.UtcNow)
         };
     }
 

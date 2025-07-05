@@ -816,6 +816,8 @@ Test City
         dynamic userData = new System.Dynamic.ExpandoObject();
         userData.Handle = handle;
         userData.RealName = realName;
+        userData.FirstName = "Test";
+        userData.LastName = "User";
         userData.Location = location;
         userData.SecurityLevel = securityLevel;
         userData.TimeLeft = timeLeft;

@@ -106,6 +106,7 @@ public static class TestDataHelper
             Salt = "dummy_salt",
             SecurityLevel = SecurityLevel.User,
             IsActive = true,
+            TimeLeft = 60,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             LastLoginAt = null,
@@ -116,10 +117,10 @@ public static class TestDataHelper
 
         const string sql = @"
             INSERT INTO Users (Id, Handle, Email, FirstName, LastName, Location, PhoneNumber, 
-                             PasswordHash, Salt, SecurityLevel, IsActive, CreatedAt, UpdatedAt,
+                             PasswordHash, Salt, SecurityLevel, IsActive, TimeLeft, CreatedAt, UpdatedAt,
                              LastLoginAt, PasswordExpiresAt, FailedLoginAttempts, LockedUntil)
             VALUES (@Id, @Handle, @Email, @FirstName, @LastName, @Location, @PhoneNumber,
-                    @PasswordHash, @Salt, @SecurityLevel, @IsActive, @CreatedAt, @UpdatedAt,
+                    @PasswordHash, @Salt, @SecurityLevel, @IsActive, @TimeLeft, @CreatedAt, @UpdatedAt,
                     @LastLoginAt, @PasswordExpiresAt, @FailedLoginAttempts, @LockedUntil)";
 
         await databaseManager.ExecuteAsync(sql, user);

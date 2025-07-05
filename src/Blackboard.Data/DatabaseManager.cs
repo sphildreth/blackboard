@@ -114,6 +114,7 @@ public class DatabaseManager : IDatabaseManager
                 PhoneNumber TEXT,
                 SecurityLevel INTEGER NOT NULL DEFAULT 0,
                 IsActive INTEGER NOT NULL DEFAULT 1,
+                TimeLeft INTEGER NOT NULL DEFAULT 60,
                 LastLoginAt DATETIME,
                 CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

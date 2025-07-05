@@ -160,18 +160,44 @@ public class FileAreaService : IFileAreaService
         if (result == null) return false;
 
         // Check if area is active
-        if (!result.IsActive) return false;
+        bool isActive;
+        try
+        {
+            isActive = Convert.ToBoolean(result.IsActive);
+        }
+        catch
+        {
+            isActive = false;
+        }
+        if (!isActive) return false;
+
+        // Extract values safely
+        bool allowUploads, allowDownloads;
+        int securityLevel, requiredLevel, uploadLevel;
+        
+        try
+        {
+            allowUploads = Convert.ToBoolean(result.AllowUploads);
+            allowDownloads = Convert.ToBoolean(result.AllowDownloads);
+            securityLevel = Convert.ToInt32(result.SecurityLevel);
+            requiredLevel = Convert.ToInt32(result.RequiredLevel);
+            uploadLevel = Convert.ToInt32(result.UploadLevel);
+        }
+        catch
+        {
+            return false;
+        }
 
         // Check security level requirement
         if (isUpload)
         {
             // For uploads, check both required level and upload level, and if uploads are allowed
-            return result.AllowUploads && result.SecurityLevel >= result.RequiredLevel && result.SecurityLevel >= result.UploadLevel;
+            return allowUploads && securityLevel >= requiredLevel && securityLevel >= uploadLevel;
         }
         else
         {
             // For downloads, check required level and if downloads are allowed
-            return result.AllowDownloads && result.SecurityLevel >= result.RequiredLevel;
+            return allowDownloads && securityLevel >= requiredLevel;
         }
     }
 
@@ -227,6 +253,10 @@ public class FileAreaService : IFileAreaService
 
         var totalCount = await _databaseManager.QueryFirstAsync<int>(countSql, parameters);
 
+        // Add pagination parameters
+        parameters["PageSize"] = pageSize;
+        parameters["Offset"] = (page - 1) * pageSize;
+
         // Data query with pagination
         var dataSql = $@"
             SELECT f.*, fa.Name as AreaName, 
@@ -248,43 +278,50 @@ public class FileAreaService : IFileAreaService
 
         // Convert to DTOs and process tags
         var fileResults = new List<BbsFileDto>();
-        foreach (var fileData in files)
+        foreach (dynamic fileData in files)
         {
-            var fileDict = (IDictionary<string, object>)fileData;
-            var file = new BbsFileDto
+            try
             {
-                Id = Convert.ToInt32(fileDict["Id"]),
-                AreaId = Convert.ToInt32(fileDict["AreaId"]),
-                AreaName = fileDict["AreaName"]?.ToString() ?? string.Empty,
-                FileName = fileDict["FileName"]?.ToString() ?? string.Empty,
-                OriginalFileName = fileDict["OriginalFileName"]?.ToString() ?? string.Empty,
-                Description = fileDict["Description"]?.ToString(),
-                FilePath = fileDict["FilePath"]?.ToString() ?? string.Empty,
-                Size = Convert.ToInt64(fileDict["Size"]),
-                MimeType = fileDict["MimeType"]?.ToString(),
-                UploadDate = Convert.ToDateTime(fileDict["UploadDate"]),
-                UploaderId = fileDict["UploaderId"] != null ? Convert.ToInt32(fileDict["UploaderId"]) : null,
-                UploaderHandle = fileDict["UploaderHandle"]?.ToString(),
-                DownloadCount = Convert.ToInt32(fileDict["DownloadCount"]),
-                LastDownloadAt = fileDict["LastDownloadAt"] != null ? Convert.ToDateTime(fileDict["LastDownloadAt"]) : null,
-                IsApproved = Convert.ToBoolean(fileDict["IsApproved"]),
-                ApprovedBy = fileDict["ApprovedBy"] != null ? Convert.ToInt32(fileDict["ApprovedBy"]) : null,
-                ApproverHandle = fileDict["ApproverHandle"]?.ToString(),
-                ApprovedAt = fileDict["ApprovedAt"] != null ? Convert.ToDateTime(fileDict["ApprovedAt"]) : null,
-                IsActive = Convert.ToBoolean(fileDict["IsActive"]),
-                ExpiresAt = fileDict["ExpiresAt"] != null ? Convert.ToDateTime(fileDict["ExpiresAt"]) : null,
-                AverageRating = fileDict.ContainsKey("AverageRating") && fileDict["AverageRating"] != null ? Convert.ToDouble(fileDict["AverageRating"]) : 0.0,
-                RatingCount = fileDict.ContainsKey("RatingCount") && fileDict["RatingCount"] != null ? Convert.ToInt32(fileDict["RatingCount"]) : 0,
-                Checksum = fileDict["Checksum"]?.ToString() ?? string.Empty
-            };
+                var file = new BbsFileDto
+                {
+                    Id = GetDynamicProperty<int>(fileData, "Id"),
+                    AreaId = GetDynamicProperty<int>(fileData, "AreaId"),
+                    AreaName = GetDynamicProperty<string>(fileData, "AreaName") ?? string.Empty,
+                    FileName = GetDynamicProperty<string>(fileData, "FileName") ?? string.Empty,
+                    OriginalFileName = GetDynamicProperty<string>(fileData, "OriginalFileName") ?? string.Empty,
+                    Description = GetDynamicProperty<string>(fileData, "Description"),
+                    FilePath = GetDynamicProperty<string>(fileData, "FilePath") ?? string.Empty,
+                    Size = GetDynamicProperty<long>(fileData, "Size"),
+                    MimeType = GetDynamicProperty<string>(fileData, "MimeType"),
+                    UploadDate = GetDynamicProperty<DateTime>(fileData, "UploadDate"),
+                    UploaderId = GetDynamicProperty<int>(fileData, "UploaderId"),
+                    UploaderHandle = GetDynamicProperty<string>(fileData, "UploaderHandle"),
+                    DownloadCount = GetDynamicProperty<int>(fileData, "DownloadCount"),
+                    LastDownloadAt = GetDynamicProperty<DateTime?>(fileData, "LastDownloadAt"),
+                    IsApproved = GetDynamicProperty<bool>(fileData, "IsApproved"),
+                    ApprovedBy = GetDynamicProperty<int?>(fileData, "ApprovedBy"),
+                    ApproverHandle = GetDynamicProperty<string>(fileData, "ApproverHandle"),
+                    ApprovedAt = GetDynamicProperty<DateTime?>(fileData, "ApprovedAt"),
+                    IsActive = GetDynamicProperty<bool>(fileData, "IsActive"),
+                    ExpiresAt = GetDynamicProperty<DateTime?>(fileData, "ExpiresAt"),
+                    AverageRating = GetDynamicProperty<double>(fileData, "AverageRating"),
+                    RatingCount = GetDynamicProperty<int>(fileData, "RatingCount"),
+                    Checksum = GetDynamicProperty<string>(fileData, "Checksum") ?? string.Empty
+                };
 
-            // Process tags
-            string? tagsJson = fileDict["Tags"]?.ToString();
-            file.Tags = string.IsNullOrEmpty(tagsJson) ? Array.Empty<string>() : 
-                       JsonSerializer.Deserialize<string[]>(tagsJson) ?? Array.Empty<string>();
-            file.SizeFormatted = FormatFileSize(file.Size);
-            
-            fileResults.Add(file);
+                // Process tags
+                string? tagsJson = GetDynamicProperty<string>(fileData, "TagsJson");
+                file.Tags = string.IsNullOrEmpty(tagsJson) ? Array.Empty<string>() : 
+                           JsonSerializer.Deserialize<string[]>(tagsJson) ?? Array.Empty<string>();
+                file.SizeFormatted = FormatFileSize(file.Size);
+                
+                fileResults.Add(file);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Error processing file data for file {FileId}", fileData.Id);
+                // Skip this file and continue with others
+            }
         }
 
         return new FileSearchResultDto
@@ -729,11 +766,16 @@ public class FileAreaService : IFileAreaService
 
         // Get most active areas
         const string areasSql = @"
-            SELECT fa.*, COUNT(f.Id) as FileCount, COALESCE(SUM(f.Size), 0) as TotalSize
+            SELECT fa.Id, fa.Name, fa.Description, fa.Path, fa.RequiredLevel, fa.UploadLevel, 
+                   fa.IsActive, fa.MaxFileSize, fa.AllowUploads, fa.AllowDownloads, 
+                   fa.CreatedAt, fa.UpdatedAt,
+                   COUNT(f.Id) as FileCount, COALESCE(SUM(f.Size), 0) as TotalSize
             FROM FileAreas fa
             LEFT JOIN Files f ON fa.Id = f.AreaId AND f.IsActive = 1
             WHERE fa.IsActive = 1
-            GROUP BY fa.Id
+            GROUP BY fa.Id, fa.Name, fa.Description, fa.Path, fa.RequiredLevel, fa.UploadLevel,
+                     fa.IsActive, fa.MaxFileSize, fa.AllowUploads, fa.AllowDownloads,
+                     fa.CreatedAt, fa.UpdatedAt
             ORDER BY COUNT(f.Id) DESC
             LIMIT 5";
 
@@ -1055,6 +1097,48 @@ public class FileAreaService : IFileAreaService
         if (bytes < 1048576) return $"{bytes / 1024.0:F1} KB";
         if (bytes < 1073741824) return $"{bytes / 1048576.0:F1} MB";
         return $"{bytes / 1073741824.0:F1} GB";
+    }
+
+    private static T GetDynamicProperty<T>(dynamic obj, string propertyName)
+    {
+        try
+        {
+            // Try dynamic access first
+            var value = ((object)obj).GetType().GetProperty(propertyName)?.GetValue(obj);
+            if (value == null)
+                return default(T)!;
+            
+            if (typeof(T) == typeof(string))
+                return (T)(object)(value?.ToString() ?? string.Empty);
+            
+            if (typeof(T) == typeof(int))
+                return (T)(object)Convert.ToInt32(value);
+            
+            if (typeof(T) == typeof(long))
+                return (T)(object)Convert.ToInt64(value);
+            
+            if (typeof(T) == typeof(bool))
+                return (T)(object)Convert.ToBoolean(value);
+            
+            if (typeof(T) == typeof(DateTime))
+                return (T)(object)Convert.ToDateTime(value);
+            
+            if (typeof(T) == typeof(double))
+                return (T)(object)Convert.ToDouble(value);
+            
+            // Handle nullable types
+            if (typeof(T) == typeof(int?))
+                return (T)(object)(value != null ? Convert.ToInt32(value) : (int?)null)!;
+            
+            if (typeof(T) == typeof(DateTime?))
+                return (T)(object)(value != null ? Convert.ToDateTime(value) : (DateTime?)null)!;
+            
+            return (T)value;
+        }
+        catch
+        {
+            return default(T)!;
+        }
     }
 
     #endregion
