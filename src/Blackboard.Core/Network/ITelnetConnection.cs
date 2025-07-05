@@ -10,6 +10,9 @@ public interface ITelnetConnection
     string RemoteEndPointString { get; }
     bool IsConnected { get; }
     bool SupportsAnsi { get; }
+    bool SupportsCP437 { get; }
+    bool IsModernTerminal { get; }
+    string ClientSoftware { get; }
     string TerminalType { get; }
     DateTime ConnectedAt { get; }
     
