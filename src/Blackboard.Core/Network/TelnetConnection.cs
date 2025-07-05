@@ -82,9 +82,22 @@ public class TelnetConnection : ITelnetConnection
 
         try
         {
-            // Use configured encoding for telnet data transmission
-            // ASCII/CP437 ensures proper ANSI art alignment and positioning
-            var bytes = _encoding.GetBytes(data);
+            // Choose encoding based on terminal capabilities
+            Encoding encodingToUse;
+            if (_isModernTerminal && !_supportsCP437)
+            {
+                // Modern terminals that need Unicode conversion should use UTF-8
+                encodingToUse = Encoding.UTF8;
+                _logger.Information("Using UTF-8 encoding for modern terminal");
+            }
+            else
+            {
+                // Use CP437 for retro BBS clients or CP437-capable terminals
+                encodingToUse = _encoding;
+                _logger.Information("Using CP437 encoding for retro/CP437-capable terminal");
+            }
+            
+            var bytes = encodingToUse.GetBytes(data);
             await _stream.WriteAsync(bytes, _cancellationTokenSource.Token);
             await _stream.FlushAsync(_cancellationTokenSource.Token);
         }
@@ -501,9 +514,25 @@ public class TelnetConnection : ITelnetConnection
             
             if (_terminalType == "ANSI")
             {
-                // For modern terminals connecting via telnet, assume they need Unicode conversion
-                _supportsCP437 = false;
-                _logger.Information("ANSI terminal detected - setting CP437 support to false for Unicode conversion");
+                // Check if this is a telnet connection from a modern terminal emulator
+                // Modern terminal emulators connecting via telnet often report ANSI but can handle Unicode
+                var clientSoftware = _clientSoftware?.ToLower() ?? "";
+                var remoteEndpoint = RemoteEndPointString.ToLower();
+                
+                // If it's a telnet connection and not a dedicated BBS client, assume Unicode support
+                if (!clientSoftware.Contains("syncterm") && 
+                    !clientSoftware.Contains("netrunner") && 
+                    !clientSoftware.Contains("qodem") &&
+                    !remoteEndpoint.Contains("bbs"))
+                {
+                    _supportsCP437 = false;
+                    _logger.Information("Modern terminal via telnet detected - setting CP437 support to false for Unicode conversion");
+                }
+                else
+                {
+                    _supportsCP437 = true;
+                    _logger.Information("BBS client detected - setting CP437 support to true");
+                }
             }
             else
             {
@@ -622,25 +651,59 @@ public class TelnetConnection : ITelnetConnection
             _logger.Information("Converting content with length {Length}, first 50 chars: {Preview}", 
                 cp437Content.Length, cp437Content.Substring(0, Math.Min(50, cp437Content.Length)));
 
-            // Convert CP437 box drawing characters to standard Unicode box drawing
-            var result = cp437Content
-                // Double line box drawing characters (CP437 -> Unicode)
-                .Replace('╔', '┌')  // Double top-left -> single top-left
-                .Replace('╗', '┐')  // Double top-right -> single top-right
-                .Replace('╚', '└')  // Double bottom-left -> single bottom-left
-                .Replace('╝', '┘')  // Double bottom-right -> single bottom-right
-                .Replace('║', '│')  // Double vertical -> single vertical
-                .Replace('═', '─')  // Double horizontal -> single horizontal
-                .Replace('╠', '├')  // Double left T -> single left T
-                .Replace('╣', '┤')  // Double right T -> single right T
-                .Replace('╦', '┬')  // Double top T -> single top T
-                .Replace('╩', '┴')  // Double bottom T -> single bottom T
-                .Replace('╬', '┼'); // Double cross -> single cross
+            // The content has already been read with CP437 encoding, so we just need to 
+            // map any characters that don't display properly in modern terminals
+            var result = new StringBuilder(cp437Content.Length);
+            
+            foreach (char c in cp437Content)
+            {
+                var unicodeChar = c switch
+                {
+                    // The content is already properly decoded from CP437, so these should already be
+                    // the correct Unicode box drawing characters. Just pass them through.
+                    '╔' => '┌',  // Convert double-line to single-line for better compatibility
+                    '╗' => '┐',  
+                    '╚' => '└',  
+                    '╝' => '┘',  
+                    '║' => '│',  
+                    '═' => '─',  
+                    '╠' => '├',  
+                    '╣' => '┤',  
+                    '╦' => '┬',  
+                    '╩' => '┴',  
+                    '╬' => '┼',
+                    // Keep single-line box drawing as-is
+                    '┌' => '┌',
+                    '┐' => '┐',
+                    '└' => '└',
+                    '┘' => '┘',
+                    '│' => '│',
+                    '─' => '─',
+                    '├' => '├',
+                    '┤' => '┤',
+                    '┬' => '┬',
+                    '┴' => '┴',
+                    '┼' => '┼',
+                    // Keep other block characters as-is (they should display fine)
+                    '█' => '█',  // Full block
+                    '▀' => '▀',  // Upper half block
+                    '▄' => '▄',  // Lower half block
+                    '▌' => '▌',  // Left half block
+                    '▐' => '▐',  // Right half block
+                    '░' => '░',  // Light shade
+                    '▒' => '▒',  // Medium shade
+                    '▓' => '▓',  // Dark shade
+                    _ => c       // Keep all other characters as-is
+                };
+                
+                result.Append(unicodeChar);
+            }
 
+            var resultString = result.ToString();
             _logger.Information("Conversion result first 50 chars: {Result}", 
-                result.Substring(0, Math.Min(50, result.Length)));
+                resultString.Substring(0, Math.Min(50, resultString.Length)));
 
-            return result;
+            return resultString;
         }
         catch (Exception ex)
         {
