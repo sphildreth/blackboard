@@ -281,41 +281,25 @@ public class DoorServiceTests : IDisposable
         var userId = 1;
         var doorId = 1;
         var sessionDbId = 100;
+        var sessionId = Guid.NewGuid().ToString();
 
         // Create a test executable file
         var testExePath = Path.Combine(_testBasePath, "test.exe");
         await File.WriteAllTextAsync(testExePath, "test");
 
-        // Mock door data for GetDoorAsync calls
-        var doorData = CreateDoorData(doorId, "TestDoor", "Test Door", 
-            isActive: true, minimumLevel: 10, maximumLevel: 100, executablePath: testExePath);
+        // Mock door data - using EXACT same pattern as working access test
+        var doorData = CreateDoorData(doorId, "TestDoor", "Test", 
+            activeSessions: 0, totalSessions: 0, lastPlayed: null, 
+            minimumLevel: 10, maximumLevel: 100, executablePath: testExePath, 
+            isActive: true);
         
-        _mockDatabaseManager
-            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM Doors d") && s.Contains("WHERE d.Id = @DoorId")), It.IsAny<object>()))
-            .Returns(Task.FromResult<dynamic>(doorData));
-
-        // Mock user level for CanUserAccessDoorAsync
-        _mockDatabaseManager
-            .Setup(x => x.QueryFirstOrDefaultAsync<int?>(It.Is<string>(s => s.Contains("SecurityLevel")), It.IsAny<object>()))
-            .ReturnsAsync(50);
-
-        // Mock no deny permissions for CanUserAccessDoorAsync
-        _mockDatabaseManager
-            .Setup(x => x.QueryAsync<string>(It.Is<string>(s => s.Contains("AccessType")), It.IsAny<object>()))
-            .ReturnsAsync(new List<string>());
-
-        // Mock daily limit not reached for CanUserAccessDoorAsync
-        _mockDatabaseManager
-            .Setup(x => x.QueryFirstAsync<int>(It.Is<string>(s => s.Contains("COUNT(*)")), It.IsAny<object>()))
-            .ReturnsAsync(0);
-
-        // Mock session creation
+        // Mock session creation - make it return a specific session ID we can control
         _mockDatabaseManager
             .Setup(x => x.QueryFirstAsync<int>(It.Is<string>(s => s.Contains("INSERT INTO DoorSessions")), It.IsAny<object>()))
             .ReturnsAsync(sessionDbId);
 
-        // Mock session retrieval
-        var sessionData = CreateSessionData(sessionDbId, "test-session", "starting", doorId, userId);
+        // Mock session retrieval to return our controlled session data
+        var sessionData = CreateSessionData(sessionDbId, sessionId, "starting", doorId, userId);
         dynamic extendedSessionData = sessionData;
         extendedSessionData.DoorName = "TestDoor";
         extendedSessionData.UserHandle = "TestUser";
@@ -323,12 +307,45 @@ public class DoorServiceTests : IDisposable
         extendedSessionData.EndTime = (DateTime?)null;
         extendedSessionData.LastActivity = DateTime.UtcNow;
         
+        // Setup broad mock first to catch the session query, then override for specific door query
         _mockDatabaseManager
-            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM DoorSessions ds")), It.IsAny<object>()))
+            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
             .Returns(Task.FromResult<dynamic>(extendedSessionData));
+            
+        // Override with specific door query mock (this will match first and take precedence for door queries)
+        _mockDatabaseManager
+            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM Doors d") && s.Contains("WHERE d.Id = @DoorId")), It.IsAny<object>()))
+            .Returns(Task.FromResult<dynamic>(doorData));
+
+        // Mock user level (50 is between min 10 and max 100) - EXACT same as working test
+        _mockDatabaseManager
+            .Setup(x => x.QueryFirstOrDefaultAsync<int?>(It.Is<string>(s => s.Contains("SecurityLevel")), It.IsAny<object>()))
+            .ReturnsAsync(50);
+
+        // Mock no deny permissions - EXACT same as working test
+        _mockDatabaseManager
+            .Setup(x => x.QueryAsync<string>(It.Is<string>(s => s.Contains("AccessType")), It.IsAny<object>()))
+            .ReturnsAsync(new List<string>());
+
+        // Mock daily limit not reached - EXACT same as working test
+        _mockDatabaseManager
+            .Setup(x => x.QueryFirstAsync<int>(It.Is<string>(s => s.Contains("COUNT(*)")), It.IsAny<object>()))
+            .ReturnsAsync(0);
 
         // Act
-        var result = await _doorService.StartDoorSessionAsync(doorId, userId);
+        DoorSessionDto result;
+        try 
+        {
+            result = await _doorService.StartDoorSessionAsync(doorId, userId);
+
+            // Debug - let's see what we actually get
+            Console.WriteLine($"Result: DoorId={result.DoorId}, UserId={result.UserId}, SessionId={result.SessionId}, Status={result.Status}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception thrown: {ex.GetType().Name}: {ex.Message}");
+            throw; // Re-throw to fail the test properly
+        }
 
         // Assert
         result.Should().NotBeNull();
