@@ -385,7 +385,7 @@ public class DoorServiceIntegrationTests : IDisposable
 
         // 2. Add second test user
         await _databaseManager.ExecuteAsync(
-            "INSERT INTO Users (Handle, RealName, SecurityLevel) VALUES ('User2', 'Second User', 50)");
+            "INSERT INTO Users (Handle, RealName, SecurityLevel, PasswordHash, Salt, TimeLeft) VALUES ('User2', 'Second User', 50, 'hash', 'salt', 60)");
 
         // 3. Simulate multiple sessions for user 1
         for (int i = 0; i < 3; i++)

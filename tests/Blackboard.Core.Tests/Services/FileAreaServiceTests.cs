@@ -168,11 +168,27 @@ namespace Blackboard.Core.Tests.Services
                 TotalFileSize = 1024000L
             };
             
+            var mockFileAreas = new List<FileAreaDto>
+            {
+                new FileAreaDto { Id = 1, Name = "Area1", FileCount = 10, TotalSize = 1000 },
+                new FileAreaDto { Id = 2, Name = "Area2", FileCount = 5, TotalSize = 500 }
+            };
+            
+            // Mock the basic statistics query
             _mockDatabaseManager.Setup(x => x.QueryFirstAsync<FileAreaStatisticsDto>(It.IsAny<string>(), It.IsAny<object>()))
                                .ReturnsAsync(stats);
-            _mockDatabaseManager.Setup(x => x.QueryAsync<FileAreaDto>(It.IsAny<string>(), It.IsAny<object>()))
-                               .ReturnsAsync(new List<FileAreaDto>());
-            _mockDatabaseManager.Setup(x => x.QueryAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
+            
+            // Mock the file areas query (for MostActiveAreas)
+            _mockDatabaseManager.Setup(x => x.QueryAsync<FileAreaDto>(It.Is<string>(sql => sql.Contains("SELECT fa.Id, fa.Name")), It.IsAny<object>()))
+                               .ReturnsAsync(mockFileAreas);
+            
+            // Mock the SearchFilesAsync calls (for GetMostDownloadedFilesAsync and GetRecentUploadsAsync)
+            // Count query for SearchFilesAsync
+            _mockDatabaseManager.Setup(x => x.QueryFirstAsync<int>(It.Is<string>(sql => sql.Contains("SELECT COUNT(*)")), It.IsAny<object>()))
+                               .ReturnsAsync(0);
+            
+            // Data query for SearchFilesAsync  
+            _mockDatabaseManager.Setup(x => x.QueryAsync<dynamic>(It.Is<string>(sql => sql.Contains("SELECT f.*, fa.Name as AreaName")), It.IsAny<object>()))
                                .ReturnsAsync(new List<dynamic>());
 
             // Act
@@ -214,18 +230,16 @@ namespace Blackboard.Core.Tests.Services
         public async Task CanUserAccessAreaAsync_ReturnsTrue_WhenSufficientLevel()
         {
             // Arrange
-            var accessResult = new 
-            { 
-                RequiredLevel = 50, 
-                UploadLevel = 75, 
-                IsActive = true, 
-                AllowUploads = true, 
-                AllowDownloads = true, 
-                SecurityLevel = 100 
-            };
+            dynamic accessResult = new System.Dynamic.ExpandoObject();
+            accessResult.RequiredLevel = 50;
+            accessResult.UploadLevel = 75;
+            accessResult.IsActive = true;
+            accessResult.AllowUploads = true;
+            accessResult.AllowDownloads = true;
+            accessResult.SecurityLevel = 100;
             
             _mockDatabaseManager.Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.IsAny<string>(), It.IsAny<object>()))
-                               .ReturnsAsync(accessResult);
+                               .Returns(Task.FromResult<dynamic>(accessResult));
 
             // Act
             var result = await _service.CanUserAccessAreaAsync(1, 1, isUpload: false);

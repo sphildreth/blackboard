@@ -118,7 +118,13 @@ public class DoorService : IDoorService
 
         _logger.Information("Created door {DoorName} with ID {DoorId}", createDto.Name, doorId);
         
-        return (await GetDoorAsync(doorId))!;
+        var createdDoor = await GetDoorAsync(doorId);
+        if (createdDoor == null)
+        {
+            throw new InvalidOperationException($"Failed to retrieve created door with ID {doorId}");
+        }
+        
+        return createdDoor;
     }
 
     public async Task<DoorDto> UpdateDoorAsync(DoorDto door)
@@ -320,7 +326,13 @@ public class DoorService : IDoorService
 
         await LogDoorEventAsync(doorId, "info", $"Door session started for user {userId}", sessionId: sessionDbId);
 
-        return (await GetActiveSessionAsync(sessionId))!;
+        var createdSession = await GetActiveSessionAsync(sessionId);
+        if (createdSession == null)
+        {
+            throw new InvalidOperationException($"Failed to retrieve created door session with ID {sessionId}");
+        }
+        
+        return createdSession;
     }
 
     public async Task<bool> EndDoorSessionAsync(string sessionId, int? exitCode = null, string? errorMessage = null)
@@ -359,23 +371,41 @@ public class DoorService : IDoorService
     public async Task<DoorSessionDto?> GetActiveSessionAsync(string sessionId)
     {
         const string sql = @"
-            SELECT ds.*, d.Name as DoorName, u.Handle as UserHandle
+            SELECT ds.*, 
+                   COALESCE(d.Name, 'Unknown Door') as DoorName, 
+                   COALESCE(u.Handle, 'Unknown User') as UserHandle
             FROM DoorSessions ds
-            INNER JOIN Doors d ON ds.DoorId = d.Id
-            INNER JOIN Users u ON ds.UserId = u.Id
+            LEFT JOIN Doors d ON ds.DoorId = d.Id
+            LEFT JOIN Users u ON ds.UserId = u.Id
             WHERE ds.SessionId = @SessionId";
 
+        _logger.Debug("Querying for session with ID: {SessionId}", sessionId);
         var session = await _databaseManager.QueryFirstOrDefaultAsync<dynamic>(sql, new { SessionId = sessionId });
-        return session != null ? MapToDoorSessionDto(session) : null;
+        
+        if (session == null)
+        {
+            _logger.Warning("No session found for ID: {SessionId}", sessionId);
+            
+            // Debug: Check if session exists without JOINs
+            const string debugSql = "SELECT COUNT(*) FROM DoorSessions WHERE SessionId = @SessionId";
+            var sessionCount = await _databaseManager.QueryFirstAsync<int>(debugSql, new { SessionId = sessionId });
+            _logger.Debug("Session count in DoorSessions table: {Count}", sessionCount);
+            
+            return null;
+        }
+        
+        return MapToDoorSessionDto(session);
     }
 
     public async Task<IEnumerable<DoorSessionDto>> GetActiveSessionsAsync()
     {
         const string sql = @"
-            SELECT ds.*, d.Name as DoorName, u.Handle as UserHandle
+            SELECT ds.*, 
+                   COALESCE(d.Name, 'Unknown Door') as DoorName, 
+                   COALESCE(u.Handle, 'Unknown User') as UserHandle
             FROM DoorSessions ds
-            INNER JOIN Doors d ON ds.DoorId = d.Id
-            INNER JOIN Users u ON ds.UserId = u.Id
+            LEFT JOIN Doors d ON ds.DoorId = d.Id
+            LEFT JOIN Users u ON ds.UserId = u.Id
             WHERE ds.Status IN ('starting', 'running')
             ORDER BY ds.StartTime DESC";
 
@@ -386,10 +416,12 @@ public class DoorService : IDoorService
     public async Task<IEnumerable<DoorSessionDto>> GetActiveSessionsForDoorAsync(int doorId)
     {
         const string sql = @"
-            SELECT ds.*, d.Name as DoorName, u.Handle as UserHandle
+            SELECT ds.*, 
+                   COALESCE(d.Name, 'Unknown Door') as DoorName, 
+                   COALESCE(u.Handle, 'Unknown User') as UserHandle
             FROM DoorSessions ds
-            INNER JOIN Doors d ON ds.DoorId = d.Id
-            INNER JOIN Users u ON ds.UserId = u.Id
+            LEFT JOIN Doors d ON ds.DoorId = d.Id
+            LEFT JOIN Users u ON ds.UserId = u.Id
             WHERE ds.DoorId = @DoorId AND ds.Status IN ('starting', 'running')
             ORDER BY ds.StartTime DESC";
 
@@ -400,10 +432,12 @@ public class DoorService : IDoorService
     public async Task<IEnumerable<DoorSessionDto>> GetUserSessionHistoryAsync(int userId, int count = 50)
     {
         const string sql = @"
-            SELECT ds.*, d.Name as DoorName, u.Handle as UserHandle
+            SELECT ds.*, 
+                   COALESCE(d.Name, 'Unknown Door') as DoorName, 
+                   COALESCE(u.Handle, 'Unknown User') as UserHandle
             FROM DoorSessions ds
-            INNER JOIN Doors d ON ds.DoorId = d.Id
-            INNER JOIN Users u ON ds.UserId = u.Id
+            LEFT JOIN Doors d ON ds.DoorId = d.Id
+            LEFT JOIN Users u ON ds.UserId = u.Id
             WHERE ds.UserId = @UserId
             ORDER BY ds.StartTime DESC
             LIMIT @Count";
@@ -739,10 +773,12 @@ public class DoorService : IDoorService
     public async Task<IEnumerable<DoorSessionDto>> GetRecentSessionsAsync(int count = 20)
     {
         const string sql = @"
-            SELECT ds.*, d.Name as DoorName, u.Handle as UserHandle
+            SELECT ds.*, 
+                   COALESCE(d.Name, 'Unknown Door') as DoorName, 
+                   COALESCE(u.Handle, 'Unknown User') as UserHandle
             FROM DoorSessions ds
-            INNER JOIN Doors d ON ds.DoorId = d.Id
-            INNER JOIN Users u ON ds.UserId = u.Id
+            LEFT JOIN Doors d ON ds.DoorId = d.Id
+            LEFT JOIN Users u ON ds.UserId = u.Id
             ORDER BY ds.StartTime DESC
             LIMIT @Count";
 
@@ -1134,49 +1170,118 @@ public class DoorService : IDoorService
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
-        // Use reflection to safely access properties
-        var dataType = data.GetType();
-        
-        return new DoorDto
+        // Handle ExpandoObject (used in tests) and regular objects differently
+        if (data is IDictionary<string, object> expandoData)
         {
-            Id = Convert.ToInt32(dataType.GetProperty("Id")?.GetValue(data) ?? 0),
-            Name = dataType.GetProperty("Name")?.GetValue(data)?.ToString() ?? string.Empty,
-            Description = dataType.GetProperty("Description")?.GetValue(data)?.ToString(),
-            Category = dataType.GetProperty("Category")?.GetValue(data)?.ToString() ?? string.Empty,
-            ExecutablePath = dataType.GetProperty("ExecutablePath")?.GetValue(data)?.ToString() ?? string.Empty,
-            CommandLine = dataType.GetProperty("CommandLine")?.GetValue(data)?.ToString(),
-            WorkingDirectory = dataType.GetProperty("WorkingDirectory")?.GetValue(data)?.ToString(),
-            DropFileType = dataType.GetProperty("DropFileType")?.GetValue(data)?.ToString() ?? "DOOR.SYS",
-            DropFileLocation = dataType.GetProperty("DropFileLocation")?.GetValue(data)?.ToString(),
-            IsActive = Convert.ToBoolean(dataType.GetProperty("IsActive")?.GetValue(data) ?? false),
-            RequiresDosBox = Convert.ToBoolean(dataType.GetProperty("RequiresDosBox")?.GetValue(data) ?? false),
-            DosBoxConfigPath = dataType.GetProperty("DosBoxConfigPath")?.GetValue(data)?.ToString(),
-            SerialPort = dataType.GetProperty("SerialPort")?.GetValue(data)?.ToString() ?? "COM1",
-            MemorySize = Convert.ToInt32(dataType.GetProperty("MemorySize")?.GetValue(data) ?? 16),
-            MinimumLevel = Convert.ToInt32(dataType.GetProperty("MinimumLevel")?.GetValue(data) ?? 0),
-            MaximumLevel = Convert.ToInt32(dataType.GetProperty("MaximumLevel")?.GetValue(data) ?? 255),
-            TimeLimit = Convert.ToInt32(dataType.GetProperty("TimeLimit")?.GetValue(data) ?? 60),
-            DailyLimit = Convert.ToInt32(dataType.GetProperty("DailyLimit")?.GetValue(data) ?? 5),
-            Cost = Convert.ToInt32(dataType.GetProperty("Cost")?.GetValue(data) ?? 0),
-            SchedulingEnabled = Convert.ToBoolean(dataType.GetProperty("SchedulingEnabled")?.GetValue(data) ?? false),
-            AvailableHours = dataType.GetProperty("AvailableHours")?.GetValue(data)?.ToString(),
-            TimeZone = dataType.GetProperty("TimeZone")?.GetValue(data)?.ToString(),
-            MultiNodeEnabled = Convert.ToBoolean(dataType.GetProperty("MultiNodeEnabled")?.GetValue(data) ?? false),
-            MaxPlayers = Convert.ToInt32(dataType.GetProperty("MaxPlayers")?.GetValue(data) ?? 1),
-            InterBbsEnabled = Convert.ToBoolean(dataType.GetProperty("InterBbsEnabled")?.GetValue(data) ?? false),
-            CreatedAt = Convert.ToDateTime(dataType.GetProperty("CreatedAt")?.GetValue(data) ?? DateTime.UtcNow),
-            UpdatedAt = Convert.ToDateTime(dataType.GetProperty("UpdatedAt")?.GetValue(data) ?? DateTime.UtcNow),
-            CreatedBy = dataType.GetProperty("CreatedBy")?.GetValue(data) as int?,
-            ActiveSessions = Convert.ToInt32(dataType.GetProperty("ActiveSessions")?.GetValue(data) ?? 0),
-            TotalSessions = Convert.ToInt32(dataType.GetProperty("TotalSessions")?.GetValue(data) ?? 0),
-            LastPlayed = dataType.GetProperty("LastPlayed")?.GetValue(data) as DateTime?,
-            IsAvailable = true, // Will be calculated dynamically
-            UnavailableReason = null
-        };
+            // ExpandoObject case - used in unit tests
+            return new DoorDto
+            {
+                Id = GetExpandoProperty<int>(expandoData, "Id"),
+                Name = GetExpandoProperty<string>(expandoData, "Name") ?? string.Empty,
+                Description = GetExpandoProperty<string>(expandoData, "Description"),
+                Category = GetExpandoProperty<string>(expandoData, "Category") ?? string.Empty,
+                ExecutablePath = GetExpandoProperty<string>(expandoData, "ExecutablePath") ?? string.Empty,
+                CommandLine = GetExpandoProperty<string>(expandoData, "CommandLine"),
+                WorkingDirectory = GetExpandoProperty<string>(expandoData, "WorkingDirectory"),
+                DropFileType = GetExpandoProperty<string>(expandoData, "DropFileType") ?? "DOOR.SYS",
+                DropFileLocation = GetExpandoProperty<string>(expandoData, "DropFileLocation"),
+                IsActive = GetExpandoProperty<bool>(expandoData, "IsActive"),
+                RequiresDosBox = GetExpandoProperty<bool>(expandoData, "RequiresDosBox"),
+                DosBoxConfigPath = GetExpandoProperty<string>(expandoData, "DosBoxConfigPath"),
+                SerialPort = GetExpandoProperty<string>(expandoData, "SerialPort") ?? "COM1",
+                MemorySize = GetExpandoProperty<int>(expandoData, "MemorySize"),
+                MinimumLevel = GetExpandoProperty<int>(expandoData, "MinimumLevel"),
+                MaximumLevel = GetExpandoProperty<int>(expandoData, "MaximumLevel"),
+                TimeLimit = GetExpandoProperty<int>(expandoData, "TimeLimit"),
+                DailyLimit = GetExpandoProperty<int>(expandoData, "DailyLimit"),
+                Cost = GetExpandoProperty<int>(expandoData, "Cost"),
+                SchedulingEnabled = GetExpandoProperty<bool>(expandoData, "SchedulingEnabled"),
+                AvailableHours = GetExpandoProperty<string>(expandoData, "AvailableHours"),
+                TimeZone = GetExpandoProperty<string>(expandoData, "TimeZone"),
+                MultiNodeEnabled = GetExpandoProperty<bool>(expandoData, "MultiNodeEnabled"),
+                MaxPlayers = GetExpandoProperty<int>(expandoData, "MaxPlayers"),
+                InterBbsEnabled = GetExpandoProperty<bool>(expandoData, "InterBbsEnabled"),
+                CreatedAt = GetExpandoProperty<DateTime>(expandoData, "CreatedAt"),
+                UpdatedAt = GetExpandoProperty<DateTime>(expandoData, "UpdatedAt"),
+                CreatedBy = GetExpandoProperty<int?>(expandoData, "CreatedBy"),
+                ActiveSessions = GetExpandoProperty<int>(expandoData, "ActiveSessions"),
+                TotalSessions = GetExpandoProperty<int>(expandoData, "TotalSessions"),
+                LastPlayed = GetExpandoProperty<DateTime?>(expandoData, "LastPlayed"),
+                IsAvailable = true, // Will be calculated dynamically
+                UnavailableReason = null
+            };
+        }
+        else
+        {
+            // Regular object case - use reflection
+            var dataType = data.GetType();
+            
+            return new DoorDto
+            {
+                Id = Convert.ToInt32(dataType.GetProperty("Id")?.GetValue(data) ?? 0),
+                Name = dataType.GetProperty("Name")?.GetValue(data)?.ToString() ?? string.Empty,
+                Description = dataType.GetProperty("Description")?.GetValue(data)?.ToString(),
+                Category = dataType.GetProperty("Category")?.GetValue(data)?.ToString() ?? string.Empty,
+                ExecutablePath = dataType.GetProperty("ExecutablePath")?.GetValue(data)?.ToString() ?? string.Empty,
+                CommandLine = dataType.GetProperty("CommandLine")?.GetValue(data)?.ToString(),
+                WorkingDirectory = dataType.GetProperty("WorkingDirectory")?.GetValue(data)?.ToString(),
+                DropFileType = dataType.GetProperty("DropFileType")?.GetValue(data)?.ToString() ?? "DOOR.SYS",
+                DropFileLocation = dataType.GetProperty("DropFileLocation")?.GetValue(data)?.ToString(),
+                IsActive = Convert.ToBoolean(dataType.GetProperty("IsActive")?.GetValue(data) ?? false),
+                RequiresDosBox = Convert.ToBoolean(dataType.GetProperty("RequiresDosBox")?.GetValue(data) ?? false),
+                DosBoxConfigPath = dataType.GetProperty("DosBoxConfigPath")?.GetValue(data)?.ToString(),
+                SerialPort = dataType.GetProperty("SerialPort")?.GetValue(data)?.ToString() ?? "COM1",
+                MemorySize = Convert.ToInt32(dataType.GetProperty("MemorySize")?.GetValue(data) ?? 16),
+                MinimumLevel = Convert.ToInt32(dataType.GetProperty("MinimumLevel")?.GetValue(data) ?? 0),
+                MaximumLevel = Convert.ToInt32(dataType.GetProperty("MaximumLevel")?.GetValue(data) ?? 255),
+                TimeLimit = Convert.ToInt32(dataType.GetProperty("TimeLimit")?.GetValue(data) ?? 60),
+                DailyLimit = Convert.ToInt32(dataType.GetProperty("DailyLimit")?.GetValue(data) ?? 5),
+                Cost = Convert.ToInt32(dataType.GetProperty("Cost")?.GetValue(data) ?? 0),
+                SchedulingEnabled = Convert.ToBoolean(dataType.GetProperty("SchedulingEnabled")?.GetValue(data) ?? false),
+                AvailableHours = dataType.GetProperty("AvailableHours")?.GetValue(data)?.ToString(),
+                TimeZone = dataType.GetProperty("TimeZone")?.GetValue(data)?.ToString(),
+                MultiNodeEnabled = Convert.ToBoolean(dataType.GetProperty("MultiNodeEnabled")?.GetValue(data) ?? false),
+                MaxPlayers = Convert.ToInt32(dataType.GetProperty("MaxPlayers")?.GetValue(data) ?? 1),
+                InterBbsEnabled = Convert.ToBoolean(dataType.GetProperty("InterBbsEnabled")?.GetValue(data) ?? false),
+                CreatedAt = Convert.ToDateTime(dataType.GetProperty("CreatedAt")?.GetValue(data) ?? DateTime.UtcNow),
+                UpdatedAt = Convert.ToDateTime(dataType.GetProperty("UpdatedAt")?.GetValue(data) ?? DateTime.UtcNow),
+                CreatedBy = dataType.GetProperty("CreatedBy")?.GetValue(data) as int?,
+                ActiveSessions = Convert.ToInt32(dataType.GetProperty("ActiveSessions")?.GetValue(data) ?? 0),
+                TotalSessions = Convert.ToInt32(dataType.GetProperty("TotalSessions")?.GetValue(data) ?? 0),
+                LastPlayed = dataType.GetProperty("LastPlayed")?.GetValue(data) as DateTime?,
+                IsAvailable = true, // Will be calculated dynamically
+                UnavailableReason = null
+            };
+        }
+    }
+
+    private T GetExpandoProperty<T>(IDictionary<string, object> data, string propertyName)
+    {
+        if (data.TryGetValue(propertyName, out var value) && value != null)
+        {
+            if (value is T directValue)
+                return directValue;
+            
+            try
+            {
+                return (T)Convert.ChangeType(value, typeof(T));
+            }
+            catch
+            {
+                return default(T)!;
+            }
+        }
+        return default(T)!;
     }
 
     private DoorSessionDto MapToDoorSessionDto(dynamic data)
     {
+        if (data == null)
+        {
+            _logger.Warning("MapToDoorSessionDto received null data");
+            throw new ArgumentNullException(nameof(data), "Door session data cannot be null");
+        }
+            
         // Use reflection to safely access properties
         var dataType = data.GetType();
         

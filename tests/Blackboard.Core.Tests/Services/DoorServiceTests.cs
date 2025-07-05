@@ -291,8 +291,8 @@ public class DoorServiceTests : IDisposable
             isActive: true, minimumLevel: 10, maximumLevel: 100, executablePath: testExePath);
         
         _mockDatabaseManager
-            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("SELECT d.*") && s.Contains("FROM Doors d") && s.Contains("WHERE d.Id = @DoorId")), It.IsAny<object>()))
-            .Returns(Task.FromResult<dynamic?>(doorData));
+            .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM Doors d") && s.Contains("WHERE d.Id = @DoorId")), It.IsAny<object>()))
+            .Returns(Task.FromResult<dynamic>(doorData));
 
         // Mock user level for CanUserAccessDoorAsync
         _mockDatabaseManager
@@ -325,7 +325,7 @@ public class DoorServiceTests : IDisposable
         
         _mockDatabaseManager
             .Setup(x => x.QueryFirstOrDefaultAsync<dynamic>(It.Is<string>(s => s.Contains("FROM DoorSessions ds")), It.IsAny<object>()))
-            .Returns(Task.FromResult<dynamic?>(extendedSessionData));
+            .Returns(Task.FromResult<dynamic>(extendedSessionData));
 
         // Act
         var result = await _doorService.StartDoorSessionAsync(doorId, userId);
