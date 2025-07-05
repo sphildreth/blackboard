@@ -581,31 +581,34 @@ public class TelnetConnection : ITelnetConnection
 
         try
         {
-            // Simple box drawing character mapping for common CP437 characters
+            // Convert CP437 box drawing characters to modern Unicode equivalents
+            // These are the actual characters we get when CP437 is properly decoded
             var result = cp437Content
-                .Replace("╔", "┌")  // Double to single line corners
-                .Replace("╗", "┐")
-                .Replace("╚", "└") 
-                .Replace("╝", "┘")
-                .Replace("║", "│")  // Double to single line
-                .Replace("═", "─")
-                .Replace("╠", "├")  // Double to single T-junctions
-                .Replace("╣", "┤")
-                .Replace("╦", "┬")
-                .Replace("╩", "┴")
-                .Replace("╬", "┼")
-                // Single line box drawing (these should already be Unicode-compatible)
-                .Replace("┌", "┌")  // Keep Unicode box drawing as-is
-                .Replace("┐", "┐")
-                .Replace("└", "└")
-                .Replace("┘", "┘")
-                .Replace("│", "│")
-                .Replace("─", "─")
-                .Replace("├", "├")
-                .Replace("┤", "┤")
-                .Replace("┬", "┬")
-                .Replace("┴", "┴")
-                .Replace("┼", "┼");
+                // Single line box drawing characters from CP437
+                .Replace('│', '│')  // Vertical line (179/0xB3) - already correct
+                .Replace('─', '─')  // Horizontal line (196/0xC4) - already correct  
+                .Replace('┌', '┌')  // Top-left corner (218/0xDA) - already correct
+                .Replace('┐', '┐')  // Top-right corner (191/0xBF) - already correct
+                .Replace('└', '└')  // Bottom-left corner (192/0xC0) - already correct
+                .Replace('┘', '┘')  // Bottom-right corner (217/0xD9) - already correct
+                .Replace('├', '├')  // Left T-junction (195/0xC3) - already correct
+                .Replace('┤', '┤')  // Right T-junction (180/0xB4) - already correct
+                .Replace('┬', '┬')  // Top T-junction (194/0xC2) - already correct
+                .Replace('┴', '┴')  // Bottom T-junction (193/0xC1) - already correct
+                .Replace('┼', '┼')  // Cross (197/0xC5) - already correct
+                
+                // Double line box drawing characters from CP437
+                .Replace('║', '║')  // Double vertical (186/0xBA) - already correct
+                .Replace('═', '═')  // Double horizontal (205/0xCD) - already correct
+                .Replace('╔', '╔')  // Double top-left (201/0xC9) - already correct
+                .Replace('╗', '╗')  // Double top-right (187/0xBB) - already correct
+                .Replace('╚', '╚')  // Double bottom-left (200/0xC8) - already correct
+                .Replace('╝', '╝')  // Double bottom-right (188/0xBC) - already correct
+                .Replace('╠', '╠')  // Double left T (204/0xCC) - already correct
+                .Replace('╣', '╣')  // Double right T (185/0xB9) - already correct
+                .Replace('╦', '╦')  // Double top T (203/0xCB) - already correct
+                .Replace('╩', '╩')  // Double bottom T (202/0xCA) - already correct
+                .Replace('╬', '╬'); // Double cross (206/0xCE) - already correct
 
             return result;
         }

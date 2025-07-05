@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Blackboard.Core.Configuration;
 using Blackboard.Core.Models;
@@ -70,7 +71,8 @@ public class AnsiScreenService : IAnsiScreenService
         var defaultPath = Path.Combine(_screensDirectory, "defaults", "default.ans");
         if (File.Exists(defaultPath))
         {
-            return await File.ReadAllTextAsync(defaultPath);
+            var cp437Encoding = Encoding.GetEncoding(437);
+            return await File.ReadAllTextAsync(defaultPath, cp437Encoding);
         }
 
         // Return a simple text fallback
@@ -143,7 +145,9 @@ public class AnsiScreenService : IAnsiScreenService
             return string.Empty;
         }
 
-        var content = await File.ReadAllTextAsync(filePath);
+        // Read ANSI files using CP437 encoding to preserve box drawing characters
+        var cp437Encoding = Encoding.GetEncoding(437);
+        var content = await File.ReadAllTextAsync(filePath, cp437Encoding);
         _screenCache.TryAdd(screenName, content);
         return content;
     }
