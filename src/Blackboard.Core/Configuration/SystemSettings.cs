@@ -13,18 +13,8 @@ public class SystemSettings
     /// <summary>
     /// The root folder for the application's main storage point (menus, doors, etc.)
     /// </summary>
-    public string RootPath { get; set; } = "data";
-
-    /// <summary>
-    /// The folder under RootPath where menu/screen files are stored
-    /// </summary>
-    public string ScreensPath { get; set; } = "screens";
-    
-    /// <summary>
-    /// The folder under RootPath where file area files are stored
-    /// </summary>
-    public string FilesPath { get; set; } = "files";
-    
+    public string RootPath { get; set; } = "~/bbs";
+   
     /// <summary>
     /// Whether the terminal server should start automatically at application startup
     /// </summary>

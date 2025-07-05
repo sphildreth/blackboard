@@ -54,7 +54,7 @@ class Program
                 ConnectionTimeoutSeconds = _configManager.Configuration.Database.ConnectionTimeoutSeconds,
                 EnableBackup = _configManager.Configuration.Database.EnableBackup,
                 BackupPath = PathResolver.ResolvePath(
-                    _configManager.Configuration.Database.BackupPath,
+                    ConfigurationManager.DatabaseBackupPath,
                     rootPath)
             };
             
@@ -73,7 +73,7 @@ class Program
             // Set up backup directory if backup is enabled
             if (_configManager.Configuration.Database.EnableBackup)
             {
-                string backupDir = PathResolver.ResolvePath(_configManager.Configuration.Database.BackupPath, rootPath);
+                string backupDir = PathResolver.ResolvePath(ConfigurationManager.DatabaseBackupPath, rootPath);
                 if (!Directory.Exists(backupDir))
                 {
                     _logger.Information("Creating backup directory at {BackupDir}", backupDir);
@@ -90,11 +90,11 @@ class Program
             var messageService = new MessageService(_databaseManager);
             
             // Resolve files path using configuration
-            var filesPath = PathResolver.ResolvePath(_configManager.Configuration.System.FilesPath, rootPath);
+            var filesPath = PathResolver.ResolvePath(ConfigurationManager.FilesPath, rootPath);
             var fileAreaService = new FileAreaService(_databaseManager, _logger, filesPath);
 
             // Initialize Phase 7 ANSI screen services - resolve screens path using configuration
-            var screensPath = PathResolver.ResolvePath(_configManager.Configuration.System.ScreensPath, rootPath);
+            var screensPath = PathResolver.ResolvePath(ConfigurationManager.ScreensPath, rootPath);
             _logger.Information("Resolved screens path: {ScreensPath}", screensPath);
             var templateProcessor = new TemplateVariableProcessor(_logger, _databaseManager);
             var ansiScreenService = new AnsiScreenService(screensPath, _logger, templateProcessor);

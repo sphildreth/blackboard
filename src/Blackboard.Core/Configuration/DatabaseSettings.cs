@@ -8,5 +8,4 @@ public class DatabaseSettings : IDatabaseConfiguration
     public bool EnableWalMode { get; set; } = true;
     public int ConnectionTimeoutSeconds { get; set; } = 30;
     public bool EnableBackup { get; set; } = true;
-    public string BackupPath { get; set; } = "backups";
 }

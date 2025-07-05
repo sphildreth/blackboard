@@ -5,6 +5,12 @@ namespace Blackboard.Core.Configuration;
 
 public class ConfigurationManager
 {
+    public const string FilesPath = "files";
+    public const string DatabasePath = "database";
+    public const string ScreensPath = "screens";
+    public const string DatabaseBackupPath = "database/backup";
+    public const string LogsPath = "logs";
+    
     private readonly string _configFilePath;
     private readonly ILogger _logger;
     private SystemConfiguration? _configuration;

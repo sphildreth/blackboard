@@ -148,7 +148,7 @@ public class ScreenSequenceService : IScreenSequenceService
             var conditionsFileName = $"{screenFileName}.conditions.yml";
             
             var configPath = Path.Combine(Path.GetDirectoryName(_ansiScreenService.GetType().Assembly.Location) ?? "", 
-                "screens", screenDir, conditionsFileName);
+                ConfigurationManager.ScreensPath, screenDir, conditionsFileName);
             
             if (File.Exists(configPath))
             {

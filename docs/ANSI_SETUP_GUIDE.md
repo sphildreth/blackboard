@@ -61,7 +61,7 @@ options:
     action: "messages"
   f:
     label: "File Areas" 
-    action: "files"
+    action: ConfigurationManager.FilesPath
   l:
     label: "Logoff"
     action: "logoff"

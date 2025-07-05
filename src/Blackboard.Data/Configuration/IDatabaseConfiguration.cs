@@ -6,7 +6,6 @@ public interface IDatabaseConfiguration
     bool EnableWalMode { get; }
     int ConnectionTimeoutSeconds { get; }
     bool EnableBackup { get; }
-    string BackupPath { get; }
 }
 
 public class DatabaseConfiguration : IDatabaseConfiguration

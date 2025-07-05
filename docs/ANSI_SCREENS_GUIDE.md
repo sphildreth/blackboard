@@ -61,7 +61,7 @@ ansi_screens:
       pause_after: false
       menu_mappings:
         'M': "messages"
-        'F': "files"
+        'F': ConfigurationManager.FilesPath
         'D': "doors"
         'U': "user_profile"
         'L': "logoff"

@@ -10,8 +10,6 @@ system:
   theme: "Borland"
   terminalServerAutoStart: true
   rootPath: "./bbs"
-  screensPath: "screens"
-  filesPath: "files"
 
 network:
   telnetBindAddress: "192.168.8.130"
@@ -32,8 +30,7 @@ database:
   connectionString: "Data Source={RootPath}/data/blackboard.db"
   enableWalMode: true
   connectionTimeoutSeconds: 30
-  enableBackup: true
-  backupPath: "backups"
+  enableBackup: true  
 
 logging:
   logLevel: "Information"

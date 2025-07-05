@@ -33,7 +33,7 @@ public static class LoggingConfiguration
         if (loggingConfig.EnableFileLogging)
         {
             // Resolve and ensure log directory exists
-            string resolvedLogPath = PathResolver.ResolvePath(loggingConfig.LogPath, rootPath);
+            string resolvedLogPath = PathResolver.ResolvePath(ConfigurationManager.LogsPath, rootPath);
             if (!Directory.Exists(resolvedLogPath))
             {
                 Directory.CreateDirectory(resolvedLogPath);

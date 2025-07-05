@@ -47,7 +47,7 @@ public static class ServiceCollectionExtensions
             var logger = provider.GetRequiredService<ILogger>();
             var configuration = provider.GetRequiredService<SystemConfiguration>();
             
-            var filesPath = PathResolver.ResolvePath(configuration.System.FilesPath, configuration.System.RootPath);
+            var filesPath = PathResolver.ResolvePath(ConfigurationManager.FilesPath, configuration.System.RootPath);
             return new FileAreaService(databaseManager, logger, filesPath);
         });
         

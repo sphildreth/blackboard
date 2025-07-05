@@ -10,6 +10,7 @@ using Blackboard.Core.Services;
 using Blackboard.Data;
 using Blackboard.Data.Configuration;
 using Blackboard.UI.Admin;
+using ConfigurationManager = Terminal.Gui.Configuration.ConfigurationManager;
 
 namespace Blackboard.UI;
 
@@ -51,7 +52,7 @@ public class MainApplication
         
         // Resolve files path using configuration - same as in Program.cs and ServiceManager
         var rootPath = configManager.Configuration.System.RootPath;
-        var filesPath = PathResolver.ResolvePath(configManager.Configuration.System.FilesPath, rootPath);
+        var filesPath = PathResolver.ResolvePath(Blackboard.Core.Configuration.ConfigurationManager.FilesPath, rootPath);
         _fileAreaService = new FileAreaService(databaseManager, logger, filesPath);
     }
 
@@ -304,7 +305,7 @@ public class MainApplication
             {
                 string rootPath = _configManager.Configuration.System.RootPath;
                 string backupDir = Blackboard.Core.Configuration.PathResolver.ResolvePath(
-                    _configManager.Configuration.Database.BackupPath, 
+                    Blackboard.Core.Configuration.ConfigurationManager.DatabaseBackupPath, 
                     rootPath);
                 
                 string backupFileName = $"blackboard-{DateTime.Now:yyyyMMdd-HHmmss}.db";
