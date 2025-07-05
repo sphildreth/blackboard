@@ -356,7 +356,6 @@ public class BbsSessionHandler
                         case "logoff":
                         case "logout":
                             await _sessionService.EndSessionAsync(session.Id);
-                            await connection.SendLineAsync("Thank you for calling Blackboard BBS!");
                             await connection.SendLineAsync("Session ended. Goodbye!");
                             return;
                         case "userprofile":

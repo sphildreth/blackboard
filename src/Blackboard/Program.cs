@@ -8,6 +8,7 @@ using Blackboard.Data;
 using Blackboard.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using CommandLine;
 
 namespace Blackboard;
 
@@ -21,23 +22,58 @@ class Program
     static async Task Main(string[] args)
     {
         var startTime = DateTime.UtcNow;
+        CommandLineOptions? options = null;
         
+        // Parse command line arguments
+        var result = Parser.Default.ParseArguments<CommandLineOptions>(args);
+        await result.WithParsedAsync(async opts =>
+        {
+            options = opts;
+            
+            // Handle version request
+            if (opts.Version)
+            {
+                var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                Console.WriteLine($"Blackboard v{version}");
+                Environment.Exit(0);
+                return;
+            }
+            
+            await RunApplication(opts, startTime);
+        });
+
+        // If parsing failed, exit
+        if (options == null)
+        {
+            Environment.Exit(1);
+        }
+    }
+
+    private static async Task RunApplication(CommandLineOptions options, DateTime startTime)
+    {
         try
         {
             // Initialize configuration
-            var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "blackboard.yml");
+            var configPath = options.ConfigPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "blackboard.yml");
             _configManager = new ConfigurationManager(configPath, Log.Logger);
             string rootPath = PathResolver.ResolveRootPath(_configManager.Configuration.System.RootPath);
             
-            // Initialize logging
-            _logger = LoggingConfiguration.CreateLogger(_configManager.Configuration);
+            // Initialize logging (with verbose option support)
+            var config = _configManager.Configuration;
+            if (options.Verbose)
+            {
+                // Override logging level to verbose if specified
+                config.Logging.LogLevel = "Verbose";
+            }
+            
+            _logger = LoggingConfiguration.CreateLogger(config);
             Log.Logger = _logger;
 
             _logger.Information("Starting Blackboard...");
             _logger.Information("Configuration loaded from {ConfigPath}", configPath);
 
             // Initialize database
-            _logger.Information("Root path set to{RootPath}", rootPath);
+            _logger.Information("Root path set to {RootPath}", rootPath);
             
             // Ensure the rootPath directory exists
             if (!Directory.Exists(rootPath))
@@ -103,27 +139,42 @@ class Program
             var keyboardHandler = new KeyboardHandlerService(_logger);
 
             // Initialize telnet server with screensDir and new services
+            var telnetConfig = _configManager.Configuration.Network;
+            if (options.Port.HasValue)
+            {
+                telnetConfig.TelnetPort = options.Port.Value;
+                _logger.Information("Overriding telnet port to {Port}", options.Port.Value);
+            }
+            
             _telnetServer = new TelnetServer(_logger, _configManager, userService, sessionService, messageService, fileAreaService, ansiScreenService, screenSequenceService, keyboardHandler, screensPath);
 
             // Check if we should auto-start the terminal server
-            if (_configManager.Configuration.System.TerminalServerAutoStart)
+            bool shouldStartServer = !options.NoServer && _configManager.Configuration.System.TerminalServerAutoStart;
+            
+            if (shouldStartServer)
             {
-                _logger.Information("Terminal server auto-start is enabled, starting telnet server...");
+                _logger.Information("Starting telnet server...");
                 await _telnetServer.StartAsync();
             }
             else
             {
-                _logger.Information("Terminal server auto-start is disabled by configuration.");
+                _logger.Information("Telnet server auto-start is disabled.");
             }
-
-            // Create and run the main application UI
-            var mainApp = new MainApplication(_logger, _configManager, _databaseManager, _telnetServer);
 
             var initTime = DateTime.UtcNow - startTime;
             _logger.Information("Blackboard initialized in {InitTime:F2} seconds", initTime.TotalSeconds);
 
-            // Run the Terminal.Gui application
-            mainApp.Run();
+            // Decide whether to run in console mode or GUI mode
+            if (options.ConsoleMode)
+            {
+                _logger.Information("Running in console mode");
+                await RunConsoleMode();
+            }
+            else
+            {
+                _logger.Information("Running in GUI mode");
+                await RunGuiMode();
+            }
         }
         catch (Exception ex)
         {
@@ -142,6 +193,38 @@ class Program
         {
             await Shutdown().ConfigureAwait(false);
         }
+    }
+
+    private static async Task RunConsoleMode()
+    {
+        _logger?.Information("Console mode started. Press Ctrl+C to exit.");
+        
+        // Set up cancellation token for graceful shutdown
+        var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (sender, e) =>
+        {
+            e.Cancel = true;
+            cts.Cancel();
+        };
+
+        try
+        {
+            // Keep the application running until cancelled
+            await Task.Delay(Timeout.Infinite, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.Information("Console mode shutdown requested");
+        }
+    }
+
+    private static async Task RunGuiMode()
+    {
+        // Create and run the main application UI
+        var mainApp = new MainApplication(_logger!, _configManager!, _databaseManager!, _telnetServer!);
+        
+        // Run the Terminal.Gui application
+        await Task.Run(() => mainApp.Run());
     }
 
     private static async Task Shutdown()

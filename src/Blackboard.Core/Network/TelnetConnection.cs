@@ -12,6 +12,7 @@ public class TelnetConnection : ITelnetConnection
     private readonly ILogger _logger;
     private readonly int _timeoutSeconds;
     private readonly CancellationTokenSource _cancellationTokenSource;
+    private readonly Encoding _encoding;
     private bool _isConnected;
     private bool _supportsAnsi = true; // Default to supporting ANSI
     private string _terminalType = "ANSI";
@@ -25,11 +26,12 @@ public class TelnetConnection : ITelnetConnection
     public string TerminalType => _terminalType;
     public DateTime ConnectedAt { get; }
 
-    public TelnetConnection(TcpClient tcpClient, ILogger logger, int timeoutSeconds)
+    public TelnetConnection(TcpClient tcpClient, ILogger logger, int timeoutSeconds, string encodingName = "ASCII")
     {
         _tcpClient = tcpClient ?? throw new ArgumentNullException(nameof(tcpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _timeoutSeconds = timeoutSeconds;
+        _encoding = GetEncodingByName(encodingName);
         _stream = tcpClient.GetStream();
         _cancellationTokenSource = new CancellationTokenSource();
         _isConnected = true;
@@ -72,7 +74,9 @@ public class TelnetConnection : ITelnetConnection
 
         try
         {
-            var bytes = Encoding.UTF8.GetBytes(data);
+            // Use configured encoding for telnet data transmission
+            // ASCII/CP437 ensures proper ANSI art alignment and positioning
+            var bytes = _encoding.GetBytes(data);
             await _stream.WriteAsync(bytes, _cancellationTokenSource.Token);
             await _stream.FlushAsync(_cancellationTokenSource.Token);
         }
@@ -120,7 +124,7 @@ public class TelnetConnection : ITelnetConnection
                     break;
                 }
 
-                var data = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                var data = _encoding.GetString(buffer, 0, bytesRead);
                 
                 foreach (char c in data)
                 {
@@ -410,6 +414,35 @@ public class TelnetConnection : ITelnetConnection
         _cancellationTokenSource?.Dispose();
         _stream?.Dispose();
         _tcpClient?.Dispose();
+    }
+
+    private static Encoding GetEncodingByName(string encodingName)
+    {
+        // Register code pages encoding provider for CP437 support
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        
+        return encodingName.ToUpperInvariant() switch
+        {
+            "ASCII" => Encoding.ASCII,
+            "UTF-8" => Encoding.UTF8,
+            "CP437" => GetCP437Encoding(),
+            _ => Encoding.ASCII // Default fallback
+        };
+    }
+
+    private static Encoding GetCP437Encoding()
+    {
+        try
+        {
+            // Try to get CP437 (original IBM PC encoding) for authentic BBS experience
+            // This requires System.Text.Encoding.CodePages package
+            return Encoding.GetEncoding(437);
+        }
+        catch
+        {
+            // Fallback to ASCII if CP437 is not available
+            return Encoding.ASCII;
+        }
     }
 }
 
