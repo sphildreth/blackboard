@@ -1354,12 +1354,12 @@ public class BbsSessionHandler
             }
             
             // Fallback to default
-            return Task.FromResult("Blackboard BBS");
+            return Task.FromResult("Blackboard");
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Error getting BBS name from configuration");
-            return Task.FromResult("Blackboard BBS"); // Default fallback
+            return Task.FromResult("Blackboard"); // Default fallback
         }
     }
 }

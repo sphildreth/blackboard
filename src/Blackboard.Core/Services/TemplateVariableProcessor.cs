@@ -57,7 +57,7 @@ public class TemplateVariableProcessor : ITemplateVariableProcessor
         // System variables
         RegisterVariableProvider("SYSTEM", context => new Dictionary<string, object>
         {
-            ["BBS_NAME"] = context.SystemInfo.GetValueOrDefault("BBS_NAME", "Blackboard BBS"),
+            ["BBS_NAME"] = context.SystemInfo.GetValueOrDefault("BBS_NAME", "Blackboard"),
             ["BBS_VERSION"] = context.SystemInfo.GetValueOrDefault("BBS_VERSION", "1.0"),
             ["NODE_NUMBER"] = context.SystemInfo.GetValueOrDefault("NODE_NUMBER", 1),
             ["TOTAL_USERS"] = context.SystemInfo.GetValueOrDefault("TOTAL_USERS", 0),

@@ -33,7 +33,7 @@ database:
   enableBackup: true  
 
 logging:
-  logLevel: "Information"
+  logLevel: "Debug"
   logPath: "logs"
   maxLogFileSizeMB: 100
   retainedLogFiles: 7

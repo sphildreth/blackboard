@@ -1,6 +1,6 @@
 # Blackboard Assets
 
-This directory contains logo and branding assets for the Blackboard BBS project.
+This directory contains logo and branding assets for the Blackboard project.
 
 ## Logo Files
 
