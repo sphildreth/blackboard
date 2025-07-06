@@ -191,7 +191,7 @@ internal class Program
 
         // Set up cancellation token for graceful shutdown
         var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (sender, e) =>
+        Console.CancelKeyPress += (_, e) =>
         {
             e.Cancel = true;
             cts.Cancel();
@@ -249,7 +249,7 @@ internal class Program
         }
         finally
         {
-            Log.CloseAndFlush();
+            await Log.CloseAndFlushAsync();
         }
     }
 }
