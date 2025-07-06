@@ -9,11 +9,9 @@ public class FileRating
     public int FileId { get; set; }
     public int UserId { get; set; }
 
-    [Range(1, 5)]
-    public int Rating { get; set; }
+    [Range(1, 5)] public int Rating { get; set; }
 
-    [StringLength(1000)]
-    public string? Comment { get; set; }
+    [StringLength(1000)] public string? Comment { get; set; }
 
     public DateTime RatingDate { get; set; } = DateTime.UtcNow;
 

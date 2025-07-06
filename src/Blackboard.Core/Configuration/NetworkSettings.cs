@@ -6,5 +6,4 @@ public class NetworkSettings
     public int TelnetPort { get; set; } = 23;
     public int MaxConcurrentConnections { get; set; } = 10;
     public int ConnectionTimeoutSeconds { get; set; } = 300;
-
 }

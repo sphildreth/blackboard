@@ -1,58 +1,56 @@
 using System.Collections.ObjectModel;
-using Terminal.Gui.App;
-using Terminal.Gui.Views;
-using Terminal.Gui.ViewBase;
-using Terminal.Gui.Configuration;
-using Serilog;
 using Blackboard.Core.Configuration;
 using Blackboard.Core.Network;
 using Blackboard.Core.Services;
 using Blackboard.Data;
-using Blackboard.Data.Configuration;
 using Blackboard.UI.Admin;
+using Serilog;
+using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
+using Terminal.Gui.Views;
 using ConfigurationManager = Terminal.Gui.Configuration.ConfigurationManager;
 
 namespace Blackboard.UI;
 
 public class MainApplication
 {
-    private readonly ILogger _logger;
-    private readonly Blackboard.Core.Configuration.ConfigurationManager _configManager;
+    private readonly IAuditService _auditService;
+    private readonly Core.Configuration.ConfigurationManager _configManager;
     private readonly DatabaseManager _databaseManager;
+    private readonly IFileAreaService _fileAreaService;
+    private readonly ILogger _logger;
+    private readonly ISystemStatisticsService _statisticsService;
     private readonly TelnetServer _telnetServer;
-    
+
     // Core services for admin functionality
     private readonly IUserService _userService;
-    private readonly IAuditService _auditService;
-    private readonly ISystemStatisticsService _statisticsService;
-    private readonly IFileAreaService _fileAreaService;
-    
-    private Window? _mainWindow;
-    private Label? _statusLabel;
-    private Label? _uptimeLabel;
     private Label? _connectionsLabel;
     private ListView? _connectionsListView;
-    private Button? _startStopButton;
 
-    public MainApplication(ILogger logger, Blackboard.Core.Configuration.ConfigurationManager configManager, 
+    private Window? _mainWindow;
+    private Button? _startStopButton;
+    private Label? _statusLabel;
+    private Label? _uptimeLabel;
+
+    public MainApplication(ILogger logger, Core.Configuration.ConfigurationManager configManager,
         DatabaseManager databaseManager, TelnetServer telnetServer)
     {
         _logger = logger;
         _configManager = configManager;
         _databaseManager = databaseManager;
         _telnetServer = telnetServer;
-        
+
         // Initialize core services for admin functionality
         var passwordService = new PasswordService();
         var sessionService = new SessionService(databaseManager, logger);
         _auditService = new AuditService(databaseManager, logger);
-        _userService = new UserService(databaseManager, passwordService, sessionService, _auditService, 
+        _userService = new UserService(databaseManager, passwordService, sessionService, _auditService,
             configManager.Configuration.Security, logger);
         _statisticsService = new SystemStatisticsService(databaseManager, configManager.Configuration.Database, logger);
-        
+
         // Resolve files path using configuration - same as in Program.cs and ServiceManager
         var rootPath = configManager.Configuration.System.RootPath;
-        var filesPath = PathResolver.ResolvePath(Blackboard.Core.Configuration.ConfigurationManager.FilesPath, rootPath);
+        var filesPath = PathResolver.ResolvePath(Core.Configuration.ConfigurationManager.FilesPath, rootPath);
         _fileAreaService = new FileAreaService(databaseManager, logger, filesPath);
     }
 
@@ -61,17 +59,21 @@ public class MainApplication
         try
         {
             Application.Init();
-            
+
             // Enable Terminal.Gui's ConfigurationManager for theme support
-            Terminal.Gui.Configuration.ConfigurationManager.Enable(Terminal.Gui.Configuration.ConfigLocations.All);
-            
+            ConfigurationManager.Enable(ConfigLocations.All);
+
             // Apply the configured theme
             ThemeManager.ApplyTheme(_configManager.Configuration.System.Theme);
-            
+
             CreateMainWindow();
             SetupEventHandlers();
             UpdateDisplay();
-            Application.AddTimeout(TimeSpan.FromSeconds(1), () => { UpdateDisplay(); return true; });
+            Application.AddTimeout(TimeSpan.FromSeconds(1), () =>
+            {
+                UpdateDisplay();
+                return true;
+            });
             Application.Run(_mainWindow!);
         }
         catch (Exception ex)
@@ -81,24 +83,28 @@ public class MainApplication
             Console.WriteLine("The Terminal.Gui interface requires a proper terminal environment.");
             Console.WriteLine("Press Ctrl+C to exit.");
             var cancellationToken = new CancellationTokenSource();
-            Console.CancelKeyPress += (sender, e) => {
+            Console.CancelKeyPress += (sender, e) =>
+            {
                 e.Cancel = true;
                 cancellationToken.Cancel();
             };
-            while (!cancellationToken.Token.IsCancellationRequested)
-            {
-                Thread.Sleep(1000);
-            }
+            while (!cancellationToken.Token.IsCancellationRequested) Thread.Sleep(1000);
         }
         finally
         {
-            try { Application.Shutdown(); } catch { }
+            try
+            {
+                Application.Shutdown();
+            }
+            catch
+            {
+            }
         }
     }
 
     private void CreateMainWindow()
     {
-        _mainWindow = new Window()
+        _mainWindow = new Window
         {
             X = 0,
             Y = 0,
@@ -113,8 +119,8 @@ public class MainApplication
         statusPanel.Y = 1;
         statusPanel.Width = 38;
         statusPanel.Height = 8;
-        
-        statusPanel.Add(ThemeManager.CreateBorlandLabel("System Status", "", 0, 0));
+
+        statusPanel.Add(ThemeManager.CreateBorlandLabel("System Status"));
         _statusLabel = ThemeManager.CreateBorlandLabel("Status: Offline", "🔴 ", 1, 1);
         _uptimeLabel = ThemeManager.CreateBorlandLabel("Uptime: 00:00:00", "⏰ ", 1, 2);
         var boardNameLabel = ThemeManager.CreateBorlandLabel($"Board: {_configManager.Configuration.System.BoardName}", "🏢 ", 1, 3);
@@ -128,18 +134,18 @@ public class MainApplication
         controlPanel.Y = 1;
         controlPanel.Width = 38;
         controlPanel.Height = 8;
-        
-        controlPanel.Add(ThemeManager.CreateBorlandLabel("Server Control", "", 0, 0));
+
+        controlPanel.Add(ThemeManager.CreateBorlandLabel("Server Control"));
         _startStopButton = ThemeManager.CreateBorlandButton("Start Server", "▶️ ");
         _startStopButton.X = 1;
         _startStopButton.Y = 1;
         _startStopButton.MouseClick += (sender, args) => OnStartStopClicked();
-        
+
         var configButton = ThemeManager.CreateBorlandButton("Configuration", ThemeManager.ComponentStyles.ConfigPrefix);
         configButton.X = 1;
         configButton.Y = 3;
         configButton.MouseClick += (sender, args) => OnConfigurationClicked();
-        
+
         var exitButton = ThemeManager.CreateBorlandButton("Exit", "🚪 ");
         exitButton.X = 1;
         exitButton.Y = 5;
@@ -152,8 +158,8 @@ public class MainApplication
         connectionsPanel.Y = 10;
         connectionsPanel.Width = 78;
         connectionsPanel.Height = 13;
-        
-        connectionsPanel.Add(ThemeManager.CreateBorlandLabel("Active Connections", "", 0, 0));
+
+        connectionsPanel.Add(ThemeManager.CreateBorlandLabel("Active Connections"));
         _connectionsLabel = ThemeManager.CreateBorlandLabel("Connections: 0", "📊 ", 1, 1);
         _connectionsListView = new ListView { X = 1, Y = 2, Width = 60, Height = 10 };
         connectionsPanel.Add(_connectionsLabel, _connectionsListView);
@@ -161,16 +167,16 @@ public class MainApplication
         _mainWindow.Add(statusPanel, controlPanel, connectionsPanel);
 
         // Classic Borland-style menu bar with modern emojis
-        var menu = new MenuBarv2(new MenuBarItemv2[]
+        var menu = new MenuBarv2(new[]
         {
-            new MenuBarItemv2("System", new MenuItemv2[]
+            new MenuBarItemv2("System", new[]
             {
                 new MenuItemv2("▶️ Start Server", "", () => OnStartStopClicked()),
                 new MenuItemv2("⚙️ Configuration", "", () => OnConfigurationClicked()),
                 null!,
                 new MenuItemv2("🚪 Exit", "", () => OnExitClicked())
             }),
-            new MenuBarItemv2("Admin", new MenuItemv2[]
+            new MenuBarItemv2("Admin", new[]
             {
                 new MenuItemv2("🛡️ Dashboard", "", () => OnAdminDashboardClicked()),
                 new MenuItemv2("👥 User Management", "", () => OnUserManagementClicked()),
@@ -178,13 +184,13 @@ public class MainApplication
                 null!,
                 new MenuItemv2("💾 Backup Database", "", () => OnDatabaseBackupClicked())
             }),
-            new MenuBarItemv2("Tools", new MenuItemv2[]
+            new MenuBarItemv2("Tools", new[]
             {
                 new MenuItemv2("🎨 Message Composer", "", () => OnAnsiEditorClicked()),
                 new MenuItemv2("📝 Log Viewer", "", () => ShowNotImplemented("Log Viewer")),
                 new MenuItemv2("📊 Statistics", "", () => ShowNotImplemented("Statistics"))
             }),
-            new MenuBarItemv2("Help", new MenuItemv2[]
+            new MenuBarItemv2("Help", new[]
             {
                 new MenuItemv2("ℹ️ About Blackboard", "", () => OnAboutClicked()),
                 new MenuItemv2("📖 Documentation", "", () => ShowNotImplemented("Documentation"))
@@ -203,7 +209,7 @@ public class MainApplication
                 MessageBox.Query("Message Saved", "Message composed and saved!\n\nPreview:\n" + composedText, "OK");
                 // Here you would call the message service to save/send the message
             });
-            Application.Run((Toplevel)editor);
+            Application.Run(editor);
         }
         catch (Exception ex)
         {
@@ -240,7 +246,8 @@ public class MainApplication
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error toggling server state");                Application.Invoke(() =>
+                _logger.Error(ex, "Error toggling server state");
+                Application.Invoke(() =>
                     MessageBox.ErrorQuery("Error", $"Failed to toggle server: {ex.Message}", "OK"));
             }
         });
@@ -291,10 +298,7 @@ public class MainApplication
     private void OnExitClicked()
     {
         var result = MessageBox.Query("Exit", "Are you sure you want to exit?", "Yes", "No");
-        if (result == 0)
-        {
-            Application.RequestStop();
-        }
+        if (result == 0) Application.RequestStop();
     }
 
     private void OnDatabaseBackupClicked()
@@ -303,16 +307,16 @@ public class MainApplication
         {
             try
             {
-                string rootPath = _configManager.Configuration.System.RootPath;
-                string backupDir = Blackboard.Core.Configuration.PathResolver.ResolvePath(
-                    Blackboard.Core.Configuration.ConfigurationManager.DatabaseBackupPath, 
+                var rootPath = _configManager.Configuration.System.RootPath;
+                var backupDir = PathResolver.ResolvePath(
+                    Core.Configuration.ConfigurationManager.DatabaseBackupPath,
                     rootPath);
-                
-                string backupFileName = $"blackboard-{DateTime.Now:yyyyMMdd-HHmmss}.db";
-                string backupPath = Path.Combine(backupDir, backupFileName);
-                
+
+                var backupFileName = $"blackboard-{DateTime.Now:yyyyMMdd-HHmmss}.db";
+                var backupPath = Path.Combine(backupDir, backupFileName);
+
                 await _databaseManager.BackupDatabaseAsync(backupPath);
-                
+
                 Application.Invoke(() =>
                     MessageBox.Query("Backup Complete", $"Database backed up to:\n{backupPath}", "OK"));
             }
@@ -327,7 +331,7 @@ public class MainApplication
 
     private void OnAboutClicked()
     {
-        MessageBox.Query("About Blackboard", 
+        MessageBox.Query("About Blackboard",
             "Blackboard v1.0\n\n" +
             "A modern BBS system with old school charm\n" +
             "Copyright (c) 2025", "OK");
@@ -353,10 +357,10 @@ public class MainApplication
     private void OnConfigurationChanged(object? sender, SystemConfiguration config)
     {
         _logger.Information("Configuration changed, updating display and theme");
-        
+
         // Apply the new theme if it changed
         ThemeManager.ApplyTheme(config.System.Theme);
-        
+
         Application.Invoke(UpdateDisplay);
     }
 
@@ -371,7 +375,7 @@ public class MainApplication
         try
         {
             var isServerRunning = _telnetServer.IsRunning;
-            
+
             if (_statusLabel != null)
             {
                 var statusIcon = isServerRunning ? "🟢" : "🔴";
@@ -432,7 +436,7 @@ public class MainApplication
         try
         {
             var fileManagement = new FileAreaManagementWindow(_fileAreaService, _logger);
-            Application.Run((Toplevel)fileManagement);
+            Application.Run(fileManagement);
         }
         catch (Exception ex)
         {

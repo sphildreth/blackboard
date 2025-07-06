@@ -1,38 +1,22 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using Serilog;
 
 namespace Blackboard.Core.Network;
 
 public class TelnetConnection : ITelnetConnection
 {
-    private readonly TcpClient _tcpClient;
-    private readonly NetworkStream _stream;
-    private readonly ILogger _logger;
-    private readonly int _timeoutSeconds;
     private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly Encoding _encoding;
+    private readonly ILogger _logger;
+    private readonly NetworkStream _stream;
+    private readonly TcpClient _tcpClient;
+    private readonly int _timeoutSeconds;
     private bool _isConnected;
-    private bool _supportsAnsi = true; // Default to supporting ANSI
-    private string _terminalType = "ANSI";
 
     // CP437 and encoding detection properties
-    private bool _supportsCP437 = true; // Default to CP437 support
-    private bool _isModernTerminal = false;
-    private string _clientSoftware = "Unknown";
-
-    public event EventHandler? Disconnected;
-
-    public EndPoint? RemoteEndPoint => _tcpClient?.Client?.RemoteEndPoint;
-    public string RemoteEndPointString => RemoteEndPoint?.ToString() ?? "Unknown";
-    public bool IsConnected => _isConnected && _tcpClient?.Connected == true;
-    public bool SupportsAnsi => _supportsAnsi;
-    public bool SupportsCP437 => _supportsCP437;
-    public bool IsModernTerminal => _isModernTerminal;
-    public string ClientSoftware => _clientSoftware;
-    public string TerminalType => _terminalType;
-    public DateTime ConnectedAt { get; }
 
     public TelnetConnection(TcpClient tcpClient, ILogger logger, int timeoutSeconds)
     {
@@ -50,6 +34,23 @@ public class TelnetConnection : ITelnetConnection
         _tcpClient.SendTimeout = timeoutSeconds * 1000;
     }
 
+    public event EventHandler? Disconnected;
+
+    public EndPoint? RemoteEndPoint => _tcpClient?.Client?.RemoteEndPoint;
+    public string RemoteEndPointString => RemoteEndPoint?.ToString() ?? "Unknown";
+    public bool IsConnected => _isConnected && _tcpClient?.Connected == true;
+    public bool SupportsAnsi { get; private set; } = true;
+
+    public bool SupportsCP437 { get; private set; } = true;
+
+    public bool IsModernTerminal { get; private set; }
+
+    public string ClientSoftware { get; private set; } = "Unknown";
+
+    public string TerminalType { get; private set; } = "ANSI";
+
+    public DateTime ConnectedAt { get; }
+
     public async Task InitializeAsync()
     {
         try
@@ -59,15 +60,15 @@ public class TelnetConnection : ITelnetConnection
             await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.WILL, TelnetOption.SUPPRESS_GO_AHEAD);
             await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.DO, TelnetOption.TERMINAL_TYPE);
             await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.DO, TelnetOption.WINDOW_SIZE);
-            
+
             // Send a small delay to allow negotiations to complete
             await Task.Delay(100);
-            
+
             // Test ANSI support by sending a query
             await TestAnsiSupportAsync();
-            
-            _logger.Debug("Telnet connection initialized for {RemoteEndPoint} - Terminal: {TerminalType}, ANSI: {SupportsAnsi}", 
-                RemoteEndPoint, _terminalType, _supportsAnsi);
+
+            _logger.Debug("Telnet connection initialized for {RemoteEndPoint} - Terminal: {TerminalType}, ANSI: {SupportsAnsi}",
+                RemoteEndPoint, TerminalType, SupportsAnsi);
         }
         catch (Exception ex)
         {
@@ -101,10 +102,10 @@ public class TelnetConnection : ITelnetConnection
 
     public async Task SendAnsiAsync(string ansiSequence)
     {
-        _logger.Information("SendAnsiAsync - SupportsAnsi: {SupportsAnsi}, IsModernTerminal: {IsModernTerminal}, SupportsCP437: {SupportsCP437}, ClientSoftware: {ClientSoftware}", 
-            _supportsAnsi, _isModernTerminal, _supportsCP437, _clientSoftware);
+        _logger.Information("SendAnsiAsync - SupportsAnsi: {SupportsAnsi}, IsModernTerminal: {IsModernTerminal}, SupportsCP437: {SupportsCP437}, ClientSoftware: {ClientSoftware}",
+            SupportsAnsi, IsModernTerminal, SupportsCP437, ClientSoftware);
 
-        if (!_supportsAnsi)
+        if (!SupportsAnsi)
         {
             // Strip ANSI codes for non-ANSI terminals
             _logger.Information("Stripping ANSI codes for non-ANSI terminal");
@@ -114,7 +115,7 @@ public class TelnetConnection : ITelnetConnection
         }
 
         // For ANSI-capable terminals, adapt content based on encoding capabilities
-        if (_isModernTerminal && !_supportsCP437)
+        if (IsModernTerminal && !SupportsCP437)
         {
             // Modern terminal - convert CP437 box drawing to Unicode
             _logger.Information("Converting CP437 to Unicode for modern terminal");
@@ -137,7 +138,7 @@ public class TelnetConnection : ITelnetConnection
         {
             var buffer = new byte[1024];
             var result = new StringBuilder();
-            
+
             while (IsConnected)
             {
                 var bytesRead = await _stream.ReadAsync(buffer, _cancellationTokenSource.Token);
@@ -148,9 +149,8 @@ public class TelnetConnection : ITelnetConnection
                 }
 
                 var data = _encoding.GetString(buffer, 0, bytesRead);
-                
-                foreach (char c in data)
-                {
+
+                foreach (var c in data)
                     if (c == '\r' || c == '\n')
                     {
                         if (result.Length > 0)
@@ -165,9 +165,7 @@ public class TelnetConnection : ITelnetConnection
                     {
                         // Handle telnet command sequences
                         // This is a simplified implementation
-                        continue;
                     }
-                }
             }
 
             return result.ToString();
@@ -190,7 +188,7 @@ public class TelnetConnection : ITelnetConnection
             {
                 var buffer = new byte[1];
                 var bytesRead = await _stream.ReadAsync(buffer, _cancellationTokenSource.Token);
-                
+
                 if (bytesRead == 0)
                 {
                     await DisconnectAsync();
@@ -205,7 +203,7 @@ public class TelnetConnection : ITelnetConnection
                     // Read the next byte (the command)
                     var commandBuffer = new byte[1];
                     var commandBytesRead = await _stream.ReadAsync(commandBuffer, _cancellationTokenSource.Token);
-                    
+
                     if (commandBytesRead == 0)
                     {
                         await DisconnectAsync();
@@ -221,7 +219,7 @@ public class TelnetConnection : ITelnetConnection
                         // Read the option byte
                         var optionBuffer = new byte[1];
                         var optionBytesRead = await _stream.ReadAsync(optionBuffer, _cancellationTokenSource.Token);
-                        
+
                         if (optionBytesRead == 0)
                         {
                             await DisconnectAsync();
@@ -229,23 +227,18 @@ public class TelnetConnection : ITelnetConnection
                         }
 
                         var option = optionBuffer[0];
-                        
+
                         // Process the telnet negotiation
                         await ProcessTelnetCommand(command, option);
-                        
+
                         // Continue reading for the next character
-                        continue;
                     }
                     else if (command == TelnetCommand.IAC)
                     {
                         // Escaped IAC (IAC IAC means literal 255)
                         return (char)255;
                     }
-                    else
-                    {
-                        // Other commands - just skip for now
-                        continue;
-                    }
+                    // Other commands - just skip for now
                 }
                 else
                 {
@@ -261,6 +254,53 @@ public class TelnetConnection : ITelnetConnection
             _logger.Debug(ex, "Error reading character from {RemoteEndPoint}", RemoteEndPoint);
             await DisconnectAsync();
             return '\0';
+        }
+    }
+
+    public Task DisconnectAsync()
+    {
+        if (!_isConnected) return Task.CompletedTask;
+
+        _isConnected = false;
+
+        try
+        {
+            _cancellationTokenSource.Cancel();
+            _stream.Close();
+            _tcpClient.Close();
+
+            _logger.Debug("Disconnected from {RemoteEndPoint}", RemoteEndPoint);
+            Disconnected?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.Debug(ex, "Error during disconnect from {RemoteEndPoint}", RemoteEndPoint);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Dispose();
+        _stream?.Dispose();
+        _tcpClient?.Dispose();
+    }
+
+    public async Task SendBytesAsync(byte[] data)
+    {
+        if (!IsConnected || data == null || data.Length == 0) return;
+
+        try
+        {
+            // Send raw bytes directly - no encoding conversion
+            await _stream.WriteAsync(data, _cancellationTokenSource.Token);
+            await _stream.FlushAsync(_cancellationTokenSource.Token);
+        }
+        catch (Exception ex)
+        {
+            _logger.Debug(ex, "Error sending raw bytes to {RemoteEndPoint}", RemoteEndPoint);
+            await DisconnectAsync();
         }
     }
 
@@ -280,34 +320,32 @@ public class TelnetConnection : ITelnetConnection
                     // Client doesn't want us to echo
                     await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.WONT, TelnetOption.ECHO);
                 }
+
                 break;
-                
+
             case TelnetOption.SUPPRESS_GO_AHEAD:
                 if (command == TelnetCommand.DO)
                 {
                     // Client agrees to suppress go-ahead - good
                     // No response needed
                 }
+
                 break;
-                
+
             case TelnetOption.TERMINAL_TYPE:
                 if (command == TelnetCommand.WILL)
                 {
                     // Client will provide terminal type
                     // No response needed for now
                 }
+
                 break;
-                
+
             default:
                 // For other options, respond with DON'T/WON'T
                 if (command == TelnetCommand.WILL)
-                {
                     await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.DONT, option);
-                }
-                else if (command == TelnetCommand.DO)
-                {
-                    await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.WONT, option);
-                }
+                else if (command == TelnetCommand.DO) await SendTelnetCommandAsync(TelnetCommand.IAC, TelnetCommand.WONT, option);
                 break;
         }
     }
@@ -328,66 +366,43 @@ public class TelnetConnection : ITelnetConnection
         }
     }
 
-    public Task DisconnectAsync()
-    {
-        if (!_isConnected) return Task.CompletedTask;
-
-        _isConnected = false;
-        
-        try
-        {
-            _cancellationTokenSource.Cancel();
-            _stream.Close();
-            _tcpClient.Close();
-            
-            _logger.Debug("Disconnected from {RemoteEndPoint}", RemoteEndPoint);
-            Disconnected?.Invoke(this, EventArgs.Empty);
-        }
-        catch (Exception ex)
-        {
-            _logger.Debug(ex, "Error during disconnect from {RemoteEndPoint}", RemoteEndPoint);
-        }
-        
-        return Task.CompletedTask;
-    }
-
     private async Task TestAnsiSupportAsync()
     {
         try
         {
             _logger.Information("Testing ANSI support for terminal");
-            
+
             // Send a simple ANSI query to test support
             // This sends ESC[6n (Device Status Report) which ANSI terminals respond to
             await SendAsync("\x1b[6n");
-            
+
             // Give a short timeout for response
             var timeout = Task.Delay(500);
             var readTask = ReadResponseAsync();
             var completedTask = await Task.WhenAny(readTask, timeout);
-            
+
             if (completedTask == readTask)
             {
                 var response = readTask.Result;
                 _logger.Information("ANSI test response received: {Response}", response);
-                
+
                 // If we get a response like ESC[row;colR, terminal supports ANSI
                 if (response.Contains("[") && response.Contains("R"))
                 {
-                    _supportsAnsi = true;
-                    _terminalType = "ANSI";
+                    SupportsAnsi = true;
+                    TerminalType = "ANSI";
                     _logger.Information("Terminal supports ANSI: {Response}", response);
-                    
+
                     // Additional capability detection
                     await DetectClientCapabilitiesAsync();
                 }
                 else
                 {
                     // Modern terminals often support ANSI even if they don't respond to device queries
-                    _supportsAnsi = true; // Default to true for better compatibility
-                    _terminalType = "ANSI";
+                    SupportsAnsi = true; // Default to true for better compatibility
+                    TerminalType = "ANSI";
                     _logger.Information("Terminal response received but not recognized, defaulting to ANSI support");
-                    
+
                     // Additional capability detection
                     await DetectClientCapabilitiesAsync();
                 }
@@ -395,10 +410,10 @@ public class TelnetConnection : ITelnetConnection
             else
             {
                 // No response - but modern terminals via telnet often support ANSI
-                _supportsAnsi = true; // Default to true for better compatibility
-                _terminalType = "ANSI";
+                SupportsAnsi = true; // Default to true for better compatibility
+                TerminalType = "ANSI";
                 _logger.Information("No ANSI response from terminal, but defaulting to ANSI support for modern compatibility");
-                
+
                 // Additional capability detection
                 await DetectClientCapabilitiesAsync();
             }
@@ -406,9 +421,9 @@ public class TelnetConnection : ITelnetConnection
         catch (Exception ex)
         {
             _logger.Error(ex, "Error testing ANSI support, defaulting to ANSI enabled");
-            _supportsAnsi = true; // Default to ANSI if test fails
-            _terminalType = "ANSI";
-            
+            SupportsAnsi = true; // Default to ANSI if test fails
+            TerminalType = "ANSI";
+
             try
             {
                 await DetectClientCapabilitiesAsync();
@@ -425,19 +440,19 @@ public class TelnetConnection : ITelnetConnection
         try
         {
             _logger.Information("Starting client capability detection");
-            
+
             // Test for modern terminal detection using Primary Device Attributes
             await SendAsync("\x1b[c");
-            
+
             var timeout = Task.Delay(300);
             var readTask = ReadResponseAsync();
             var completedTask = await Task.WhenAny(readTask, timeout);
-            
+
             if (completedTask == readTask)
             {
                 var response = readTask.Result;
                 _logger.Information("Terminal device attributes: {Response}", response);
-                
+
                 // Analyze response to determine terminal capabilities
                 AnalyzeTerminalCapabilities(response);
             }
@@ -445,36 +460,36 @@ public class TelnetConnection : ITelnetConnection
             {
                 _logger.Information("No terminal device attributes response received");
             }
-            
+
             // Test for UTF-8 support by checking locale
             // Modern terminals typically support UTF-8, older BBS clients prefer CP437
             var remoteEndPointStr = RemoteEndPointString.ToLower();
             _logger.Information("Remote endpoint: {RemoteEndPoint}", remoteEndPointStr);
-            
+
             // Heuristics for client detection
-            if (remoteEndPointStr.Contains("syncterm") || 
+            if (remoteEndPointStr.Contains("syncterm") ||
                 remoteEndPointStr.Contains("netrunner") ||
                 remoteEndPointStr.Contains("qodem"))
             {
-                _supportsCP437 = true;
-                _isModernTerminal = false;
-                _clientSoftware = "BBS Terminal";
+                SupportsCP437 = true;
+                IsModernTerminal = false;
+                ClientSoftware = "BBS Terminal";
                 _logger.Information("Detected BBS terminal client");
             }
             else
             {
                 // Assume modern terminal (telnet, ssh client, etc.)
-                _isModernTerminal = true;
-                _clientSoftware = "Modern Terminal";
+                IsModernTerminal = true;
+                ClientSoftware = "Modern Terminal";
                 _logger.Information("Detected modern terminal");
-                
+
                 // Modern terminals may not properly display CP437 characters
                 // Test with a CP437 specific character
                 await TestCP437SupportAsync();
             }
-            
-            _logger.Information("Detection complete - SupportsAnsi: {SupportsAnsi}, IsModernTerminal: {IsModernTerminal}, SupportsCP437: {SupportsCP437}", 
-                _supportsAnsi, _isModernTerminal, _supportsCP437);
+
+            _logger.Information("Detection complete - SupportsAnsi: {SupportsAnsi}, IsModernTerminal: {IsModernTerminal}, SupportsCP437: {SupportsCP437}",
+                SupportsAnsi, IsModernTerminal, SupportsCP437);
         }
         catch (Exception ex)
         {
@@ -486,54 +501,54 @@ public class TelnetConnection : ITelnetConnection
     {
         try
         {
-            _logger.Information("Testing CP437 support for terminal type: {TerminalType}", _terminalType);
-            
+            _logger.Information("Testing CP437 support for terminal type: {TerminalType}", TerminalType);
+
             // Send a CP437 box drawing character and see if we can detect issues
             // This is a heuristic approach since direct detection is difficult
-            
+
             // For now, use heuristics based on client behavior
             // Modern Linux/Mac terminals: prefer UTF-8
             // Windows Command Prompt: may support CP437
             // Dedicated BBS clients: prefer CP437
-            
+
             var userAgent = RemoteEndPointString;
-            
-            if (_terminalType == "ANSI")
+
+            if (TerminalType == "ANSI")
             {
                 // Check if this is a telnet connection from a modern terminal emulator
                 // Modern terminal emulators connecting via telnet often report ANSI but can handle Unicode
-                var clientSoftware = _clientSoftware?.ToLower() ?? "";
+                var clientSoftware = ClientSoftware?.ToLower() ?? "";
                 var remoteEndpoint = RemoteEndPointString.ToLower();
-                
+
                 // If it's a telnet connection and not a dedicated BBS client, assume Unicode support
-                if (!clientSoftware.Contains("syncterm") && 
-                    !clientSoftware.Contains("netrunner") && 
+                if (!clientSoftware.Contains("syncterm") &&
+                    !clientSoftware.Contains("netrunner") &&
                     !clientSoftware.Contains("qodem") &&
                     !remoteEndpoint.Contains("bbs"))
                 {
-                    _supportsCP437 = false;
+                    SupportsCP437 = false;
                     _logger.Information("Modern terminal via telnet detected - setting CP437 support to false for Unicode conversion");
                 }
                 else
                 {
-                    _supportsCP437 = true;
+                    SupportsCP437 = true;
                     _logger.Information("BBS client detected - setting CP437 support to true");
                 }
             }
             else
             {
-                _supportsCP437 = false;
+                SupportsCP437 = false;
                 _logger.Information("Non-ANSI terminal detected - setting CP437 support to false");
             }
-            
-            _logger.Information("CP437 support detection result: {SupportsCP437}", _supportsCP437);
+
+            _logger.Information("CP437 support detection result: {SupportsCP437}", SupportsCP437);
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Error testing CP437 support");
-            _supportsCP437 = false; // Default to Unicode conversion for safety
+            SupportsCP437 = false; // Default to Unicode conversion for safety
         }
-        
+
         return Task.CompletedTask;
     }
 
@@ -543,17 +558,17 @@ public class TelnetConnection : ITelnetConnection
         // VT102: \x1b[?6c  
         // Modern terminals often report VT100+ compatibility
         // BBS terminals may report specific codes
-        
+
         if (deviceAttributes.Contains("?1;") || deviceAttributes.Contains("?6"))
         {
             // VT100/VT102 compatibility - good for ANSI
-            _terminalType = "VT100";
+            TerminalType = "VT100";
         }
         else if (deviceAttributes.Contains("?62;") || deviceAttributes.Contains("?63;"))
         {
             // VT220+ series - modern terminal
-            _terminalType = "VT220+";
-            _isModernTerminal = true;
+            TerminalType = "VT220+";
+            IsModernTerminal = true;
         }
     }
 
@@ -569,6 +584,7 @@ public class TelnetConnection : ITelnetConnection
                 response.Append(ch);
                 if (ch == 'R') break; // End of ANSI response
             }
+
             return response.ToString();
         }
         catch
@@ -581,30 +597,23 @@ public class TelnetConnection : ITelnetConnection
     {
         if (string.IsNullOrEmpty(text))
             return text;
-            
+
         // Remove ANSI escape sequences using regex
         // This pattern matches ESC[ followed by any characters and ending with a letter
         var ansiPattern = @"\x1b\[[0-9;]*[a-zA-Z]";
-        var result = System.Text.RegularExpressions.Regex.Replace(text, ansiPattern, "");
-        
-        // Also remove other escape sequences
-        result = System.Text.RegularExpressions.Regex.Replace(result, @"\x1b\[[0-9;]*", "");
-        
-        return result;
-    }
+        var result = Regex.Replace(text, ansiPattern, "");
 
-    public void Dispose()
-    {
-        _cancellationTokenSource?.Dispose();
-        _stream?.Dispose();
-        _tcpClient?.Dispose();
+        // Also remove other escape sequences
+        result = Regex.Replace(result, @"\x1b\[[0-9;]*", "");
+
+        return result;
     }
 
     private static Encoding GetEncodingByName(string encodingName)
     {
         // Register code pages encoding provider for CP437 support
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        
+
         return encodingName.ToUpperInvariant() switch
         {
             "UTF-8" => Encoding.UTF8,
@@ -634,29 +643,29 @@ public class TelnetConnection : ITelnetConnection
 
         try
         {
-            _logger.Information("Converting content with length {Length}, first 50 chars: {Preview}", 
+            _logger.Information("Converting content with length {Length}, first 50 chars: {Preview}",
                 cp437Content.Length, cp437Content.Substring(0, Math.Min(50, cp437Content.Length)));
 
             // The content has already been read with CP437 encoding, so we just need to 
             // map any characters that don't display properly in modern terminals
             var result = new StringBuilder(cp437Content.Length);
-            
-            foreach (char c in cp437Content)
+
+            foreach (var c in cp437Content)
             {
                 var unicodeChar = c switch
                 {
                     // The content is already properly decoded from CP437, so these should already be
                     // the correct Unicode box drawing characters. Just pass them through.
-                    '╔' => '┌',  // Convert double-line to single-line for better compatibility
-                    '╗' => '┐',  
-                    '╚' => '└',  
-                    '╝' => '┘',  
-                    '║' => '│',  
-                    '═' => '─',  
-                    '╠' => '├',  
-                    '╣' => '┤',  
-                    '╦' => '┬',  
-                    '╩' => '┴',  
+                    '╔' => '┌', // Convert double-line to single-line for better compatibility
+                    '╗' => '┐',
+                    '╚' => '└',
+                    '╝' => '┘',
+                    '║' => '│',
+                    '═' => '─',
+                    '╠' => '├',
+                    '╣' => '┤',
+                    '╦' => '┬',
+                    '╩' => '┴',
                     '╬' => '┼',
                     // Keep single-line box drawing as-is
                     '┌' => '┌',
@@ -671,22 +680,22 @@ public class TelnetConnection : ITelnetConnection
                     '┴' => '┴',
                     '┼' => '┼',
                     // Keep other block characters as-is (they should display fine)
-                    '█' => '█',  // Full block
-                    '▀' => '▀',  // Upper half block
-                    '▄' => '▄',  // Lower half block
-                    '▌' => '▌',  // Left half block
-                    '▐' => '▐',  // Right half block
-                    '░' => '░',  // Light shade
-                    '▒' => '▒',  // Medium shade
-                    '▓' => '▓',  // Dark shade
-                    _ => c       // Keep all other characters as-is
+                    '█' => '█', // Full block
+                    '▀' => '▀', // Upper half block
+                    '▄' => '▄', // Lower half block
+                    '▌' => '▌', // Left half block
+                    '▐' => '▐', // Right half block
+                    '░' => '░', // Light shade
+                    '▒' => '▒', // Medium shade
+                    '▓' => '▓', // Dark shade
+                    _ => c // Keep all other characters as-is
                 };
-                
+
                 result.Append(unicodeChar);
             }
 
             var resultString = result.ToString();
-            _logger.Information("Conversion result first 50 chars: {Result}", 
+            _logger.Information("Conversion result first 50 chars: {Result}",
                 resultString.Substring(0, Math.Min(50, resultString.Length)));
 
             return resultString;
@@ -697,29 +706,12 @@ public class TelnetConnection : ITelnetConnection
             return cp437Content; // Return original on error
         }
     }
-
-    public async Task SendBytesAsync(byte[] data)
-    {
-        if (!IsConnected || data == null || data.Length == 0) return;
-
-        try
-        {
-            // Send raw bytes directly - no encoding conversion
-            await _stream.WriteAsync(data, _cancellationTokenSource.Token);
-            await _stream.FlushAsync(_cancellationTokenSource.Token);
-        }
-        catch (Exception ex)
-        {
-            _logger.Debug(ex, "Error sending raw bytes to {RemoteEndPoint}", RemoteEndPoint);
-            await DisconnectAsync();
-        }
-    }
 }
 
 // Telnet protocol constants
 public static class TelnetCommand
 {
-    public const byte IAC = 255;  // Interpret As Command
+    public const byte IAC = 255; // Interpret As Command
     public const byte WILL = 251;
     public const byte WONT = 252;
     public const byte DO = 253;

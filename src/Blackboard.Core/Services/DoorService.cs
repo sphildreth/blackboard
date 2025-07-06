@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Text;
-using System.Text.Json;
+using System.Text.RegularExpressions;
 using Blackboard.Core.DTOs;
 using Blackboard.Core.Models;
 using Blackboard.Data;
@@ -11,12 +11,12 @@ namespace Blackboard.Core.Services;
 public class DoorService : IDoorService
 {
     private readonly IDatabaseManager _databaseManager;
-    private readonly ILogger _logger;
     private readonly string _doorBasePath;
-    private readonly string _dropFileBasePath;
     private readonly string _dosBoxPath;
+    private readonly string _dropFileBasePath;
+    private readonly ILogger _logger;
 
-    public DoorService(IDatabaseManager databaseManager, ILogger logger, 
+    public DoorService(IDatabaseManager databaseManager, ILogger logger,
         string doorBasePath = "doors", string dropFileBasePath = "temp/dropfiles",
         string dosBoxPath = "dosbox")
     {
@@ -117,13 +117,10 @@ public class DoorService : IDoorService
         });
 
         _logger.Information("Created door {DoorName} with ID {DoorId}", createDto.Name, doorId);
-        
+
         var createdDoor = await GetDoorAsync(doorId);
-        if (createdDoor == null)
-        {
-            throw new InvalidOperationException($"Failed to retrieve created door with ID {doorId}");
-        }
-        
+        if (createdDoor == null) throw new InvalidOperationException($"Failed to retrieve created door with ID {doorId}");
+
         return createdDoor;
     }
 
@@ -142,9 +139,9 @@ public class DoorService : IDoorService
             WHERE Id = @Id";
 
         await _databaseManager.ExecuteAsync(sql, door);
-        
+
         _logger.Information("Updated door {DoorName} (ID: {DoorId})", door.Name, door.Id);
-        
+
         return (await GetDoorAsync(door.Id))!;
     }
 
@@ -155,18 +152,12 @@ public class DoorService : IDoorService
 
         // Check for active sessions
         var activeSessions = await GetActiveSessionsForDoorAsync(doorId);
-        if (activeSessions.Any())
-        {
-            throw new InvalidOperationException("Cannot delete door with active sessions");
-        }
+        if (activeSessions.Any()) throw new InvalidOperationException("Cannot delete door with active sessions");
 
         const string sql = "UPDATE Doors SET IsActive = 0 WHERE Id = @DoorId";
         var result = await _databaseManager.ExecuteAsync(sql, new { DoorId = doorId });
 
-        if (result > 0)
-        {
-            _logger.Information("Deleted door {DoorName} (ID: {DoorId})", door.Name, doorId);
-        }
+        if (result > 0) _logger.Information("Deleted door {DoorName} (ID: {DoorId})", door.Name, doorId);
 
         return result > 0;
     }
@@ -205,7 +196,7 @@ public class DoorService : IDoorService
         // Check user level
         const string userSql = "SELECT SecurityLevel FROM Users WHERE Id = @UserId";
         var userLevel = await _databaseManager.QueryFirstOrDefaultAsync<int?>(userSql, new { UserId = userId });
-        
+
         if (userLevel == null || userLevel < door.MinimumLevel || userLevel > door.MaximumLevel)
             return false;
 
@@ -217,7 +208,7 @@ public class DoorService : IDoorService
             ORDER BY UserId DESC"; // User-specific permissions take precedence
 
         var permissions = await _databaseManager.QueryAsync<string>(permissionSql, new { DoorId = doorId, UserId = userId });
-        
+
         // If there are any "deny" permissions, deny access
         if (permissions.Any(p => p == "deny"))
             return false;
@@ -262,10 +253,8 @@ public class DoorService : IDoorService
 
         // Check scheduling
         if (door.SchedulingEnabled && !string.IsNullOrEmpty(door.AvailableHours))
-        {
             if (!IsWithinScheduledHours(door.AvailableHours, door.TimeZone))
                 return false;
-        }
 
         // Check active sessions vs max players
         if (door.MultiNodeEnabled && door.ActiveSessions >= door.MaxPlayers)
@@ -287,10 +276,8 @@ public class DoorService : IDoorService
             return "Executable not found";
 
         if (door.SchedulingEnabled && !string.IsNullOrEmpty(door.AvailableHours))
-        {
             if (!IsWithinScheduledHours(door.AvailableHours, door.TimeZone))
                 return "Door is not available at this time";
-        }
 
         if (door.MultiNodeEnabled && door.ActiveSessions >= door.MaxPlayers)
             return "Maximum number of players reached";
@@ -304,13 +291,10 @@ public class DoorService : IDoorService
 
     public async Task<DoorSessionDto> StartDoorSessionAsync(int doorId, int userId, int? nodeNumber = null)
     {
-        if (!await CanUserAccessDoorAsync(userId, doorId))
-        {
-            throw new UnauthorizedAccessException("User cannot access this door");
-        }
+        if (!await CanUserAccessDoorAsync(userId, doorId)) throw new UnauthorizedAccessException("User cannot access this door");
 
         var sessionId = Guid.NewGuid().ToString();
-        
+
         const string sql = @"
             INSERT INTO DoorSessions (SessionId, DoorId, UserId, NodeNumber, Status)
             VALUES (@SessionId, @DoorId, @UserId, @NodeNumber, 'starting');
@@ -327,11 +311,8 @@ public class DoorService : IDoorService
         await LogDoorEventAsync(doorId, "info", $"Door session started for user {userId}", sessionId: sessionDbId);
 
         var createdSession = await GetActiveSessionAsync(sessionId);
-        if (createdSession == null)
-        {
-            throw new InvalidOperationException($"Failed to retrieve created door session with ID {sessionId}");
-        }
-        
+        if (createdSession == null) throw new InvalidOperationException($"Failed to retrieve created door session with ID {sessionId}");
+
         return createdSession;
     }
 
@@ -354,7 +335,7 @@ public class DoorService : IDoorService
             var session = await GetActiveSessionAsync(sessionId);
             if (session != null)
             {
-                await LogDoorEventAsync(session.DoorId, "info", 
+                await LogDoorEventAsync(session.DoorId, "info",
                     $"Door session ended with exit code {exitCode}", sessionId: session.Id);
 
                 // Update user statistics
@@ -381,19 +362,19 @@ public class DoorService : IDoorService
 
         _logger.Debug("Querying for session with ID: {SessionId}", sessionId);
         var session = await _databaseManager.QueryFirstOrDefaultAsync<dynamic>(sql, new { SessionId = sessionId });
-        
+
         if (session == null)
         {
             _logger.Warning("No session found for ID: {SessionId}", sessionId);
-            
+
             // Debug: Check if session exists without JOINs
             const string debugSql = "SELECT COUNT(*) FROM DoorSessions WHERE SessionId = @SessionId";
             var sessionCount = await _databaseManager.QueryFirstAsync<int>(debugSql, new { SessionId = sessionId });
             _logger.Debug("Session count in DoorSessions table: {Count}", sessionCount);
-            
+
             return null;
         }
-        
+
         return MapToDoorSessionDto(session);
     }
 
@@ -459,10 +440,8 @@ public class DoorService : IDoorService
         {
             var session = await GetActiveSessionAsync(sessionId);
             if (session != null)
-            {
-                await LogDoorEventAsync(session.DoorId, "warning", 
+                await LogDoorEventAsync(session.DoorId, "warning",
                     $"Door session terminated: {reason}", sessionId: session.Id);
-            }
         }
 
         return result > 0;
@@ -529,10 +508,7 @@ public class DoorService : IDoorService
         };
 
         var content = template;
-        foreach (var kvp in variables)
-        {
-            content = content.Replace(kvp.Key, kvp.Value);
-        }
+        foreach (var kvp in variables) content = content.Replace(kvp.Key, kvp.Value);
 
         await File.WriteAllTextAsync(dropFilePath, content);
 
@@ -556,7 +532,6 @@ public class DoorService : IDoorService
         var dropFilePath = await _databaseManager.QueryFirstOrDefaultAsync<string>(sql, new { SessionId = sessionId });
 
         if (!string.IsNullOrEmpty(dropFilePath) && File.Exists(dropFilePath))
-        {
             try
             {
                 File.Delete(dropFilePath);
@@ -567,7 +542,6 @@ public class DoorService : IDoorService
             {
                 _logger.Warning(ex, "Failed to cleanup drop file {DropFilePath}", dropFilePath);
             }
-        }
 
         return false;
     }
@@ -724,7 +698,7 @@ public class DoorService : IDoorService
             INNER JOIN Users u ON dst.UserId = u.Id
             WHERE dst.DoorId = @DoorId AND dst.UserId = @UserId";
 
-        return await _databaseManager.QueryFirstOrDefaultAsync<DoorStatisticsDto>(sql, 
+        return await _databaseManager.QueryFirstOrDefaultAsync<DoorStatisticsDto>(sql,
             new { DoorId = doorId, UserId = userId });
     }
 
@@ -814,7 +788,7 @@ public class DoorService : IDoorService
         configContent.AppendLine("windowresolution=800x600");
         configContent.AppendLine("output=overlay");
         configContent.AppendLine("");
-        
+
         configContent.AppendLine("[dosbox]");
         configContent.AppendLine($"memsize={door.MemorySize}");
         configContent.AppendLine("");
@@ -830,7 +804,7 @@ public class DoorService : IDoorService
             configContent.AppendLine($"mount c \"{door.WorkingDirectory}\"");
             configContent.AppendLine("c:");
         }
-        
+
         var configPath = Path.Combine(_dropFileBasePath, $"{sessionId}_dosbox.conf");
         await File.WriteAllTextAsync(configPath, configContent.ToString());
 
@@ -848,7 +822,7 @@ public class DoorService : IDoorService
             throw new InvalidOperationException("DOSBox executable not found");
 
         var configPath = await GenerateDosBoxConfigAsync(doorId, sessionId);
-        
+
         var processStartInfo = new ProcessStartInfo
         {
             FileName = dosBoxExecutable,
@@ -868,7 +842,7 @@ public class DoorService : IDoorService
                 const string sql = "UPDATE DoorSessions SET ProcessId = @ProcessId WHERE SessionId = @SessionId";
                 await _databaseManager.ExecuteAsync(sql, new { ProcessId = process.Id, SessionId = sessionId });
 
-                _logger.Information("Started DOSBox process {ProcessId} for door {DoorId} session {SessionId}", 
+                _logger.Information("Started DOSBox process {ProcessId} for door {DoorId} session {SessionId}",
                     process.Id, doorId, sessionId);
             }
 
@@ -929,7 +903,7 @@ public class DoorService : IDoorService
         return await _databaseManager.QueryAsync<DoorPermissionDto>(sql, new { DoorId = doorId });
     }
 
-    public async Task<DoorPermissionDto> AddDoorPermissionAsync(int doorId, int? userId, string? userGroup, 
+    public async Task<DoorPermissionDto> AddDoorPermissionAsync(int doorId, int? userId, string? userGroup,
         string accessType, int grantedBy, DateTime? expiresAt = null)
     {
         const string sql = @"
@@ -1020,11 +994,8 @@ public class DoorService : IDoorService
             ) || ' minutes', '+15 minutes') < datetime('now')";
 
         var result = await _databaseManager.ExecuteAsync(sql);
-        
-        if (result > 0)
-        {
-            _logger.Information("Cleaned up {Count} expired door sessions", result);
-        }
+
+        if (result > 0) _logger.Information("Cleaned up {Count} expired door sessions", result);
 
         return result;
     }
@@ -1037,22 +1008,21 @@ public class DoorService : IDoorService
         foreach (var filePath in dropFiles)
         {
             var fileName = Path.GetFileName(filePath);
-            
+
             // Extract session ID from filename
-            var sessionIdMatch = System.Text.RegularExpressions.Regex.Match(fileName, @"^([a-f0-9\-]+)_");
+            var sessionIdMatch = Regex.Match(fileName, @"^([a-f0-9\-]+)_");
             if (sessionIdMatch.Success)
             {
                 var sessionId = sessionIdMatch.Groups[1].Value;
-                
+
                 // Check if session still exists and is not completed
                 const string sql = @"
                     SELECT COUNT(*) FROM DoorSessions 
                     WHERE SessionId = @SessionId AND Status IN ('starting', 'running')";
-                
+
                 var activeCount = await _databaseManager.QueryFirstAsync<int>(sql, new { SessionId = sessionId });
-                
+
                 if (activeCount == 0)
-                {
                     try
                     {
                         File.Delete(filePath);
@@ -1062,14 +1032,10 @@ public class DoorService : IDoorService
                     {
                         _logger.Warning(ex, "Failed to delete orphaned file {FilePath}", filePath);
                     }
-                }
             }
         }
 
-        if (deletedCount > 0)
-        {
-            _logger.Information("Cleaned up {Count} orphaned door files", deletedCount);
-        }
+        if (deletedCount > 0) _logger.Information("Cleaned up {Count} orphaned door files", deletedCount);
 
         return deletedCount;
     }
@@ -1172,7 +1138,6 @@ public class DoorService : IDoorService
 
         // Handle ExpandoObject (used in tests) and regular objects differently
         if (data is IDictionary<string, object> expandoData)
-        {
             // ExpandoObject case - used in unit tests
             return new DoorDto
             {
@@ -1210,49 +1175,46 @@ public class DoorService : IDoorService
                 IsAvailable = true, // Will be calculated dynamically
                 UnavailableReason = null
             };
-        }
-        else
+
+        // Regular object case - use reflection
+        var dataType = data.GetType();
+
+        return new DoorDto
         {
-            // Regular object case - use reflection
-            var dataType = data.GetType();
-            
-            return new DoorDto
-            {
-                Id = Convert.ToInt32(dataType.GetProperty("Id")?.GetValue(data) ?? 0),
-                Name = dataType.GetProperty("Name")?.GetValue(data)?.ToString() ?? string.Empty,
-                Description = dataType.GetProperty("Description")?.GetValue(data)?.ToString(),
-                Category = dataType.GetProperty("Category")?.GetValue(data)?.ToString() ?? string.Empty,
-                ExecutablePath = dataType.GetProperty("ExecutablePath")?.GetValue(data)?.ToString() ?? string.Empty,
-                CommandLine = dataType.GetProperty("CommandLine")?.GetValue(data)?.ToString(),
-                WorkingDirectory = dataType.GetProperty("WorkingDirectory")?.GetValue(data)?.ToString(),
-                DropFileType = dataType.GetProperty("DropFileType")?.GetValue(data)?.ToString() ?? "DOOR.SYS",
-                DropFileLocation = dataType.GetProperty("DropFileLocation")?.GetValue(data)?.ToString(),
-                IsActive = Convert.ToBoolean(dataType.GetProperty("IsActive")?.GetValue(data) ?? false),
-                RequiresDosBox = Convert.ToBoolean(dataType.GetProperty("RequiresDosBox")?.GetValue(data) ?? false),
-                DosBoxConfigPath = dataType.GetProperty("DosBoxConfigPath")?.GetValue(data)?.ToString(),
-                SerialPort = dataType.GetProperty("SerialPort")?.GetValue(data)?.ToString() ?? "COM1",
-                MemorySize = Convert.ToInt32(dataType.GetProperty("MemorySize")?.GetValue(data) ?? 16),
-                MinimumLevel = Convert.ToInt32(dataType.GetProperty("MinimumLevel")?.GetValue(data) ?? 0),
-                MaximumLevel = Convert.ToInt32(dataType.GetProperty("MaximumLevel")?.GetValue(data) ?? 255),
-                TimeLimit = Convert.ToInt32(dataType.GetProperty("TimeLimit")?.GetValue(data) ?? 60),
-                DailyLimit = Convert.ToInt32(dataType.GetProperty("DailyLimit")?.GetValue(data) ?? 5),
-                Cost = Convert.ToInt32(dataType.GetProperty("Cost")?.GetValue(data) ?? 0),
-                SchedulingEnabled = Convert.ToBoolean(dataType.GetProperty("SchedulingEnabled")?.GetValue(data) ?? false),
-                AvailableHours = dataType.GetProperty("AvailableHours")?.GetValue(data)?.ToString(),
-                TimeZone = dataType.GetProperty("TimeZone")?.GetValue(data)?.ToString(),
-                MultiNodeEnabled = Convert.ToBoolean(dataType.GetProperty("MultiNodeEnabled")?.GetValue(data) ?? false),
-                MaxPlayers = Convert.ToInt32(dataType.GetProperty("MaxPlayers")?.GetValue(data) ?? 1),
-                InterBbsEnabled = Convert.ToBoolean(dataType.GetProperty("InterBbsEnabled")?.GetValue(data) ?? false),
-                CreatedAt = Convert.ToDateTime(dataType.GetProperty("CreatedAt")?.GetValue(data) ?? DateTime.UtcNow),
-                UpdatedAt = Convert.ToDateTime(dataType.GetProperty("UpdatedAt")?.GetValue(data) ?? DateTime.UtcNow),
-                CreatedBy = dataType.GetProperty("CreatedBy")?.GetValue(data) as int?,
-                ActiveSessions = Convert.ToInt32(dataType.GetProperty("ActiveSessions")?.GetValue(data) ?? 0),
-                TotalSessions = Convert.ToInt32(dataType.GetProperty("TotalSessions")?.GetValue(data) ?? 0),
-                LastPlayed = dataType.GetProperty("LastPlayed")?.GetValue(data) as DateTime?,
-                IsAvailable = true, // Will be calculated dynamically
-                UnavailableReason = null
-            };
-        }
+            Id = Convert.ToInt32(dataType.GetProperty("Id")?.GetValue(data) ?? 0),
+            Name = dataType.GetProperty("Name")?.GetValue(data)?.ToString() ?? string.Empty,
+            Description = dataType.GetProperty("Description")?.GetValue(data)?.ToString(),
+            Category = dataType.GetProperty("Category")?.GetValue(data)?.ToString() ?? string.Empty,
+            ExecutablePath = dataType.GetProperty("ExecutablePath")?.GetValue(data)?.ToString() ?? string.Empty,
+            CommandLine = dataType.GetProperty("CommandLine")?.GetValue(data)?.ToString(),
+            WorkingDirectory = dataType.GetProperty("WorkingDirectory")?.GetValue(data)?.ToString(),
+            DropFileType = dataType.GetProperty("DropFileType")?.GetValue(data)?.ToString() ?? "DOOR.SYS",
+            DropFileLocation = dataType.GetProperty("DropFileLocation")?.GetValue(data)?.ToString(),
+            IsActive = Convert.ToBoolean(dataType.GetProperty("IsActive")?.GetValue(data) ?? false),
+            RequiresDosBox = Convert.ToBoolean(dataType.GetProperty("RequiresDosBox")?.GetValue(data) ?? false),
+            DosBoxConfigPath = dataType.GetProperty("DosBoxConfigPath")?.GetValue(data)?.ToString(),
+            SerialPort = dataType.GetProperty("SerialPort")?.GetValue(data)?.ToString() ?? "COM1",
+            MemorySize = Convert.ToInt32(dataType.GetProperty("MemorySize")?.GetValue(data) ?? 16),
+            MinimumLevel = Convert.ToInt32(dataType.GetProperty("MinimumLevel")?.GetValue(data) ?? 0),
+            MaximumLevel = Convert.ToInt32(dataType.GetProperty("MaximumLevel")?.GetValue(data) ?? 255),
+            TimeLimit = Convert.ToInt32(dataType.GetProperty("TimeLimit")?.GetValue(data) ?? 60),
+            DailyLimit = Convert.ToInt32(dataType.GetProperty("DailyLimit")?.GetValue(data) ?? 5),
+            Cost = Convert.ToInt32(dataType.GetProperty("Cost")?.GetValue(data) ?? 0),
+            SchedulingEnabled = Convert.ToBoolean(dataType.GetProperty("SchedulingEnabled")?.GetValue(data) ?? false),
+            AvailableHours = dataType.GetProperty("AvailableHours")?.GetValue(data)?.ToString(),
+            TimeZone = dataType.GetProperty("TimeZone")?.GetValue(data)?.ToString(),
+            MultiNodeEnabled = Convert.ToBoolean(dataType.GetProperty("MultiNodeEnabled")?.GetValue(data) ?? false),
+            MaxPlayers = Convert.ToInt32(dataType.GetProperty("MaxPlayers")?.GetValue(data) ?? 1),
+            InterBbsEnabled = Convert.ToBoolean(dataType.GetProperty("InterBbsEnabled")?.GetValue(data) ?? false),
+            CreatedAt = Convert.ToDateTime(dataType.GetProperty("CreatedAt")?.GetValue(data) ?? DateTime.UtcNow),
+            UpdatedAt = Convert.ToDateTime(dataType.GetProperty("UpdatedAt")?.GetValue(data) ?? DateTime.UtcNow),
+            CreatedBy = dataType.GetProperty("CreatedBy")?.GetValue(data) as int?,
+            ActiveSessions = Convert.ToInt32(dataType.GetProperty("ActiveSessions")?.GetValue(data) ?? 0),
+            TotalSessions = Convert.ToInt32(dataType.GetProperty("TotalSessions")?.GetValue(data) ?? 0),
+            LastPlayed = dataType.GetProperty("LastPlayed")?.GetValue(data) as DateTime?,
+            IsAvailable = true, // Will be calculated dynamically
+            UnavailableReason = null
+        };
     }
 
     private T GetExpandoProperty<T>(IDictionary<string, object> data, string propertyName)
@@ -1261,17 +1223,18 @@ public class DoorService : IDoorService
         {
             if (value is T directValue)
                 return directValue;
-            
+
             try
             {
                 return (T)Convert.ChangeType(value, typeof(T));
             }
             catch
             {
-                return default(T)!;
+                return default!;
             }
         }
-        return default(T)!;
+
+        return default!;
     }
 
     private DoorSessionDto MapToDoorSessionDto(dynamic data)
@@ -1281,13 +1244,13 @@ public class DoorService : IDoorService
             _logger.Warning("MapToDoorSessionDto received null data");
             throw new ArgumentNullException(nameof(data), "Door session data cannot be null");
         }
-            
+
         // Use reflection to safely access properties
         var dataType = data.GetType();
-        
+
         var endTime = dataType.GetProperty("EndTime")?.GetValue(data) as DateTime?;
         var startTime = Convert.ToDateTime(dataType.GetProperty("StartTime")?.GetValue(data) ?? DateTime.UtcNow);
-        
+
         return new DoorSessionDto
         {
             Id = Convert.ToInt32(dataType.GetProperty("Id")?.GetValue(data) ?? 0),
@@ -1299,9 +1262,7 @@ public class DoorService : IDoorService
             NodeNumber = dataType.GetProperty("NodeNumber")?.GetValue(data) as int?,
             StartTime = startTime,
             EndTime = endTime,
-            Duration = endTime != null ? 
-                (int)(endTime.Value - startTime).TotalSeconds : 
-                (int)(DateTime.UtcNow - startTime).TotalSeconds,
+            Duration = endTime != null ? (int)(endTime.Value - startTime).TotalSeconds : (int)(DateTime.UtcNow - startTime).TotalSeconds,
             ExitCode = dataType.GetProperty("ExitCode")?.GetValue(data) as int?,
             Status = dataType.GetProperty("Status")?.GetValue(data)?.ToString() ?? string.Empty,
             ErrorMessage = dataType.GetProperty("ErrorMessage")?.GetValue(data)?.ToString(),
@@ -1322,10 +1283,8 @@ public class DoorService : IDoorService
         };
 
         foreach (var path in possiblePaths)
-        {
             if (File.Exists(path))
                 return path;
-        }
 
         return string.Empty;
     }
@@ -1340,19 +1299,14 @@ public class DoorService : IDoorService
 
             var startTime = TimeSpan.Parse(parts[0]);
             var endTime = TimeSpan.Parse(parts[1]);
-            
+
             var tz = string.IsNullOrEmpty(timeZone) ? TimeZoneInfo.Utc : TimeZoneInfo.FindSystemTimeZoneById(timeZone);
             var currentTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz).TimeOfDay;
 
-            if (startTime <= endTime)
-            {
-                return currentTime >= startTime && currentTime <= endTime;
-            }
-            else
-            {
-                // Spans midnight
-                return currentTime >= startTime || currentTime <= endTime;
-            }
+            if (startTime <= endTime) return currentTime >= startTime && currentTime <= endTime;
+
+            // Spans midnight
+            return currentTime >= startTime || currentTime <= endTime;
         }
         catch
         {
@@ -1418,10 +1372,10 @@ Y
                 WHERE IsActive = 1 AND ExpiresAt > @Now AND UserId = @UserId
                 ORDER BY CreatedAt
                 LIMIT 1";
-            
-            var nodeNumber = await _databaseManager.QueryFirstOrDefaultAsync<int?>(sql, 
+
+            var nodeNumber = await _databaseManager.QueryFirstOrDefaultAsync<int?>(sql,
                 new { UserId = userId, Now = DateTime.UtcNow });
-            
+
             return nodeNumber ?? 1; // Default to node 1 if not found
         }
         catch (Exception ex)
@@ -1430,5 +1384,6 @@ Y
             return 1; // Default fallback
         }
     }
+
     #endregion
 }

@@ -10,9 +10,9 @@ public interface IDatabaseConfiguration
 
 public class DatabaseConfiguration : IDatabaseConfiguration
 {
+    public string BackupPath { get; set; } = "backups";
     public string ConnectionString { get; set; } = "Data Source=data/blackboard.db";
     public bool EnableWalMode { get; set; } = true;
     public int ConnectionTimeoutSeconds { get; set; } = 30;
     public bool EnableBackup { get; set; } = true;
-    public string BackupPath { get; set; } = "backups";
 }

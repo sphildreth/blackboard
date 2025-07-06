@@ -6,33 +6,33 @@ namespace Blackboard.Core.Services;
 public interface IAnsiScreenService
 {
     /// <summary>
-    /// Renders an ANSI screen with template variable replacement
+    ///     Renders an ANSI screen with template variable replacement
     /// </summary>
     Task<string> RenderScreenAsync(string screenName, UserContext context);
-    
+
     /// <summary>
-    /// Checks if a screen file exists
+    ///     Checks if a screen file exists
     /// </summary>
     Task<bool> ScreenExistsAsync(string screenName);
-    
+
     /// <summary>
-    /// Gets the fallback screen content if main screen doesn't exist
+    ///     Gets the fallback screen content if main screen doesn't exist
     /// </summary>
     Task<string> GetFallbackScreenAsync(string screenName);
-    
+
     /// <summary>
-    /// Clears the screen cache (useful for hot-reload)
+    ///     Clears the screen cache (useful for hot-reload)
     /// </summary>
     void ClearCache();
-    
+
     /// <summary>
-    /// Evaluates conditions for screen display
+    ///     Evaluates conditions for screen display
     /// </summary>
     bool EvaluateConditions(ScreenConditions conditions, UserContext context);
 }
 
 /// <summary>
-/// Context information for rendering screens
+///     Context information for rendering screens
 /// </summary>
 public class UserContext
 {
@@ -45,7 +45,7 @@ public class UserContext
 }
 
 /// <summary>
-/// Screen display conditions
+///     Screen display conditions
 /// </summary>
 public class ScreenConditions
 {

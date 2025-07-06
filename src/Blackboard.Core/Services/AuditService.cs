@@ -7,13 +7,17 @@ namespace Blackboard.Core.Services;
 
 public interface IAuditService
 {
-    Task LogAsync(string action, int? userId = null, string? entityType = null, string? entityId = null, 
-                  object? oldValues = null, object? newValues = null, string? ipAddress = null, string? userAgent = null);
+    Task LogAsync(string action, int? userId = null, string? entityType = null, string? entityId = null,
+        object? oldValues = null, object? newValues = null, string? ipAddress = null, string? userAgent = null);
+
     Task LogUserActionAsync(int userId, string action, string? ipAddress = null, string? userAgent = null);
-    Task LogEntityChangeAsync<T>(int? userId, string action, string entityId, T? oldValues, T? newValues, 
-                                 string? ipAddress = null, string? userAgent = null);
-    Task<IEnumerable<AuditLog>> GetAuditLogsAsync(int? userId = null, DateTime? fromDate = null, 
-                                                  DateTime? toDate = null, int limit = 100);
+
+    Task LogEntityChangeAsync<T>(int? userId, string action, string entityId, T? oldValues, T? newValues,
+        string? ipAddress = null, string? userAgent = null);
+
+    Task<IEnumerable<AuditLog>> GetAuditLogsAsync(int? userId = null, DateTime? fromDate = null,
+        DateTime? toDate = null, int limit = 100);
+
     Task<IEnumerable<AuditLog>> GetUserAuditLogsAsync(int userId, int limit = 50);
 }
 
@@ -28,8 +32,8 @@ public class AuditService : IAuditService
         _logger = logger;
     }
 
-    public async Task LogAsync(string action, int? userId = null, string? entityType = null, string? entityId = null, 
-                              object? oldValues = null, object? newValues = null, string? ipAddress = null, string? userAgent = null)
+    public async Task LogAsync(string action, int? userId = null, string? entityType = null, string? entityId = null,
+        object? oldValues = null, object? newValues = null, string? ipAddress = null, string? userAgent = null)
     {
         try
         {
@@ -65,15 +69,15 @@ public class AuditService : IAuditService
         await LogAsync(action, userId, "User", userId.ToString(), ipAddress: ipAddress, userAgent: userAgent);
     }
 
-    public async Task LogEntityChangeAsync<T>(int? userId, string action, string entityId, T? oldValues, T? newValues, 
-                                             string? ipAddress = null, string? userAgent = null)
+    public async Task LogEntityChangeAsync<T>(int? userId, string action, string entityId, T? oldValues, T? newValues,
+        string? ipAddress = null, string? userAgent = null)
     {
         var entityType = typeof(T).Name;
         await LogAsync(action, userId, entityType, entityId, oldValues, newValues, ipAddress, userAgent);
     }
 
-    public async Task<IEnumerable<AuditLog>> GetAuditLogsAsync(int? userId = null, DateTime? fromDate = null, 
-                                                              DateTime? toDate = null, int limit = 100)
+    public async Task<IEnumerable<AuditLog>> GetAuditLogsAsync(int? userId = null, DateTime? fromDate = null,
+        DateTime? toDate = null, int limit = 100)
     {
         var sql = @"
             SELECT Id, UserId, Action, EntityType, EntityId, OldValues, NewValues, IpAddress, UserAgent, CreatedAt

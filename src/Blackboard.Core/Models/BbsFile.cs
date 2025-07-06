@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace Blackboard.Core.Models;
 
@@ -8,29 +9,19 @@ public class BbsFile
 
     public int AreaId { get; set; }
 
-    [Required]
-    [StringLength(255)]
-    public string FileName { get; set; } = string.Empty;
+    [Required] [StringLength(255)] public string FileName { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(255)]
-    public string OriginalFileName { get; set; } = string.Empty;
+    [Required] [StringLength(255)] public string OriginalFileName { get; set; } = string.Empty;
 
-    [StringLength(1000)]
-    public string? Description { get; set; }
+    [StringLength(1000)] public string? Description { get; set; }
 
-    [Required]
-    [StringLength(500)]
-    public string FilePath { get; set; } = string.Empty;
+    [Required] [StringLength(500)] public string FilePath { get; set; } = string.Empty;
 
     public long Size { get; set; }
 
-    [Required]
-    [StringLength(64)]
-    public string Checksum { get; set; } = string.Empty;
+    [Required] [StringLength(64)] public string Checksum { get; set; } = string.Empty;
 
-    [StringLength(100)]
-    public string? MimeType { get; set; }
+    [StringLength(100)] public string? MimeType { get; set; }
 
     public string? Tags { get; set; } // JSON array of tags
 
@@ -51,21 +42,17 @@ public class BbsFile
     public virtual ICollection<FileRating> Ratings { get; set; } = new List<FileRating>();
 
     // Helper properties
-    public string[] TagsArray 
-    { 
-        get => string.IsNullOrEmpty(Tags) ? Array.Empty<string>() : 
-               System.Text.Json.JsonSerializer.Deserialize<string[]>(Tags) ?? Array.Empty<string>();
-        set => Tags = value.Length > 0 ? System.Text.Json.JsonSerializer.Serialize(value) : null;
+    public string[] TagsArray
+    {
+        get => string.IsNullOrEmpty(Tags) ? Array.Empty<string>() : JsonSerializer.Deserialize<string[]>(Tags) ?? Array.Empty<string>();
+        set => Tags = value.Length > 0 ? JsonSerializer.Serialize(value) : null;
     }
 
-    public double AverageRating 
-    { 
-        get => Ratings.Any() ? Ratings.Average(r => r.Rating) : 0.0;
-    }
+    public double AverageRating => Ratings.Any() ? Ratings.Average(r => r.Rating) : 0.0;
 
-    public string SizeFormatted 
-    { 
-        get 
+    public string SizeFormatted
+    {
+        get
         {
             if (Size < 1024) return $"{Size} B";
             if (Size < 1048576) return $"{Size / 1024.0:F1} KB";

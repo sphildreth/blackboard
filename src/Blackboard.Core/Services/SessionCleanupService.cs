@@ -1,4 +1,3 @@
-using Blackboard.Core.Services;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 
@@ -6,9 +5,9 @@ namespace Blackboard.Core.Services;
 
 public class SessionCleanupService : BackgroundService
 {
-    private readonly ISessionService _sessionService;
-    private readonly ILogger _logger;
     private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(15);
+    private readonly ILogger _logger;
+    private readonly ISessionService _sessionService;
 
     public SessionCleanupService(ISessionService sessionService, ILogger logger)
     {
@@ -21,7 +20,6 @@ public class SessionCleanupService : BackgroundService
         _logger.Information("Session cleanup service started");
 
         while (!stoppingToken.IsCancellationRequested)
-        {
             try
             {
                 await _sessionService.CleanupExpiredSessionsAsync();
@@ -37,7 +35,6 @@ public class SessionCleanupService : BackgroundService
                 _logger.Error(ex, "Error occurred during session cleanup");
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); // Wait a bit before retrying
             }
-        }
 
         _logger.Information("Session cleanup service stopped");
     }

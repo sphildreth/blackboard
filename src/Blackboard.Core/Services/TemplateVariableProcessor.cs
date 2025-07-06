@@ -7,10 +7,10 @@ namespace Blackboard.Core.Services;
 
 public class TemplateVariableProcessor : ITemplateVariableProcessor
 {
-    private readonly ILogger _logger;
     private readonly IDatabaseManager _databaseManager;
-    private readonly Dictionary<string, Func<UserContext, Dictionary<string, object>>> _variableProviders;
+    private readonly ILogger _logger;
     private readonly Regex _templateVariableRegex;
+    private readonly Dictionary<string, Func<UserContext, Dictionary<string, object>>> _variableProviders;
 
     public TemplateVariableProcessor(ILogger logger, IDatabaseManager databaseManager)
     {
@@ -18,7 +18,7 @@ public class TemplateVariableProcessor : ITemplateVariableProcessor
         _databaseManager = databaseManager;
         _variableProviders = new Dictionary<string, Func<UserContext, Dictionary<string, object>>>();
         _templateVariableRegex = new Regex(@"\{(\w+)\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        
+
         // Register default variable providers
         RegisterDefaultProviders();
     }
@@ -93,26 +93,18 @@ public class TemplateVariableProcessor : ITemplateVariableProcessor
     {
         // Try each provider to find the variable
         foreach (var provider in _variableProviders.Values)
-        {
             try
             {
                 var variables = provider(context);
-                if (variables.TryGetValue(variableName, out var value))
-                {
-                    return value;
-                }
+                if (variables.TryGetValue(variableName, out var value)) return value;
             }
             catch (Exception ex)
             {
                 _logger.Warning(ex, "Error getting variable {VariableName} from provider", variableName);
             }
-        }
 
         // Check custom variables
-        if (context.CustomVariables.TryGetValue(variableName, out var customValue))
-        {
-            return customValue;
-        }
+        if (context.CustomVariables.TryGetValue(variableName, out var customValue)) return customValue;
 
         return null;
     }
@@ -129,7 +121,7 @@ public class TemplateVariableProcessor : ITemplateVariableProcessor
     private int GetUserCallCount(long userId)
     {
         if (userId == 0) return 0;
-        
+
         try
         {
             // Count total sessions for the user (represents total calls)

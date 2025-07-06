@@ -1,7 +1,4 @@
-using System.Diagnostics;
 using System.IO.Pipes;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using Blackboard.Core.DTOs;
 using Blackboard.Core.Network;
@@ -10,18 +7,18 @@ using Serilog;
 namespace Blackboard.Core.Services;
 
 /// <summary>
-/// FOSSIL (Fido/Opus/SEAdog Standard Interface Layer) emulation service.
-/// Provides a bridge between legacy DOS door games expecting FOSSIL drivers
-/// and modern telnet connections, similar to NetFoss functionality.
+///     FOSSIL (Fido/Opus/SEAdog Standard Interface Layer) emulation service.
+///     Provides a bridge between legacy DOS door games expecting FOSSIL drivers
+///     and modern telnet connections, similar to NetFoss functionality.
 /// </summary>
 public class FossilEmulationService : IFossilEmulationService, IDisposable
 {
-    private readonly ILogger _logger;
     private readonly Dictionary<string, FossilSession> _activeSessions;
+    private readonly object _lockObject = new();
+    private readonly ILogger _logger;
     private readonly Dictionary<string, NamedPipeServerStream> _namedPipes;
     private readonly Dictionary<string, CancellationTokenSource> _pipeTokens;
-    private readonly object _lockObject = new();
-    private bool _disposed = false;
+    private bool _disposed;
 
     public FossilEmulationService(ILogger logger)
     {
@@ -31,16 +28,53 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
         _pipeTokens = new Dictionary<string, CancellationTokenSource>();
     }
 
+    #region Private Classes
+
+    private class FossilSession
+    {
+        public string SessionId { get; set; } = string.Empty;
+        public ITelnetConnection? TelnetConnection { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
+        public string ComPort { get; set; } = "COM1";
+        public int BaudRate { get; set; }
+        public int DataBits { get; set; }
+        public int StopBits { get; set; }
+        public string Parity { get; set; } = "none";
+        public bool IsActive { get; set; }
+        public bool IsInitialized { get; set; }
+        public Queue<byte> InputBuffer { get; set; } = new();
+        public Queue<byte> OutputBuffer { get; set; } = new();
+        public long BytesSent { get; set; }
+        public long BytesReceived { get; set; }
+
+        // Flow control signals
+        public bool DtrState { get; set; } = true;
+        public bool RtsState { get; set; } = true;
+        public bool CtsState { get; } = true;
+        public bool DsrState { get; } = true;
+        public bool DcdState { get; } = true;
+        public bool RiState { get; } = false;
+
+        // Interrupt handling
+        public bool InterruptsEnabled { get; set; }
+        public int InterruptVector { get; set; } = 0x14;
+
+        // Logging
+        public bool LoggingEnabled { get; set; }
+        public string LogLevel { get; set; } = "info";
+        public List<string> LogEntries { get; } = new();
+    }
+
+    #endregion
+
     #region FOSSIL Session Management
 
     public async Task<FossilEmulationDto> CreateFossilSessionAsync(string sessionId, ITelnetConnection telnetConnection)
     {
         lock (_lockObject)
         {
-            if (_activeSessions.ContainsKey(sessionId))
-            {
-                throw new InvalidOperationException($"FOSSIL session {sessionId} already exists");
-            }
+            if (_activeSessions.ContainsKey(sessionId)) throw new InvalidOperationException($"FOSSIL session {sessionId} already exists");
 
             var session = new FossilSession
             {
@@ -90,7 +124,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<FossilEmulationDto?> GetFossilSessionAsync(string sessionId)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session))
@@ -117,7 +151,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<IEnumerable<FossilEmulationDto>> GetActiveFossilSessionsAsync()
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             return _activeSessions.Values
@@ -148,13 +182,10 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<string> CreateNamedPipeAsync(string sessionId, string comPort = "COM1")
     {
         var pipeName = $"fossil_{sessionId}";
-        
+
         lock (_lockObject)
         {
-            if (_namedPipes.ContainsKey(pipeName))
-            {
-                throw new InvalidOperationException($"Named pipe {pipeName} already exists");
-            }
+            if (_namedPipes.ContainsKey(pipeName)) throw new InvalidOperationException($"Named pipe {pipeName} already exists");
 
             var pipeServer = new NamedPipeServerStream(
                 pipeName,
@@ -168,7 +199,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
 
         await Task.CompletedTask;
         _logger.Information("Created named pipe {PipeName} for session {SessionId}", pipeName, sessionId);
-        
+
         return pipeName;
     }
 
@@ -186,7 +217,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
             _pipeTokens[pipeName] = cancellationToken;
 
             // Start pipe server in background
-            _ = Task.Run(async () => await RunPipeServerAsync(pipeServer, session, cancellationToken.Token), 
+            _ = Task.Run(async () => await RunPipeServerAsync(pipeServer, session, cancellationToken.Token),
                 cancellationToken.Token);
         }
 
@@ -215,6 +246,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
                 {
                     _logger.Warning(ex, "Error disposing pipe server {PipeName}", pipeName);
                 }
+
                 _namedPipes.Remove(pipeName);
             }
         }
@@ -227,11 +259,11 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<bool> IsPipeActiveAsync(string pipeName)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
-            return _namedPipes.ContainsKey(pipeName) && 
-                   _pipeTokens.ContainsKey(pipeName) && 
+            return _namedPipes.ContainsKey(pipeName) &&
+                   _pipeTokens.ContainsKey(pipeName) &&
                    !_pipeTokens[pipeName].Token.IsCancellationRequested;
         }
     }
@@ -253,7 +285,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
         }
 
         await Task.CompletedTask;
-        _logger.Debug("Initialized FOSSIL driver for session {SessionId} on COM{ComPort} at {BaudRate} baud", 
+        _logger.Debug("Initialized FOSSIL driver for session {SessionId} on COM{ComPort} at {BaudRate} baud",
             sessionId, comPort, baudRate);
         return true;
     }
@@ -315,10 +347,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
                 return 0;
 
             // Add data to output buffer
-            foreach (var b in data)
-            {
-                session.OutputBuffer.Enqueue(b);
-            }
+            foreach (var b in data) session.OutputBuffer.Enqueue(b);
 
             session.BytesSent += data.Length;
         }
@@ -333,7 +362,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<byte[]> ReceiveDataAsync(string sessionId, int maxBytes = 1024)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session) || !session.IsActive)
@@ -342,10 +371,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
             var bytesToRead = Math.Min(maxBytes, session.InputBuffer.Count);
             var data = new byte[bytesToRead];
 
-            for (int i = 0; i < bytesToRead; i++)
-            {
-                data[i] = session.InputBuffer.Dequeue();
-            }
+            for (var i = 0; i < bytesToRead; i++) data[i] = session.InputBuffer.Dequeue();
 
             session.BytesReceived += bytesToRead;
             return data;
@@ -355,7 +381,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<int> GetInputBufferCountAsync(string sessionId)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session))
@@ -368,7 +394,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<int> GetOutputBufferCountAsync(string sessionId)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session))
@@ -441,7 +467,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<bool> GetCtsAsync(string sessionId)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session))
@@ -454,7 +480,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<bool> GetDsrAsync(string sessionId)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session))
@@ -467,7 +493,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<bool> GetDcdAsync(string sessionId)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session))
@@ -480,7 +506,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<bool> GetRiAsync(string sessionId)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session))
@@ -497,7 +523,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<bool> IsSessionActiveAsync(string sessionId)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             return _activeSessions.TryGetValue(sessionId, out var session) && session.IsActive;
@@ -507,7 +533,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<TimeSpan> GetSessionUpTimeAsync(string sessionId)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session))
@@ -521,7 +547,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<(long sent, long received)> GetSessionStatisticsAsync(string sessionId)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session))
@@ -561,15 +587,11 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
         batchContent.AppendLine($"SET FOSSIL_PORT={comPort}");
         batchContent.AppendLine($"SET FOSSIL_PIPE=\\\\.\\pipe\\fossil_{sessionId}");
         batchContent.AppendLine("");
-        
+
         if (!string.IsNullOrEmpty(parameters))
-        {
             batchContent.AppendLine($"\"{doorExecutable}\" {parameters}");
-        }
         else
-        {
             batchContent.AppendLine($"\"{doorExecutable}\"");
-        }
 
         var batchPath = Path.Combine(Path.GetTempPath(), $"fossil_{sessionId}.bat");
         await File.WriteAllTextAsync(batchPath, batchContent.ToString());
@@ -582,10 +604,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     {
         try
         {
-            if (!Directory.Exists(workingDirectory))
-            {
-                Directory.CreateDirectory(workingDirectory);
-            }
+            if (!Directory.Exists(workingDirectory)) Directory.CreateDirectory(workingDirectory);
 
             // Create environment setup files if needed
             await Task.CompletedTask;
@@ -604,10 +623,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
         {
             // Clean up batch files
             var batchPath = Path.Combine(Path.GetTempPath(), $"fossil_{sessionId}.bat");
-            if (File.Exists(batchPath))
-            {
-                File.Delete(batchPath);
-            }
+            if (File.Exists(batchPath)) File.Delete(batchPath);
 
             await Task.CompletedTask;
             return true;
@@ -657,7 +673,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
         // This would simulate DOS interrupts for FOSSIL communication
         // Implementation would depend on specific door requirements
         await Task.CompletedTask;
-        
+
         _logger.Debug("Simulated interrupt {InterruptNumber} for session {SessionId}", interruptNumber, sessionId);
         return true;
     }
@@ -698,7 +714,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     public async Task<IEnumerable<string>> GetFossilLogAsync(string sessionId, int count = 100)
     {
         await Task.CompletedTask;
-        
+
         lock (_lockObject)
         {
             if (!_activeSessions.TryGetValue(sessionId, out var session))
@@ -717,13 +733,12 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
         try
         {
             await pipeServer.WaitForConnectionAsync(cancellationToken);
-            
+
             _logger.Information("FOSSIL pipe client connected for session {SessionId}", session.SessionId);
 
             var buffer = new byte[1024];
-            
+
             while (!cancellationToken.IsCancellationRequested && pipeServer.IsConnected)
-            {
                 try
                 {
                     // Read from pipe (door -> FOSSIL)
@@ -732,7 +747,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
                     {
                         var data = new byte[bytesRead];
                         Array.Copy(buffer, data, bytesRead);
-                        
+
                         // Send to telnet connection
                         if (session.TelnetConnection != null)
                         {
@@ -747,11 +762,8 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
                         if (session.InputBuffer.Count > 0)
                         {
                             var writeData = new byte[Math.Min(1024, session.InputBuffer.Count)];
-                            for (int i = 0; i < writeData.Length; i++)
-                            {
-                                writeData[i] = session.InputBuffer.Dequeue();
-                            }
-                            
+                            for (var i = 0; i < writeData.Length; i++) writeData[i] = session.InputBuffer.Dequeue();
+
                             pipeServer.WriteAsync(writeData, 0, writeData.Length, cancellationToken);
                         }
                     }
@@ -767,7 +779,6 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
                     _logger.Warning(ex, "Error in FOSSIL pipe communication for session {SessionId}", session.SessionId);
                     break;
                 }
-            }
         }
         catch (OperationCanceledException)
         {
@@ -781,10 +792,7 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
         {
             try
             {
-                if (pipeServer.IsConnected)
-                {
-                    pipeServer.Disconnect();
-                }
+                if (pipeServer.IsConnected) pipeServer.Disconnect();
             }
             catch (Exception ex)
             {
@@ -797,16 +805,13 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
     {
         lock (_lockObject)
         {
-            if (!_activeSessions.TryGetValue(sessionId, out var session) || 
-                session.TelnetConnection == null || 
+            if (!_activeSessions.TryGetValue(sessionId, out var session) ||
+                session.TelnetConnection == null ||
                 session.OutputBuffer.Count == 0)
                 return;
 
             var data = new byte[session.OutputBuffer.Count];
-            for (int i = 0; i < data.Length; i++)
-            {
-                data[i] = session.OutputBuffer.Dequeue();
-            }
+            for (var i = 0; i < data.Length; i++) data[i] = session.OutputBuffer.Dequeue();
 
             // Send to telnet connection asynchronously
             _ = Task.Run(async () =>
@@ -822,46 +827,6 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
                 }
             });
         }
-    }
-
-    #endregion
-
-    #region Private Classes
-
-    private class FossilSession
-    {
-        public string SessionId { get; set; } = string.Empty;
-        public ITelnetConnection? TelnetConnection { get; set; }
-        public DateTime StartTime { get; set; }
-        public DateTime? EndTime { get; set; }
-        public string ComPort { get; set; } = "COM1";
-        public int BaudRate { get; set; }
-        public int DataBits { get; set; }
-        public int StopBits { get; set; }
-        public string Parity { get; set; } = "none";
-        public bool IsActive { get; set; }
-        public bool IsInitialized { get; set; }
-        public Queue<byte> InputBuffer { get; set; } = new();
-        public Queue<byte> OutputBuffer { get; set; } = new();
-        public long BytesSent { get; set; }
-        public long BytesReceived { get; set; }
-        
-        // Flow control signals
-        public bool DtrState { get; set; } = true;
-        public bool RtsState { get; set; } = true;
-        public bool CtsState { get; set; } = true;
-        public bool DsrState { get; set; } = true;
-        public bool DcdState { get; set; } = true;
-        public bool RiState { get; set; } = false;
-        
-        // Interrupt handling
-        public bool InterruptsEnabled { get; set; }
-        public int InterruptVector { get; set; } = 0x14;
-        
-        // Logging
-        public bool LoggingEnabled { get; set; }
-        public string LogLevel { get; set; } = "info";
-        public List<string> LogEntries { get; set; } = new();
     }
 
     #endregion
@@ -883,20 +848,37 @@ public class FossilEmulationService : IFossilEmulationService, IDisposable
             {
                 foreach (var token in _pipeTokens.Values)
                 {
-                    try { token.Cancel(); } catch { }
-                    try { token.Dispose(); } catch { }
+                    try
+                    {
+                        token.Cancel();
+                    }
+                    catch
+                    {
+                    }
+
+                    try
+                    {
+                        token.Dispose();
+                    }
+                    catch
+                    {
+                    }
                 }
-                
+
                 foreach (var pipe in _namedPipes.Values)
-                {
-                    try { pipe.Dispose(); } catch { }
-                }
-                
+                    try
+                    {
+                        pipe.Dispose();
+                    }
+                    catch
+                    {
+                    }
+
                 _activeSessions.Clear();
                 _namedPipes.Clear();
                 _pipeTokens.Clear();
             }
-            
+
             _disposed = true;
         }
     }

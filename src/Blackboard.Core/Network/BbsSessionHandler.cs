@@ -1,36 +1,36 @@
+using System.Diagnostics;
+using Blackboard.Core.Configuration;
+using Blackboard.Core.DTOs;
 using Blackboard.Core.Models;
 using Blackboard.Core.Services;
-using Blackboard.Core.DTOs;
 using Serilog;
-using System.Diagnostics;
-using System.Linq;
 
 namespace Blackboard.Core.Network;
 
 public class BbsSessionHandler
 {
-    private readonly IUserService _userService;
-    private readonly ISessionService _sessionService;
-    private readonly IMessageService _messageService;
-    private readonly IFileAreaService _fileAreaService;
     private readonly IAnsiScreenService _ansiScreenService;
-    private readonly IScreenSequenceService _screenSequenceService;
+    private readonly ConfigurationManager? _configManager;
+    private readonly IFileAreaService _fileAreaService;
     private readonly IKeyboardHandlerService _keyboardHandler;
     private readonly ILogger _logger;
+    private readonly IMessageService _messageService;
     private readonly string _screensDir;
-    private readonly Configuration.ConfigurationManager? _configManager;
+    private readonly IScreenSequenceService _screenSequenceService;
+    private readonly ISessionService _sessionService;
+    private readonly IUserService _userService;
 
     public BbsSessionHandler(
-        IUserService userService, 
-        ISessionService sessionService, 
-        IMessageService messageService, 
+        IUserService userService,
+        ISessionService sessionService,
+        IMessageService messageService,
         IFileAreaService fileAreaService,
         IAnsiScreenService ansiScreenService,
         IScreenSequenceService screenSequenceService,
         IKeyboardHandlerService keyboardHandler,
-        ILogger logger, 
+        ILogger logger,
         string screensDir,
-        Configuration.ConfigurationManager? configManager = null)
+        ConfigurationManager? configManager = null)
     {
         _userService = userService;
         _sessionService = sessionService;
@@ -75,10 +75,8 @@ public class BbsSessionHandler
                     case "REGISTER":
                         user = await HandleRegistration(connection);
                         if (user != null)
-                        {
                             // Create session for newly registered user
                             session = await _sessionService.CreateSessionAsync(user.Id, connection.RemoteEndPoint?.ToString() ?? "unknown");
-                        }
                         break;
                     case "G":
                     case "GUEST":
@@ -94,10 +92,7 @@ public class BbsSessionHandler
                 }
             }
 
-            if (user != null && session != null)
-            {
-                await HandleAuthenticatedSession(connection, user, session, cancellationToken);
-            }
+            if (user != null && session != null) await HandleAuthenticatedSession(connection, user, session, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -165,11 +160,9 @@ public class BbsSessionHandler
                 _logger.Information("User {Handle} logged in from {IP}", user.Handle, connection.RemoteEndPoint);
                 return (user, session);
             }
-            else
-            {
-                await connection.SendLineAsync("Invalid credentials. Please try again.");
-                return (null, null);
-            }
+
+            await connection.SendLineAsync("Invalid credentials. Please try again.");
+            return (null, null);
         }
         catch (Exception ex)
         {
@@ -185,7 +178,7 @@ public class BbsSessionHandler
         {
             await connection.SendLineAsync("");
             await connection.SendLineAsync("=== REGISTRATION ===");
-            
+
             await connection.SendAsync("Desired Handle: ");
             var handle = await _keyboardHandler.ReadLineAsync(connection);
 
@@ -198,7 +191,7 @@ public class BbsSessionHandler
             await connection.SendAsync("Email Address: ");
             var email = await _keyboardHandler.ReadLineAsync(connection);
 
-            if (string.IsNullOrWhiteSpace(email))
+            if (string.IsNullOrWhiteSpace(email) && (_configManager?.Configuration.Security.RequireEmailAddress ?? false))
             {
                 await connection.SendLineAsync("Email cannot be empty.");
                 return null;
@@ -249,11 +242,9 @@ public class BbsSessionHandler
                 _logger.Information("New user {Handle} registered from {IP}", user.Handle, connection.RemoteEndPoint);
                 return user;
             }
-            else
-            {
-                await connection.SendLineAsync("Registration failed. Handle or email may already be taken.");
-                return null;
-            }
+
+            await connection.SendLineAsync("Registration failed. Handle or email may already be taken.");
+            return null;
         }
         catch (Exception ex)
         {
@@ -311,7 +302,7 @@ public class BbsSessionHandler
         UserSession session,
         CancellationToken cancellationToken)
     {
-        string currentMenu = menuConfigFile;
+        var currentMenu = menuConfigFile;
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -322,6 +313,7 @@ public class BbsSessionHandler
                 await connection.SendLineAsync($"[Menu config not found: {currentMenu}]");
                 return;
             }
+
             var menuConfig = await MenuConfigLoader.LoadAsync(menuConfigPath);
 
             // Load and send the screen file
@@ -342,6 +334,7 @@ public class BbsSessionHandler
                         currentMenu = option.Screen;
                         continue;
                     }
+
                     // Otherwise, just show the screen and loop
                     var nextScreen = await MenuConfigLoader.LoadScreenAsync(screensDir, option.Screen);
                     await connection.SendLineAsync(nextScreen);
@@ -349,7 +342,6 @@ public class BbsSessionHandler
 
                 // Handle special actions
                 if (!string.IsNullOrEmpty(option.Action))
-                {
                     switch (option.Action.ToLower())
                     {
                         case "quit":
@@ -375,7 +367,6 @@ public class BbsSessionHandler
                             break;
                         // Add more actions as needed
                     }
-                }
             }
             else
             {
@@ -404,7 +395,7 @@ public class BbsSessionHandler
     {
         await connection.SendLineAsync("");
         await connection.SendLineAsync("=== WHO'S ONLINE ===");
-        
+
         var activeSessions = await _sessionService.GetAllActiveSessionsAsync();
         if (!activeSessions.Any())
         {
@@ -414,17 +405,14 @@ public class BbsSessionHandler
         {
             await connection.SendLineAsync($"{"Handle",-15} {"Location",-20} {"Login Time",-20}");
             await connection.SendLineAsync(new string('─', 55));
-            
+
             foreach (var session in activeSessions)
             {
                 var sessionUser = await _userService.GetUserByIdAsync(session.UserId);
-                if (sessionUser != null)
-                {
-                    await connection.SendLineAsync($"{sessionUser.Handle,-15} {sessionUser.Location ?? "Unknown",-20} {session.CreatedAt:HH:mm:ss}");
-                }
+                if (sessionUser != null) await connection.SendLineAsync($"{sessionUser.Handle,-15} {sessionUser.Location ?? "Unknown",-20} {session.CreatedAt:HH:mm:ss}");
             }
         }
-        
+
         await connection.SendLineAsync("");
         await connection.SendLineAsync("Press any key to continue...");
         await _keyboardHandler.ReadLineAsync(connection);
@@ -434,14 +422,14 @@ public class BbsSessionHandler
     {
         await connection.SendLineAsync("");
         await connection.SendLineAsync("=== SYSTEM INFORMATION ===");
-        await connection.SendLineAsync($"BBS Software: Blackboard v1.0");
+        await connection.SendLineAsync("BBS Software: Blackboard v1.0");
         await connection.SendLineAsync($"Platform: .NET 8.0 on {Environment.OSVersion}");
         await connection.SendLineAsync($"Server Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         await connection.SendLineAsync($"Uptime: {DateTime.UtcNow - Process.GetCurrentProcess().StartTime:d\\d\\ h\\h\\ m\\m}");
-        
+
         var totalUsers = (await _userService.GetUsersAsync(0, int.MaxValue)).Count();
         var activeSessions = await _sessionService.GetAllActiveSessionsAsync();
-        
+
         await connection.SendLineAsync($"Total Users: {totalUsers}");
         await connection.SendLineAsync($"Users Online: {activeSessions.Count()}");
         await connection.SendLineAsync("");
@@ -495,14 +483,11 @@ public class BbsSessionHandler
     {
         var messages = await _messageService.GetInboxAsync(user.Id);
         await connection.SendLineAsync("\n--- INBOX ---");
-        int i = 1;
-        foreach (var msg in messages)
-        {
-            await connection.SendLineAsync($"{i++}. From: {msg.FromUserId} | Subject: {msg.Subject} | {(msg.IsRead ? "Read" : "Unread")} | {msg.CreatedAt:yyyy-MM-dd HH:mm}");
-        }
+        var i = 1;
+        foreach (var msg in messages) await connection.SendLineAsync($"{i++}. From: {msg.FromUserId} | Subject: {msg.Subject} | {(msg.IsRead ? "Read" : "Unread")} | {msg.CreatedAt:yyyy-MM-dd HH:mm}");
         await connection.SendLineAsync("Enter message # to read, or press Enter to return.");
         var input = await _keyboardHandler.ReadLineAsync(connection);
-        if (int.TryParse(input, out int idx) && idx > 0 && idx <= messages.Count())
+        if (int.TryParse(input, out var idx) && idx > 0 && idx <= messages.Count())
         {
             var msg = messages.ElementAt(idx - 1);
             await ShowMessageDetail(connection, user, msg);
@@ -513,14 +498,11 @@ public class BbsSessionHandler
     {
         var messages = await _messageService.GetOutboxAsync(user.Id);
         await connection.SendLineAsync("\n--- OUTBOX ---");
-        int i = 1;
-        foreach (var msg in messages)
-        {
-            await connection.SendLineAsync($"{i++}. To: {msg.ToUserId} | Subject: {msg.Subject} | {msg.CreatedAt:yyyy-MM-dd HH:mm}");
-        }
+        var i = 1;
+        foreach (var msg in messages) await connection.SendLineAsync($"{i++}. To: {msg.ToUserId} | Subject: {msg.Subject} | {msg.CreatedAt:yyyy-MM-dd HH:mm}");
         await connection.SendLineAsync("Enter message # to view, or press Enter to return.");
         var input = await _keyboardHandler.ReadLineAsync(connection);
-        if (int.TryParse(input, out int idx) && idx > 0 && idx <= messages.Count())
+        if (int.TryParse(input, out var idx) && idx > 0 && idx <= messages.Count())
         {
             var msg = messages.ElementAt(idx - 1);
             await ShowMessageDetail(connection, user, msg);
@@ -529,7 +511,7 @@ public class BbsSessionHandler
 
     private async Task ShowMessageDetail(TelnetConnection connection, UserProfileDto user, Message msg)
     {
-        await connection.SendLineAsync($"\n--- MESSAGE ---");
+        await connection.SendLineAsync("\n--- MESSAGE ---");
         await connection.SendLineAsync($"From: {msg.FromUserId}");
         await connection.SendLineAsync($"To: {msg.ToUserId}");
         await connection.SendLineAsync($"Subject: {msg.Subject}");
@@ -552,7 +534,7 @@ public class BbsSessionHandler
         await connection.SendLineAsync("--- SEND PRIVATE MESSAGE ---");
         await connection.SendAsync("To User ID: ");
         var toUserIdStr = await _keyboardHandler.ReadLineAsync(connection);
-        if (!int.TryParse(toUserIdStr, out int toUserId))
+        if (!int.TryParse(toUserIdStr, out var toUserId))
         {
             await connection.SendLineAsync("Invalid user ID.");
             return;
@@ -601,10 +583,7 @@ public class BbsSessionHandler
         }
 
         // Add signature if enabled
-        if (preferences.ShowSignature && !string.IsNullOrEmpty(preferences.Signature))
-        {
-            body += $"\n\n---\n{preferences.Signature}";
-        }
+        if (preferences.ShowSignature && !string.IsNullOrEmpty(preferences.Signature)) body += $"\n\n---\n{preferences.Signature}";
 
         await _messageService.SendPrivateMessageAsync(user.Id, toUserId, subject ?? string.Empty, body ?? string.Empty);
         await connection.SendLineAsync("Message sent.");
@@ -623,16 +602,15 @@ public class BbsSessionHandler
             var line = await _keyboardHandler.ReadLineAsync(connection);
             if (line == null) break;
 
-            if (line.Trim().ToLower() == "/save")
-            {
-                break;
-            }
-            else if (line.Trim().ToLower() == "/quit")
+            if (line.Trim().ToLower() == "/save") break;
+
+            if (line.Trim().ToLower() == "/quit")
             {
                 await connection.SendLineAsync("Message composition cancelled.");
                 return string.Empty;
             }
-            else if (line.Trim().ToLower() == "/help")
+
+            if (line.Trim().ToLower() == "/help")
             {
                 await connection.SendLineAsync("ANSI Editor Commands:");
                 await connection.SendLineAsync("  /save  - Save and send message");
@@ -654,7 +632,7 @@ public class BbsSessionHandler
         await connection.SendLineAsync("=== MESSAGE SEARCH ===");
         await connection.SendAsync("Enter search term: ");
         var query = await _keyboardHandler.ReadLineAsync(connection);
-        
+
         if (string.IsNullOrWhiteSpace(query))
         {
             await connection.SendLineAsync("Search cancelled.");
@@ -663,8 +641,8 @@ public class BbsSessionHandler
 
         var results = await _messageService.SearchMessagesAsync(user.Id, query, 1, 50);
         await connection.SendLineAsync($"\n--- SEARCH RESULTS for '{query}' ---");
-        
-        int i = 1;
+
+        var i = 1;
         foreach (var msg in results)
         {
             var messageType = msg.MessageType == MessageType.Private ? "PM" : "PUB";
@@ -673,10 +651,7 @@ public class BbsSessionHandler
             await connection.SendLineAsync($"{i++}. [{messageType}] {direction}: {otherUserId} | Subject: {msg.Subject} | {msg.CreatedAt:yyyy-MM-dd HH:mm}");
         }
 
-        if (!results.Any())
-        {
-            await connection.SendLineAsync("No messages found matching your search.");
-        }
+        if (!results.Any()) await connection.SendLineAsync("No messages found matching your search.");
 
         await connection.SendLineAsync("\nPress any key to continue...");
         await _keyboardHandler.ReadLineAsync(connection);
@@ -685,7 +660,7 @@ public class BbsSessionHandler
     private async Task ShowMessagePreferences(TelnetConnection connection, UserProfileDto user)
     {
         var preferences = await _messageService.GetUserPreferencesAsync(user.Id);
-        
+
         while (true)
         {
             await connection.SendLineAsync("");
@@ -695,11 +670,11 @@ public class BbsSessionHandler
             await connection.SendLineAsync($"3. Show Signature: {(preferences.ShowSignature ? "Yes" : "No")}");
             await connection.SendLineAsync($"4. Enable ANSI Editor: {(preferences.EnableAnsiEditor ? "Yes" : "No")}");
             await connection.SendLineAsync($"5. Auto-mark Read: {(preferences.AutoMarkRead ? "Yes" : "No")}");
-            await connection.SendLineAsync($"6. Edit Signature");
-            await connection.SendLineAsync($"7. Manage Blocked Users");
-            await connection.SendLineAsync($"8. Back");
+            await connection.SendLineAsync("6. Edit Signature");
+            await connection.SendLineAsync("7. Manage Blocked Users");
+            await connection.SendLineAsync("8. Back");
             await connection.SendAsync("Select option: ");
-            
+
             var input = (await _keyboardHandler.ReadLineAsync(connection) ?? "").Trim();
             switch (input)
             {
@@ -749,14 +724,14 @@ public class BbsSessionHandler
         await connection.SendLineAsync("=== EDIT SIGNATURE ===");
         await connection.SendLineAsync($"Current signature: {preferences.Signature ?? "(none)"}");
         await connection.SendAsync("Enter new signature (max 200 chars, empty to clear): ");
-        
+
         var newSignature = await _keyboardHandler.ReadLineAsync(connection);
         if (newSignature != null && newSignature.Length > 200)
         {
             newSignature = newSignature.Substring(0, 200);
             await connection.SendLineAsync("Signature truncated to 200 characters.");
         }
-        
+
         preferences.Signature = string.IsNullOrWhiteSpace(newSignature) ? null : newSignature;
         await _messageService.UpdateUserPreferencesAsync(user.Id, preferences);
         await connection.SendLineAsync("Signature updated.");
@@ -769,70 +744,59 @@ public class BbsSessionHandler
             var blockedUsers = await _messageService.GetBlockedUsersAsync(user.Id);
             await connection.SendLineAsync("");
             await connection.SendLineAsync("=== BLOCKED USERS ===");
-            
+
             if (blockedUsers.Any())
             {
                 await connection.SendLineAsync("Currently blocked users:");
-                foreach (var blockedUserId in blockedUsers)
-                {
-                    await connection.SendLineAsync($"  User ID: {blockedUserId}");
-                }
+                foreach (var blockedUserId in blockedUsers) await connection.SendLineAsync($"  User ID: {blockedUserId}");
             }
             else
             {
                 await connection.SendLineAsync("No users are currently blocked.");
             }
-            
+
             await connection.SendLineAsync("");
             await connection.SendLineAsync("1. Block a user");
             await connection.SendLineAsync("2. Unblock a user");
             await connection.SendLineAsync("3. Back");
             await connection.SendAsync("Select option: ");
-            
+
             var input = (await _keyboardHandler.ReadLineAsync(connection) ?? "").Trim();
             switch (input)
             {
                 case "1":
                     await connection.SendAsync("Enter User ID to block: ");
                     var blockIdStr = await _keyboardHandler.ReadLineAsync(connection);
-                    if (int.TryParse(blockIdStr, out int blockId))
+                    if (int.TryParse(blockIdStr, out var blockId))
                     {
                         if (blockId == user.Id)
-                        {
                             await connection.SendLineAsync("You cannot block yourself.");
-                        }
                         else if (await _messageService.BlockUserAsync(user.Id, blockId))
-                        {
                             await connection.SendLineAsync($"User {blockId} has been blocked.");
-                        }
                         else
-                        {
                             await connection.SendLineAsync("Failed to block user.");
-                        }
                     }
                     else
                     {
                         await connection.SendLineAsync("Invalid User ID.");
                     }
+
                     break;
                 case "2":
                     await connection.SendAsync("Enter User ID to unblock: ");
                     var unblockIdStr = await _keyboardHandler.ReadLineAsync(connection);
-                    if (int.TryParse(unblockIdStr, out int unblockId))
+                    if (int.TryParse(unblockIdStr, out var unblockId))
                     {
                         if (await _messageService.UnblockUserAsync(user.Id, unblockId))
-                        {
                             await connection.SendLineAsync($"User {unblockId} has been unblocked.");
-                        }
                         else
-                        {
                             await connection.SendLineAsync("Failed to unblock user.");
-                        }
                     }
                     else
                     {
                         await connection.SendLineAsync("Invalid User ID.");
                     }
+
                     break;
                 case "3":
                     return;
@@ -858,7 +822,7 @@ public class BbsSessionHandler
             await connection.SendLineAsync("6. Upload File");
             await connection.SendLineAsync("7. Back");
             await connection.SendAsync("Select option: ");
-            
+
             var input = (await _keyboardHandler.ReadLineAsync(connection) ?? "").Trim();
             switch (input)
             {
@@ -892,10 +856,10 @@ public class BbsSessionHandler
     private async Task BrowseFileAreas(TelnetConnection connection, UserProfileDto user)
     {
         var areas = await _fileAreaService.GetActiveFileAreasAsync();
-        
+
         await connection.SendLineAsync("");
         await connection.SendLineAsync("=== FILE AREAS ===");
-        
+
         var areaList = areas.ToList();
         if (!areaList.Any())
         {
@@ -903,7 +867,7 @@ public class BbsSessionHandler
             return;
         }
 
-        for (int i = 0; i < areaList.Count; i++)
+        for (var i = 0; i < areaList.Count; i++)
         {
             var area = areaList[i];
             var canAccess = await _fileAreaService.CanUserAccessAreaAsync(user.Id, area.Id);
@@ -916,8 +880,8 @@ public class BbsSessionHandler
         await connection.SendLineAsync("");
         await connection.SendAsync("Enter area number to browse (or press Enter to return): ");
         var input = await _keyboardHandler.ReadLineAsync(connection);
-        
-        if (int.TryParse(input, out int areaIndex) && areaIndex > 0 && areaIndex <= areaList.Count)
+
+        if (int.TryParse(input, out var areaIndex) && areaIndex > 0 && areaIndex <= areaList.Count)
         {
             var selectedArea = areaList[areaIndex - 1];
             await BrowseFilesInArea(connection, user, selectedArea);
@@ -932,23 +896,20 @@ public class BbsSessionHandler
             return;
         }
 
-        int page = 1;
+        var page = 1;
         const int pageSize = 10;
 
         while (true)
         {
             var result = await _fileAreaService.SearchFilesAsync(areaId: area.Id, page: page, pageSize: pageSize);
-            
+
             await connection.SendLineAsync("");
             await connection.SendLineAsync($"=== {area.Name} === (Page {page})");
-            
+
             if (!result.Files.Any())
-            {
                 await connection.SendLineAsync("No files found in this area.");
-            }
             else
-            {
-                for (int i = 0; i < result.Files.Count; i++)
+                for (var i = 0; i < result.Files.Count; i++)
                 {
                     var file = result.Files[i];
                     await connection.SendLineAsync($"{i + 1}. {file.OriginalFileName} ({file.SizeFormatted})");
@@ -956,10 +917,9 @@ public class BbsSessionHandler
                     if (!string.IsNullOrEmpty(file.Description))
                         await connection.SendLineAsync($"   {file.Description}");
                 }
-            }
 
             await connection.SendLineAsync("");
-            
+
             var options = new List<string>();
             if (result.Files.Any()) options.Add("Enter file number to view details");
             if (result.HasPreviousPage) options.Add("P for previous page");
@@ -968,14 +928,12 @@ public class BbsSessionHandler
 
             await connection.SendLineAsync(string.Join(", ", options));
             await connection.SendAsync("Choice: ");
-            
+
             var input = (await _keyboardHandler.ReadLineAsync(connection) ?? "").Trim().ToLower();
-            
-            if (string.IsNullOrEmpty(input))
-            {
-                break;
-            }
-            else if (input == "n" && result.HasNextPage)
+
+            if (string.IsNullOrEmpty(input)) break;
+
+            if (input == "n" && result.HasNextPage)
             {
                 page++;
             }
@@ -983,7 +941,7 @@ public class BbsSessionHandler
             {
                 page--;
             }
-            else if (int.TryParse(input, out int fileIndex) && fileIndex > 0 && fileIndex <= result.Files.Count)
+            else if (int.TryParse(input, out var fileIndex) && fileIndex > 0 && fileIndex <= result.Files.Count)
             {
                 var selectedFile = result.Files[fileIndex - 1];
                 await ShowFileDetails(connection, user, selectedFile);
@@ -1004,10 +962,10 @@ public class BbsSessionHandler
         await connection.SendLineAsync($"Uploaded: {file.UploadDate:yyyy-MM-dd} by {file.UploaderHandle ?? "Unknown"}");
         await connection.SendLineAsync($"Downloads: {file.DownloadCount}");
         await connection.SendLineAsync($"Rating: {file.AverageRating:F1}/5.0 ({file.RatingCount} ratings)");
-        
+
         if (file.Tags.Any())
             await connection.SendLineAsync($"Tags: {string.Join(", ", file.Tags)}");
-        
+
         if (!string.IsNullOrEmpty(file.Description))
         {
             await connection.SendLineAsync("");
@@ -1021,10 +979,7 @@ public class BbsSessionHandler
         {
             await connection.SendLineAsync("");
             await connection.SendLineAsync("Recent Comments:");
-            foreach (var rating in ratings.Take(3))
-            {
-                await connection.SendLineAsync($"  {rating.UserHandle}: {rating.Rating}/5 - {rating.Comment ?? "No comment"}");
-            }
+            foreach (var rating in ratings.Take(3)) await connection.SendLineAsync($"  {rating.UserHandle}: {rating.Rating}/5 - {rating.Comment ?? "No comment"}");
         }
 
         await connection.SendLineAsync("");
@@ -1032,7 +987,7 @@ public class BbsSessionHandler
         await connection.SendLineAsync("2. Rate/Comment");
         await connection.SendLineAsync("3. Back");
         await connection.SendAsync("Choice: ");
-        
+
         var input = (await _keyboardHandler.ReadLineAsync(connection) ?? "").Trim();
         switch (input)
         {
@@ -1067,9 +1022,9 @@ public class BbsSessionHandler
             await connection.SendLineAsync("3. XMODEM");
             await connection.SendLineAsync("4. Cancel");
             await connection.SendAsync("Select protocol: ");
-            
+
             var protocolChoice = (await _keyboardHandler.ReadLineAsync(connection) ?? "").Trim();
-            
+
             switch (protocolChoice)
             {
                 case "1":
@@ -1107,10 +1062,10 @@ public class BbsSessionHandler
         try
         {
             var existingRating = await _fileAreaService.GetUserFileRatingAsync(file.Id, user.Id);
-            
+
             await connection.SendLineAsync("");
             await connection.SendLineAsync($"=== RATE FILE: {file.OriginalFileName} ===");
-            
+
             if (existingRating != null)
             {
                 await connection.SendLineAsync($"Your current rating: {existingRating.Rating}/5");
@@ -1120,8 +1075,8 @@ public class BbsSessionHandler
 
             await connection.SendAsync("Enter rating (1-5): ");
             var ratingInput = await _keyboardHandler.ReadLineAsync(connection);
-            
-            if (!int.TryParse(ratingInput, out int rating) || rating < 1 || rating > 5)
+
+            if (!int.TryParse(ratingInput, out var rating) || rating < 1 || rating > 5)
             {
                 await connection.SendLineAsync("Invalid rating. Please enter a number from 1 to 5.");
                 return;
@@ -1129,7 +1084,7 @@ public class BbsSessionHandler
 
             await connection.SendAsync("Enter comment (optional, press Enter to skip): ");
             var comment = await _keyboardHandler.ReadLineAsync(connection);
-            
+
             if (string.IsNullOrWhiteSpace(comment))
                 comment = null;
 
@@ -1156,7 +1111,7 @@ public class BbsSessionHandler
         await connection.SendLineAsync("");
         await connection.SendLineAsync("=== SEARCH FILES ===");
         await connection.SendAsync("Enter search term (filename or description): ");
-        
+
         var searchTerm = await _keyboardHandler.ReadLineAsync(connection);
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -1164,11 +1119,11 @@ public class BbsSessionHandler
             return;
         }
 
-        var result = await _fileAreaService.SearchFilesAsync(searchTerm: searchTerm.Trim(), pageSize: 20);
-        
+        var result = await _fileAreaService.SearchFilesAsync(searchTerm.Trim(), pageSize: 20);
+
         await connection.SendLineAsync("");
         await connection.SendLineAsync($"=== SEARCH RESULTS: '{searchTerm}' ===");
-        
+
         if (!result.Files.Any())
         {
             await connection.SendLineAsync("No files found matching your search.");
@@ -1178,7 +1133,7 @@ public class BbsSessionHandler
         await connection.SendLineAsync($"Found {result.TotalCount} files:");
         await connection.SendLineAsync("");
 
-        for (int i = 0; i < result.Files.Count; i++)
+        for (var i = 0; i < result.Files.Count; i++)
         {
             var file = result.Files[i];
             await connection.SendLineAsync($"{i + 1}. {file.OriginalFileName} ({file.SizeFormatted}) - {file.AreaName}");
@@ -1189,8 +1144,8 @@ public class BbsSessionHandler
         await connection.SendLineAsync("");
         await connection.SendAsync("Enter file number to view details (or press Enter to return): ");
         var input = await _keyboardHandler.ReadLineAsync(connection);
-        
-        if (int.TryParse(input, out int fileIndex) && fileIndex > 0 && fileIndex <= result.Files.Count)
+
+        if (int.TryParse(input, out var fileIndex) && fileIndex > 0 && fileIndex <= result.Files.Count)
         {
             var selectedFile = result.Files[fileIndex - 1];
             await ShowFileDetails(connection, user, selectedFile);
@@ -1200,10 +1155,10 @@ public class BbsSessionHandler
     private async Task ShowRecentUploads(TelnetConnection connection, UserProfileDto user)
     {
         var recentFiles = await _fileAreaService.GetRecentUploadsAsync(15);
-        
+
         await connection.SendLineAsync("");
         await connection.SendLineAsync("=== RECENT UPLOADS ===");
-        
+
         if (!recentFiles.Any())
         {
             await connection.SendLineAsync("No recent uploads found.");
@@ -1211,7 +1166,7 @@ public class BbsSessionHandler
         }
 
         var fileList = recentFiles.ToList();
-        for (int i = 0; i < fileList.Count; i++)
+        for (var i = 0; i < fileList.Count; i++)
         {
             var file = fileList[i];
             await connection.SendLineAsync($"{i + 1}. {file.OriginalFileName} ({file.SizeFormatted}) - {file.AreaName}");
@@ -1221,8 +1176,8 @@ public class BbsSessionHandler
         await connection.SendLineAsync("");
         await connection.SendAsync("Enter file number to view details (or press Enter to return): ");
         var input = await _keyboardHandler.ReadLineAsync(connection);
-        
-        if (int.TryParse(input, out int fileIndex) && fileIndex > 0 && fileIndex <= fileList.Count)
+
+        if (int.TryParse(input, out var fileIndex) && fileIndex > 0 && fileIndex <= fileList.Count)
         {
             var selectedFile = fileList[fileIndex - 1];
             await ShowFileDetails(connection, user, selectedFile);
@@ -1232,10 +1187,10 @@ public class BbsSessionHandler
     private async Task ShowMostDownloaded(TelnetConnection connection, UserProfileDto user)
     {
         var popularFiles = await _fileAreaService.GetMostDownloadedFilesAsync(15);
-        
+
         await connection.SendLineAsync("");
         await connection.SendLineAsync("=== MOST DOWNLOADED FILES ===");
-        
+
         if (!popularFiles.Any())
         {
             await connection.SendLineAsync("No download statistics available.");
@@ -1243,7 +1198,7 @@ public class BbsSessionHandler
         }
 
         var fileList = popularFiles.ToList();
-        for (int i = 0; i < fileList.Count; i++)
+        for (var i = 0; i < fileList.Count; i++)
         {
             var file = fileList[i];
             await connection.SendLineAsync($"{i + 1}. {file.OriginalFileName} ({file.DownloadCount} downloads) - {file.AreaName}");
@@ -1253,8 +1208,8 @@ public class BbsSessionHandler
         await connection.SendLineAsync("");
         await connection.SendAsync("Enter file number to view details (or press Enter to return): ");
         var input = await _keyboardHandler.ReadLineAsync(connection);
-        
-        if (int.TryParse(input, out int fileIndex) && fileIndex > 0 && fileIndex <= fileList.Count)
+
+        if (int.TryParse(input, out var fileIndex) && fileIndex > 0 && fileIndex <= fileList.Count)
         {
             var selectedFile = fileList[fileIndex - 1];
             await ShowFileDetails(connection, user, selectedFile);
@@ -1264,7 +1219,7 @@ public class BbsSessionHandler
     private async Task ShowMyUploads(TelnetConnection connection, UserProfileDto user)
     {
         var userStats = await _fileAreaService.GetUserFileStatisticsAsync(user.Id);
-        
+
         await connection.SendLineAsync("");
         await connection.SendLineAsync("=== MY UPLOADS ===");
         await connection.SendLineAsync($"Total uploads: {userStats.TotalFiles}");
@@ -1280,7 +1235,7 @@ public class BbsSessionHandler
         }
 
         await connection.SendLineAsync("Your recent uploads:");
-        for (int i = 0; i < userStats.RecentUploads.Count; i++)
+        for (var i = 0; i < userStats.RecentUploads.Count; i++)
         {
             var file = userStats.RecentUploads[i];
             var status = file.IsApproved ? "APPROVED" : "PENDING";
@@ -1291,8 +1246,8 @@ public class BbsSessionHandler
         await connection.SendLineAsync("");
         await connection.SendAsync("Enter file number to view details (or press Enter to return): ");
         var input = await _keyboardHandler.ReadLineAsync(connection);
-        
-        if (int.TryParse(input, out int fileIndex) && fileIndex > 0 && fileIndex <= userStats.RecentUploads.Count)
+
+        if (int.TryParse(input, out var fileIndex) && fileIndex > 0 && fileIndex <= userStats.RecentUploads.Count)
         {
             var selectedFile = userStats.RecentUploads[fileIndex - 1];
             await ShowFileDetails(connection, user, selectedFile);
@@ -1307,25 +1262,20 @@ public class BbsSessionHandler
         await connection.SendLineAsync("This feature requires protocol implementation (ZMODEM/XMODEM/YMODEM).");
         await connection.SendLineAsync("");
         await connection.SendLineAsync("Available upload areas for your security level:");
-        
+
         var areas = await _fileAreaService.GetActiveFileAreasAsync();
         var uploadableAreas = new List<FileAreaDto>();
-        
+
         foreach (var area in areas)
-        {
-            if (await _fileAreaService.CanUserAccessAreaAsync(user.Id, area.Id, isUpload: true))
+            if (await _fileAreaService.CanUserAccessAreaAsync(user.Id, area.Id, true))
             {
                 uploadableAreas.Add(area);
                 await connection.SendLineAsync($"  - {area.Name}: {area.Description ?? "No description"}");
                 await connection.SendLineAsync($"    Max file size: {FormatFileSize(area.MaxFileSize)}");
             }
-        }
 
-        if (!uploadableAreas.Any())
-        {
-            await connection.SendLineAsync("You do not have upload permissions for any file areas.");
-        }
-        
+        if (!uploadableAreas.Any()) await connection.SendLineAsync("You do not have upload permissions for any file areas.");
+
         await connection.SendLineAsync("");
         await connection.SendLineAsync("File upload protocol implementation will be added in a future update.");
     }
@@ -1348,11 +1298,8 @@ public class BbsSessionHandler
     {
         try
         {
-            if (_configManager?.Configuration?.System?.BoardName != null)
-            {
-                return Task.FromResult(_configManager.Configuration.System.BoardName);
-            }
-            
+            if (_configManager?.Configuration?.System?.BoardName != null) return Task.FromResult(_configManager.Configuration.System.BoardName);
+
             // Fallback to default
             return Task.FromResult("Blackboard");
         }

@@ -9,14 +9,11 @@ namespace Blackboard.Core;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddBlackboardCore(this IServiceCollection services, 
+    public static IServiceCollection AddBlackboardCore(this IServiceCollection services,
         SystemConfiguration? config = null)
     {
         // Ensure config is not null
-        if (config == null)
-        {
-            throw new ArgumentNullException(nameof(config), "SystemConfiguration cannot be null");
-        }
+        if (config == null) throw new ArgumentNullException(nameof(config), "SystemConfiguration cannot be null");
 
         // Configuration
         services.AddSingleton(config);
@@ -40,18 +37,18 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IUserService, UserService>();
         services.AddTransient<IAuthorizationService, AuthorizationService>();
         services.AddTransient<IMessageService, MessageService>();
-        
+
         // Register FileAreaService with configuration-based path
         services.AddTransient<IFileAreaService>(provider =>
         {
             var databaseManager = provider.GetRequiredService<DatabaseManager>();
             var logger = provider.GetRequiredService<ILogger>();
             var configuration = provider.GetRequiredService<SystemConfiguration>();
-            
+
             var filesPath = PathResolver.ResolvePath(ConfigurationManager.FilesPath, configuration.System.RootPath);
             return new FileAreaService(databaseManager, logger, filesPath);
         });
-        
+
         services.AddTransient<IFileTransferService, FileTransferService>();
         services.AddTransient<IFileCompressionService, FileCompressionService>();
 
@@ -78,16 +75,6 @@ public class ServiceManager
         _serviceProvider = serviceProvider;
     }
 
-    public T GetService<T>() where T : notnull
-    {
-        return _serviceProvider.GetRequiredService<T>();
-    }
-
-    public T? GetOptionalService<T>()
-    {
-        return _serviceProvider.GetService<T>();
-    }
-
     public IUserService UserService => GetService<IUserService>();
     public ISessionService SessionService => GetService<ISessionService>();
     public IAuditService AuditService => GetService<IAuditService>();
@@ -102,4 +89,14 @@ public class ServiceManager
     public DatabaseManager DatabaseManager => GetService<DatabaseManager>();
     public SystemConfiguration SystemConfiguration => GetService<SystemConfiguration>();
     public IAuthenticationContextService AuthenticationContextService => GetService<IAuthenticationContextService>();
+
+    public T GetService<T>() where T : notnull
+    {
+        return _serviceProvider.GetRequiredService<T>();
+    }
+
+    public T? GetOptionalService<T>()
+    {
+        return _serviceProvider.GetService<T>();
+    }
 }

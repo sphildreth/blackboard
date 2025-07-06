@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Blackboard.Core.Services;
 
 namespace Blackboard.Core.Services;
 

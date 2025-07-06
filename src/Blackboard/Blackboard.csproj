@@ -1,35 +1,35 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <AssemblyTitle>Blackboard</AssemblyTitle>
-    <AssemblyDescription>A modern terminal-based BBS application</AssemblyDescription>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyTitle>Blackboard</AssemblyTitle>
+        <AssemblyDescription>A modern terminal-based BBS application</AssemblyDescription>
+        <AssemblyVersion>1.0.0.0</AssemblyVersion>
+        <FileVersion>1.0.0.0</FileVersion>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Terminal.Gui" Version="2.0.0-develop.4521" />
-    <PackageReference Include="Serilog" Version="4.3.0" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="YamlDotNet" Version="16.3.0" />
-    <PackageReference Include="CommandLineParser" Version="2.9.1" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Terminal.Gui" Version="2.0.0-develop.4521"/>
+        <PackageReference Include="Serilog" Version="4.3.0"/>
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
+        <PackageReference Include="Serilog.Sinks.File" Version="7.0.0"/>
+        <PackageReference Include="YamlDotNet" Version="16.3.0"/>
+        <PackageReference Include="CommandLineParser" Version="2.9.1"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Blackboard.Core\Blackboard.Core.csproj" />
-    <ProjectReference Include="..\Blackboard.Data\Blackboard.Data.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Blackboard.Core\Blackboard.Core.csproj"/>
+        <ProjectReference Include="..\Blackboard.Data\Blackboard.Data.csproj"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <None Include="../../blackboard.yml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>blackboard.yml</Link>
-    </None>
-  </ItemGroup>
+    <ItemGroup>
+        <None Include="../../blackboard.yml">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>blackboard.yml</Link>
+        </None>
+    </ItemGroup>
 
 </Project>

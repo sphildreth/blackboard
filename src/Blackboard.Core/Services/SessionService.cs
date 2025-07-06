@@ -21,8 +21,8 @@ public interface ISessionService
 public class SessionService : ISessionService
 {
     private readonly DatabaseManager _database;
-    private readonly ILogger _logger;
     private readonly TimeSpan _defaultSessionDuration = TimeSpan.FromHours(24);
+    private readonly ILogger _logger;
 
     public SessionService(DatabaseManager database, ILogger logger)
     {
@@ -49,8 +49,8 @@ public class SessionService : ISessionService
             VALUES (@Id, @UserId, @IpAddress, @UserAgent, @CreatedAt, @ExpiresAt, @IsActive)";
 
         await _database.ExecuteAsync(sql, session);
-        
-        _logger.Information("Created session {SessionId} for user {UserId} from {IpAddress}", 
+
+        _logger.Information("Created session {SessionId} for user {UserId} from {IpAddress}",
             sessionId, userId, ipAddress);
 
         return session;
@@ -72,10 +72,7 @@ public class SessionService : ISessionService
         var session = await GetSessionAsync(sessionId);
         if (session == null || !session.IsValid)
         {
-            if (session != null && !session.IsValid)
-            {
-                await EndSessionAsync(sessionId);
-            }
+            if (session != null && !session.IsValid) await EndSessionAsync(sessionId);
             return false;
         }
 
@@ -92,16 +89,13 @@ public class SessionService : ISessionService
             SET ExpiresAt = @ExpiresAt 
             WHERE Id = @SessionId AND IsActive = 1";
 
-        var rowsAffected = await _database.ExecuteAsync(sql, new 
-        { 
-            SessionId = sessionId, 
-            ExpiresAt = newExpirationTime 
+        var rowsAffected = await _database.ExecuteAsync(sql, new
+        {
+            SessionId = sessionId,
+            ExpiresAt = newExpirationTime
         });
 
-        if (rowsAffected > 0)
-        {
-            _logger.Debug("Extended session {SessionId} until {ExpiresAt}", sessionId, newExpirationTime);
-        }
+        if (rowsAffected > 0) _logger.Debug("Extended session {SessionId} until {ExpiresAt}", sessionId, newExpirationTime);
 
         return rowsAffected > 0;
     }
@@ -114,11 +108,8 @@ public class SessionService : ISessionService
             WHERE Id = @SessionId";
 
         var rowsAffected = await _database.ExecuteAsync(sql, new { SessionId = sessionId });
-        
-        if (rowsAffected > 0)
-        {
-            _logger.Information("Ended session {SessionId}", sessionId);
-        }
+
+        if (rowsAffected > 0) _logger.Information("Ended session {SessionId}", sessionId);
 
         return rowsAffected > 0;
     }
@@ -131,11 +122,8 @@ public class SessionService : ISessionService
             WHERE UserId = @UserId AND IsActive = 1";
 
         var rowsAffected = await _database.ExecuteAsync(sql, new { UserId = userId });
-        
-        if (rowsAffected > 0)
-        {
-            _logger.Information("Ended {Count} sessions for user {UserId}", rowsAffected, userId);
-        }
+
+        if (rowsAffected > 0) _logger.Information("Ended {Count} sessions for user {UserId}", rowsAffected, userId);
 
         return rowsAffected > 0;
     }
@@ -148,10 +136,10 @@ public class SessionService : ISessionService
             WHERE UserId = @UserId AND IsActive = 1 AND ExpiresAt > @Now
             ORDER BY CreatedAt DESC";
 
-        return await _database.QueryAsync<UserSession>(sql, new 
-        { 
-            UserId = userId, 
-            Now = DateTime.UtcNow 
+        return await _database.QueryAsync<UserSession>(sql, new
+        {
+            UserId = userId,
+            Now = DateTime.UtcNow
         });
     }
 
@@ -175,11 +163,8 @@ public class SessionService : ISessionService
             WHERE ExpiresAt < @Now OR IsActive = 0";
 
         var deletedCount = await _database.ExecuteAsync(sql, new { Now = DateTime.UtcNow });
-        
-        if (deletedCount > 0)
-        {
-            _logger.Information("Cleaned up {Count} expired sessions", deletedCount);
-        }
+
+        if (deletedCount > 0) _logger.Information("Cleaned up {Count} expired sessions", deletedCount);
     }
 
     private static string GenerateSessionId()

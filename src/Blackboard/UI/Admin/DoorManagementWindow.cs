@@ -1,43 +1,39 @@
 using System.Collections.ObjectModel;
-using System.Text;
 using Blackboard.Core.DTOs;
 using Blackboard.Core.Services;
-using Terminal.Gui.App;
 using Terminal.Gui.Views;
-using Terminal.Gui.ViewBase;
 
 namespace Blackboard.UI.Admin;
 
 /// <summary>
-/// Admin interface for Door Game System management
-/// Updated for Terminal.Gui v2 alpha compatibility
+///     Admin interface for Door Game System management
+///     Updated for Terminal.Gui v2 alpha compatibility
 /// </summary>
 public class DoorManagementWindow : Window
 {
+    private readonly IAuthenticationContextService _authContext;
     private readonly IDoorService _doorService;
     private readonly IFossilEmulationService _fossilService;
-    private readonly IAuthenticationContextService _authContext;
-    private ListView? _doorsList;
-    private ListView? _sessionsList;
-    private Label? _statsLabel;
     private Button? _addDoorButton;
-    private Button? _editDoorButton;
     private Button? _deleteDoorButton;
-    private Button? _testDoorButton;
-    private Button? _viewLogsButton;
-    private Button? _maintenanceButton;
-    private Button? _refreshButton;
 
     private List<DoorDto> _doors = new();
+    private ListView? _doorsList;
+    private Button? _editDoorButton;
+    private Button? _maintenanceButton;
+    private Button? _refreshButton;
     private List<DoorSessionDto> _sessions = new();
+    private ListView? _sessionsList;
+    private Label? _statsLabel;
+    private Button? _testDoorButton;
+    private Button? _viewLogsButton;
 
     public DoorManagementWindow(IDoorService doorService, IFossilEmulationService fossilService, IAuthenticationContextService authContext)
-        : base()
     {
         _doorService = doorService ?? throw new ArgumentNullException(nameof(doorService));
         _fossilService = fossilService ?? throw new ArgumentNullException(nameof(fossilService));
         _authContext = authContext ?? throw new ArgumentNullException(nameof(authContext));
-        
+
         Title = "Door Game System Management";
         X = 0;
         Y = 0;
@@ -47,14 +43,14 @@ public class DoorManagementWindow : Window
         InitializeComponents();
         SetupLayout();
         SetupEventHandlers();
-        
+
         _ = RefreshDataAsync();
     }
 
     private void InitializeComponents()
     {
         // Door list
-        _doorsList = new ListView()
+        _doorsList = new ListView
         {
             X = 0,
             Y = 1,
@@ -63,7 +59,7 @@ public class DoorManagementWindow : Window
         };
 
         // Session list
-        _sessionsList = new ListView()
+        _sessionsList = new ListView
         {
             X = 62,
             Y = 1,
@@ -72,7 +68,7 @@ public class DoorManagementWindow : Window
         };
 
         // Statistics label
-        _statsLabel = new Label()
+        _statsLabel = new Label
         {
             X = 0,
             Y = 22,
@@ -83,7 +79,7 @@ public class DoorManagementWindow : Window
 
         // Buttons row 1
         var buttonY = 26;
-        _addDoorButton = new Button()
+        _addDoorButton = new Button
         {
             X = 0,
             Y = buttonY,
@@ -91,8 +87,8 @@ public class DoorManagementWindow : Window
             Height = 1,
             Text = "Add Door"
         };
-        
-        _editDoorButton = new Button()
+
+        _editDoorButton = new Button
         {
             X = 13,
             Y = buttonY,
@@ -100,8 +96,8 @@ public class DoorManagementWindow : Window
             Height = 1,
             Text = "Edit Door"
         };
-        
-        _deleteDoorButton = new Button()
+
+        _deleteDoorButton = new Button
         {
             X = 26,
             Y = buttonY,
@@ -109,8 +105,8 @@ public class DoorManagementWindow : Window
             Height = 1,
             Text = "Delete Door"
         };
-        
-        _testDoorButton = new Button()
+
+        _testDoorButton = new Button
         {
             X = 41,
             Y = buttonY,
@@ -121,7 +117,7 @@ public class DoorManagementWindow : Window
 
         // Buttons row 2
         buttonY = 28;
-        _viewLogsButton = new Button()
+        _viewLogsButton = new Button
         {
             X = 0,
             Y = buttonY,
@@ -129,8 +125,8 @@ public class DoorManagementWindow : Window
             Height = 1,
             Text = "View Logs"
         };
-        
-        _maintenanceButton = new Button()
+
+        _maintenanceButton = new Button
         {
             X = 13,
             Y = buttonY,
@@ -138,8 +134,8 @@ public class DoorManagementWindow : Window
             Height = 1,
             Text = "Maintenance"
         };
-        
-        _refreshButton = new Button()
+
+        _refreshButton = new Button
         {
             X = 28,
             Y = buttonY,
@@ -151,8 +147,8 @@ public class DoorManagementWindow : Window
 
     private void SetupLayout()
     {
-        Add(new Label() { X = 0, Y = 0, Text = "Doors:" });
-        Add(new Label() { X = 62, Y = 0, Text = "Active Sessions:" });
+        Add(new Label { X = 0, Y = 0, Text = "Doors:" });
+        Add(new Label { X = 62, Y = 0, Text = "Active Sessions:" });
         Add(_doorsList!);
         Add(_sessionsList!);
         Add(_statsLabel!);
@@ -168,7 +164,7 @@ public class DoorManagementWindow : Window
     private void SetupEventHandlers()
     {
         _doorsList!.SelectedItemChanged += (sender, args) => OnDoorSelected(args);
-        
+
         // For Terminal.Gui v2, buttons use MouseClick event
         _addDoorButton!.MouseClick += (sender, args) => OnAddDoor();
         _editDoorButton!.MouseClick += (sender, args) => OnEditDoor();
@@ -186,7 +182,7 @@ public class DoorManagementWindow : Window
             // Load doors
             _doors = (await _doorService.GetAllDoorsAsync()).ToList();
             var doorItems = _doors.Select(d => $"{d.Name} - {d.Category} ({(d.IsActive ? "Active" : "Inactive")})").ToArray();
-            
+
             // Load active sessions
             _sessions = (await _doorService.GetActiveSessionsAsync()).ToList();
             var sessionItems = _sessions.Select(s => $"{s.UserHandle} - {s.DoorName} ({s.Duration}s)").ToArray();
@@ -224,7 +220,7 @@ public class DoorManagementWindow : Window
         {
             var doorSessions = (await _doorService.GetActiveSessionsForDoorAsync(doorId)).ToList();
             var sessionItems = doorSessions.Select(s => $"{s.UserHandle} - Started: {s.StartTime:HH:mm} Duration: {s.Duration}s").ToArray();
-            
+
             _sessionsList!.SetSource(new ObservableCollection<string>(sessionItems));
         }
         catch (Exception ex)
@@ -300,7 +296,6 @@ public class DoorManagementWindow : Window
     {
         var result = MessageBox.Query("Confirm Delete", $"Delete door '{door.Name}'?", "Yes", "No");
         if (result == 0)
-        {
             try
             {
                 await _doorService.DeleteDoorAsync(door.Id);
@@ -311,7 +306,6 @@ public class DoorManagementWindow : Window
             {
                 MessageBox.ErrorQuery("Error", $"Failed to delete door: {ex.Message}", "OK");
             }
-        }
     }
 
     private void OnTestDoor()
@@ -363,7 +357,7 @@ public class DoorManagementWindow : Window
             var logs = await _doorService.GetDoorLogsAsync(doorId, count: 20);
             var logMessages = logs.Select(l => $"[{l.Timestamp:HH:mm:ss}] {l.LogLevel}: {l.Message}").ToArray();
             var logText = string.Join("\n", logMessages);
-            
+
             MessageBox.Query("Door Logs", $"Recent logs:\n{logText}", "OK");
         }
         catch (Exception ex)
@@ -380,7 +374,7 @@ public class DoorManagementWindow : Window
     private async Task ShowMaintenanceAsync()
     {
         var result = MessageBox.Query("Maintenance", "Select maintenance operation:", "Cleanup Sessions", "Cleanup Files", "Validate All", "Cancel");
-        
+
         try
         {
             switch (result)
@@ -389,12 +383,12 @@ public class DoorManagementWindow : Window
                     var sessionCount = await _doorService.CleanupExpiredSessionsAsync();
                     MessageBox.Query("Maintenance", $"Cleaned up {sessionCount} expired sessions", "OK");
                     break;
-                    
+
                 case 1: // Cleanup Files
                     var fileCount = await _doorService.CleanupOrphanedFilesAsync();
                     MessageBox.Query("Maintenance", $"Cleaned up {fileCount} orphaned files", "OK");
                     break;
-                    
+
                 case 2: // Validate All
                     var doors = await _doorService.GetAllDoorsAsync();
                     var totalIssues = 0;
@@ -403,15 +397,14 @@ public class DoorManagementWindow : Window
                         var issues = await _doorService.ValidateDoorConfigurationAsync(door.Id);
                         totalIssues += issues.Count();
                     }
+
                     var validationMessage = totalIssues == 0 ? "All doors validated successfully!" : $"Found {totalIssues} issues across all doors";
                     MessageBox.Query("Validation", validationMessage, "OK");
                     break;
             }
-            
+
             if (result < 3) // If not Cancel
-            {
                 await RefreshDataAsync();
-            }
         }
         catch (Exception ex)
         {
@@ -425,19 +418,16 @@ public class DoorManagementWindow : Window
     }
 
     /// <summary>
-    /// Gets the current admin user ID
-    /// Uses authentication context to retrieve the current authenticated user
+    ///     Gets the current admin user ID
+    ///     Uses authentication context to retrieve the current authenticated user
     /// </summary>
     private int GetCurrentAdminUserId()
     {
         var currentUserId = _authContext.GetCurrentUserId();
-        
+
         // If we have a current user and they are an admin, use their ID
-        if (currentUserId.HasValue && _authContext.IsCurrentUserAdmin())
-        {
-            return currentUserId.Value;
-        }
-        
+        if (currentUserId.HasValue && _authContext.IsCurrentUserAdmin()) return currentUserId.Value;
+
         // Fallback to default admin ID if no authenticated admin user
         // This maintains backward compatibility while the authentication system is being integrated
         return 1; // Default system admin

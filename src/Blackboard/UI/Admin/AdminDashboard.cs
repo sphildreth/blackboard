@@ -1,44 +1,43 @@
 using System.Collections.ObjectModel;
-using Terminal.Gui.App;
-using Terminal.Gui.Views;
-using Terminal.Gui.ViewBase;
-using Blackboard.Core.Services;
 using Blackboard.Core.DTOs;
+using Blackboard.Core.Services;
 using Serilog;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace Blackboard.UI.Admin;
 
 public class AdminDashboard : Window
 {
-    private readonly ISystemStatisticsService _statisticsService;
     private readonly ILogger _logger;
-    
-    private Label? _totalUsersLabel;
-    private Label? _activeUsersLabel;
+    private readonly ISystemStatisticsService _statisticsService;
     private Label? _activeSessionsLabel;
-    private Label? _uptimeLabel;
-    private Label? _callsTodayLabel;
-    private Label? _registrationsTodayLabel;
     private ListView? _activeSessionsList;
+    private Label? _activeUsersLabel;
     private ListView? _alertsList;
-    
-    private Label? _memoryUsageLabel;
-    private Label? _diskUsageLabel;
+    private Label? _callsTodayLabel;
     private Label? _databaseStatusLabel;
-    
+    private Label? _diskUsageLabel;
+
+    private Label? _memoryUsageLabel;
+    private Label? _registrationsTodayLabel;
+
+    private Label? _totalUsersLabel;
+
     private Timer? _updateTimer;
+    private Label? _uptimeLabel;
 
     public AdminDashboard(ISystemStatisticsService statisticsService, ILogger logger)
     {
         _statisticsService = statisticsService;
         _logger = logger;
-        
+
         Title = "║ Admin Dashboard ║";
         X = 0;
         Y = 0;
         Width = 80;
         Height = 25;
-        
+
         InitializeComponent();
         SetupUpdateTimer();
     }
@@ -51,8 +50,8 @@ public class AdminDashboard : Window
         statsFrame.Y = 0;
         statsFrame.Width = Dim.Percent(50);
         statsFrame.Height = 10;
-         statsFrame.Add(ThemeManager.CreateBorlandLabel("System Statistics", "", 0, 0));
-        
+        statsFrame.Add(ThemeManager.CreateBorlandLabel("System Statistics"));
+
         _totalUsersLabel = ThemeManager.CreateBorlandLabel("Total Users: 0", ThemeManager.ComponentStyles.UserPrefix, 1, 1);
         _activeUsersLabel = ThemeManager.CreateBorlandLabel("Active Users: 0", "👥 ", 1, 2);
         _activeSessionsLabel = ThemeManager.CreateBorlandLabel("Active Sessions: 0", "🔗 ", 1, 3);
@@ -60,8 +59,8 @@ public class AdminDashboard : Window
         _callsTodayLabel = ThemeManager.CreateBorlandLabel("Calls Today: 0", "📞 ", 1, 5);
         _registrationsTodayLabel = ThemeManager.CreateBorlandLabel("Registrations Today: 0", "📝 ", 1, 6);
 
-        statsFrame.Add(_totalUsersLabel, _activeUsersLabel, _activeSessionsLabel, 
-                      _uptimeLabel, _callsTodayLabel, _registrationsTodayLabel);
+        statsFrame.Add(_totalUsersLabel, _activeUsersLabel, _activeSessionsLabel,
+            _uptimeLabel, _callsTodayLabel, _registrationsTodayLabel);
 
         // System Resources Panel with enhanced styling
         var resourcesFrame = ThemeManager.CreateBorlandFrame("System Resources", ThemeManager.ComponentStyles.ResourcePrefix);
@@ -69,8 +68,8 @@ public class AdminDashboard : Window
         resourcesFrame.Y = 0;
         resourcesFrame.Width = Dim.Fill();
         resourcesFrame.Height = 10;
-         resourcesFrame.Add(ThemeManager.CreateBorlandLabel("System Resources", "", 0, 0));
-        
+        resourcesFrame.Add(ThemeManager.CreateBorlandLabel("System Resources"));
+
         _memoryUsageLabel = ThemeManager.CreateBorlandLabel("Memory Usage: 0%", "🧠 ", 1, 1);
         _diskUsageLabel = ThemeManager.CreateBorlandLabel("Disk Usage: 0%", "💾 ", 1, 2);
         _databaseStatusLabel = ThemeManager.CreateBorlandLabel("Database: Unknown", "🗄️ ", 1, 3);
@@ -83,8 +82,8 @@ public class AdminDashboard : Window
         sessionsFrame.Y = Pos.Bottom(statsFrame);
         sessionsFrame.Width = Dim.Percent(50);
         sessionsFrame.Height = 12;
-        
-        sessionsFrame.Add(ThemeManager.CreateBorlandLabel("Active Sessions", "", 0, 0));
+
+        sessionsFrame.Add(ThemeManager.CreateBorlandLabel("Active Sessions"));
 
         _activeSessionsList = new ListView
         {
@@ -102,8 +101,8 @@ public class AdminDashboard : Window
         alertsFrame.Y = Pos.Bottom(resourcesFrame);
         alertsFrame.Width = 40;
         alertsFrame.Height = 12;
-        
-        alertsFrame.Add(ThemeManager.CreateBorlandLabel("System Alerts", "", 0, 0));
+
+        alertsFrame.Add(ThemeManager.CreateBorlandLabel("System Alerts"));
 
         _alertsList = new ListView
         {
@@ -134,7 +133,7 @@ public class AdminDashboard : Window
         try
         {
             var dashboardData = await _statisticsService.GetDashboardStatisticsAsync();
-            
+
             // Update UI on main thread - simplified for now
             UpdateStatistics(dashboardData.SystemStats);
             UpdateResourceInfo(dashboardData.SystemResources);
@@ -152,19 +151,19 @@ public class AdminDashboard : Window
     {
         if (_totalUsersLabel != null)
             _totalUsersLabel.Text = $"👤 Total Users: {stats.TotalUsers}";
-        
+
         if (_activeUsersLabel != null)
             _activeUsersLabel.Text = $"👥 Active Users: {stats.ActiveUsers}";
-        
+
         if (_activeSessionsLabel != null)
             _activeSessionsLabel.Text = $"🔗 Active Sessions: {stats.ActiveSessions}";
-        
+
         if (_uptimeLabel != null)
             _uptimeLabel.Text = $"⏰ System Uptime: {FormatTimeSpan(stats.SystemUptime)}";
-        
+
         if (_callsTodayLabel != null)
             _callsTodayLabel.Text = $"📞 Calls Today: {stats.CallsToday}";
-        
+
         if (_registrationsTodayLabel != null)
             _registrationsTodayLabel.Text = $"📝 Registrations Today: {stats.RegistrationsToday}";
     }
@@ -173,10 +172,10 @@ public class AdminDashboard : Window
     {
         var memoryIcon = resources.MemoryUsagePercent > 80 ? "🔴" : resources.MemoryUsagePercent > 60 ? "🟡" : "🟢";
         var diskIcon = resources.DiskUsagePercent > 80 ? "🔴" : resources.DiskUsagePercent > 60 ? "🟡" : "🟢";
-        
+
         if (_memoryUsageLabel != null)
             _memoryUsageLabel.Text = $"🧠 Memory Usage: {memoryIcon} {resources.MemoryUsagePercent:F1}% ({FormatBytes(resources.MemoryUsedBytes)})";
-        
+
         if (_diskUsageLabel != null)
             _diskUsageLabel.Text = $"💾 Disk Usage: {diskIcon} {resources.DiskUsagePercent:F1}% ({FormatBytes(resources.DiskUsedBytes)})";
     }
@@ -196,17 +195,14 @@ public class AdminDashboard : Window
     {
         if (_activeSessionsList != null)
         {
-            var sessionItems = sessions.Select(s => 
+            var sessionItems = sessions.Select(s =>
                 $"🔗 {s.Handle,-15} {s.IpAddress,-15} {FormatTimeSpan(s.SessionDuration),-10} {s.CurrentActivity}"
             ).ToList();
-            
-            if (sessionItems.Count == 0)
-            {
-                sessionItems.Add("📭 No active sessions");
-            }
-            
+
+            if (sessionItems.Count == 0) sessionItems.Add("📭 No active sessions");
+
             var observableItems = new ObservableCollection<string>(sessionItems);
-            _activeSessionsList.SetSource<string>(observableItems);
+            _activeSessionsList.SetSource(observableItems);
         }
     }
 
@@ -214,26 +210,23 @@ public class AdminDashboard : Window
     {
         if (_alertsList != null)
         {
-            var alertItems = alerts.Take(10).Select(a => 
+            var alertItems = alerts.Take(10).Select(a =>
             {
                 var icon = a.Severity switch
                 {
-                    Blackboard.Core.DTOs.AlertSeverity.Error => "🔴",
-                    Blackboard.Core.DTOs.AlertSeverity.Critical => "🔴",
-                    Blackboard.Core.DTOs.AlertSeverity.Warning => "🟡",
-                    Blackboard.Core.DTOs.AlertSeverity.Info => "🔵",
+                    AlertSeverity.Error => "🔴",
+                    AlertSeverity.Critical => "🔴",
+                    AlertSeverity.Warning => "🟡",
+                    AlertSeverity.Info => "🔵",
                     _ => "⚠️"
                 };
                 return $"{icon} [{a.Severity}] {a.Title}: {a.Message}";
             }).ToList();
-            
-            if (alertItems.Count == 0)
-            {
-                alertItems.Add("No active alerts");
-            }
-            
+
+            if (alertItems.Count == 0) alertItems.Add("No active alerts");
+
             var observableItems = new ObservableCollection<string>(alertItems);
-            _alertsList.SetSource<string>(observableItems);
+            _alertsList.SetSource(observableItems);
         }
     }
 
@@ -241,31 +234,28 @@ public class AdminDashboard : Window
     {
         if (timeSpan.TotalDays >= 1)
             return $"{(int)timeSpan.TotalDays}d {timeSpan.Hours}h {timeSpan.Minutes}m";
-        else if (timeSpan.TotalHours >= 1)
+        if (timeSpan.TotalHours >= 1)
             return $"{timeSpan.Hours}h {timeSpan.Minutes}m";
-        else
-            return $"{timeSpan.Minutes}m {timeSpan.Seconds}s";
+        return $"{timeSpan.Minutes}m {timeSpan.Seconds}s";
     }
 
     private string FormatBytes(long bytes)
     {
         string[] sizes = { "B", "KB", "MB", "GB", "TB" };
         double len = bytes;
-        int order = 0;
+        var order = 0;
         while (len >= 1024 && order < sizes.Length - 1)
         {
             order++;
             len = len / 1024;
         }
+
         return $"{len:0.##} {sizes[order]}";
     }
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
-        {
-            _updateTimer?.Dispose();
-        }
+        if (disposing) _updateTimer?.Dispose();
         base.Dispose(disposing);
     }
 }

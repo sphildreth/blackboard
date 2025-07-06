@@ -1,5 +1,5 @@
-using Blackboard.Core.Network;
 using Blackboard.Core.Configuration;
+using Blackboard.Core.Network;
 using Serilog;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -17,7 +17,7 @@ public class ScreenSequenceService : IScreenSequenceService
         _ansiScreenService = ansiScreenService;
         _logger = logger;
         _sequences = new Dictionary<string, string[]>();
-        
+
         // Initialize default sequences
         InitializeDefaultSequences();
     }
@@ -37,7 +37,7 @@ public class ScreenSequenceService : IScreenSequenceService
             foreach (var stage in stages)
             {
                 await ShowScreenIfConditionsMetAsync(stage, connection, context);
-                
+
                 // Small delay between screens for better user experience
                 await Task.Delay(100);
             }
@@ -67,7 +67,7 @@ public class ScreenSequenceService : IScreenSequenceService
 
             // Load screen configuration and evaluate conditions
             var screenConditions = await LoadScreenConditionsAsync(screenName);
-            
+
             if (!_ansiScreenService.EvaluateConditions(screenConditions, context))
             {
                 _logger.Debug("Screen {ScreenName} conditions not met, skipping", screenName);
@@ -76,11 +76,11 @@ public class ScreenSequenceService : IScreenSequenceService
 
             // Render and send the screen with content adaptation
             var screenContent = await _ansiScreenService.RenderScreenAsync(screenName, context);
-            
+
             // Apply content adaptation based on terminal capabilities
             // This would require injecting IContentAdaptationService - for now, use SendAnsiAsync which handles basic adaptation
             await connection.SendAnsiAsync(screenContent);
-            
+
             _logger.Debug("Successfully showed screen {ScreenName}", screenName);
             return true;
         }
@@ -95,16 +95,16 @@ public class ScreenSequenceService : IScreenSequenceService
     {
         // Login sequence
         _sequences["LOGIN"] = new[] { "CONNECT", "LOGON1", "LOGON2", "LOGON3" };
-        
+
         // New user sequence
         _sequences["NEWUSER"] = new[] { "NEWUSER1", "NEWUSER2", "NEWUSER3" };
-        
+
         // Logoff sequence
         _sequences["LOGOFF"] = new[] { "LOGOFF" };
-        
+
         // Pre-login sequence
         _sequences["PRELOGIN"] = new[] { "CONNECT", "LOGON1" };
-        
+
         // Post-login sequence
         _sequences["POSTLOGIN"] = new[] { "LOGON2", "LOGON3" };
 
@@ -112,7 +112,7 @@ public class ScreenSequenceService : IScreenSequenceService
     }
 
     /// <summary>
-    /// Adds or updates a custom screen sequence
+    ///     Adds or updates a custom screen sequence
     /// </summary>
     public void RegisterSequence(string sequenceName, string[] stages)
     {
@@ -121,20 +121,17 @@ public class ScreenSequenceService : IScreenSequenceService
     }
 
     /// <summary>
-    /// Removes a screen sequence
+    ///     Removes a screen sequence
     /// </summary>
     public bool UnregisterSequence(string sequenceName)
     {
         var removed = _sequences.Remove(sequenceName.ToUpperInvariant());
-        if (removed)
-        {
-            _logger.Information("Unregistered screen sequence {SequenceName}", sequenceName);
-        }
+        if (removed) _logger.Information("Unregistered screen sequence {SequenceName}", sequenceName);
         return removed;
     }
 
     /// <summary>
-    /// Loads screen conditions from configuration
+    ///     Loads screen conditions from configuration
     /// </summary>
     private async Task<ScreenConditions> LoadScreenConditionsAsync(string screenName)
     {
@@ -143,27 +140,27 @@ public class ScreenSequenceService : IScreenSequenceService
             // For now, return basic default conditions
             // In the future, this could load from YAML config files per screen
             // or from a central screen configuration database
-            
+
             // Check for screen-specific config file
             // Look for a .conditions.yml file next to the screen file
             var screenDir = Path.GetDirectoryName(screenName) ?? "";
             var screenFileName = Path.GetFileNameWithoutExtension(screenName);
             var conditionsFileName = $"{screenFileName}.conditions.yml";
-            
-            var configPath = Path.Combine(Path.GetDirectoryName(_ansiScreenService.GetType().Assembly.Location) ?? "", 
+
+            var configPath = Path.Combine(Path.GetDirectoryName(_ansiScreenService.GetType().Assembly.Location) ?? "",
                 ConfigurationManager.ScreensPath, screenDir, conditionsFileName);
-            
+
             if (File.Exists(configPath))
             {
                 // Load YAML configuration for this screen
                 var yaml = await File.ReadAllTextAsync(configPath);
-                
+
                 try
                 {
                     var deserializer = new DeserializerBuilder()
                         .WithNamingConvention(CamelCaseNamingConvention.Instance)
                         .Build();
-                    
+
                     var screenConditions = deserializer.Deserialize<ScreenConditions>(yaml);
                     _logger.Debug("Loaded screen conditions for {ScreenName} from {ConfigPath}", screenName, configPath);
                     return screenConditions ?? new ScreenConditions();
@@ -174,7 +171,7 @@ public class ScreenSequenceService : IScreenSequenceService
                     return new ScreenConditions(); // Default to no conditions on parse error
                 }
             }
-            
+
             // Return default empty conditions for now
             return new ScreenConditions();
         }

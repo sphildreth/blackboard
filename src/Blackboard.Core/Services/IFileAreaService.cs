@@ -1,5 +1,4 @@
 using Blackboard.Core.DTOs;
-using Blackboard.Core.Models;
 
 namespace Blackboard.Core.Services;
 
@@ -16,8 +15,9 @@ public interface IFileAreaService
     Task<bool> CanUserAccessAreaAsync(int userId, int areaId, bool isUpload = false);
 
     // File Management
-    Task<FileSearchResultDto> SearchFilesAsync(string? searchTerm = null, int? areaId = null, 
+    Task<FileSearchResultDto> SearchFilesAsync(string? searchTerm = null, int? areaId = null,
         string[]? tags = null, int page = 1, int pageSize = 20, string? sortBy = null, bool sortDesc = false);
+
     Task<BbsFileDto?> GetFileAsync(int fileId);
     Task<IEnumerable<BbsFileDto>> GetFilesByAreaAsync(int areaId, int page = 1, int pageSize = 20);
     Task<IEnumerable<BbsFileDto>> GetPendingApprovalFilesAsync();

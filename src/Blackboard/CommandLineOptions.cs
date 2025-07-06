@@ -3,7 +3,7 @@ using CommandLine;
 namespace Blackboard;
 
 /// <summary>
-/// Command-line options for the Blackboard application.
+///     Command-line options for the Blackboard application.
 /// </summary>
 public class CommandLineOptions
 {
@@ -28,7 +28,7 @@ public class CommandLineOptions
     // Future options can be added here:
     // [Option("backup", Required = false, HelpText = "Perform database backup and exit.")]
     // public bool Backup { get; set; }
-    
+
     // [Option("maintenance", Required = false, HelpText = "Run in maintenance mode.")]
     // public bool MaintenanceMode { get; set; }
 }

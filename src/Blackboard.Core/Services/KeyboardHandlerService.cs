@@ -6,8 +6,8 @@ namespace Blackboard.Core.Services;
 
 public class KeyboardHandlerService : IKeyboardHandlerService
 {
-    private readonly ILogger _logger;
     private readonly Dictionary<string, SpecialKey> _escapeSequences;
+    private readonly ILogger _logger;
 
     public KeyboardHandlerService(ILogger logger)
     {
@@ -20,13 +20,11 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         try
         {
             var ch = await connection.ReadCharAsync();
-            
+
             // Handle escape sequences (special keys)
             if (ch == '\x1b') // ESC
-            {
                 return await ReadEscapeSequenceAsync(connection);
-            }
-            
+
             // Handle common control characters
             return ch switch
             {
@@ -47,13 +45,13 @@ public class KeyboardHandlerService : IKeyboardHandlerService
     public async Task<string> ReadLineAsync(ITelnetConnection connection, bool echoInput = true)
     {
         var input = new StringBuilder();
-        
+
         try
         {
             while (connection.IsConnected)
             {
                 var key = await ReadKeyAsync(connection);
-                
+
                 if (key.IsSpecial)
                 {
                     switch (key.SpecialKey)
@@ -62,18 +60,16 @@ public class KeyboardHandlerService : IKeyboardHandlerService
                             if (echoInput)
                                 await connection.SendAsync("\r\n");
                             return input.ToString();
-                            
+
                         case SpecialKey.Backspace:
                             if (input.Length > 0)
                             {
                                 input.Length--;
-                                if (echoInput)
-                                {
-                                    await connection.SendAsync("\b \b"); // Backspace, space, backspace
-                                }
+                                if (echoInput) await connection.SendAsync("\b \b"); // Backspace, space, backspace
                             }
+
                             break;
-                            
+
                         case SpecialKey.Escape:
                             // Clear current input
                             if (echoInput && input.Length > 0)
@@ -82,6 +78,7 @@ public class KeyboardHandlerService : IKeyboardHandlerService
                                 await connection.SendAsync(new string(' ', input.Length));
                                 await connection.SendAsync(new string('\b', input.Length));
                             }
+
                             input.Clear();
                             break;
                     }
@@ -89,16 +86,12 @@ public class KeyboardHandlerService : IKeyboardHandlerService
                 else if (char.IsControl(key.Character))
                 {
                     // Handle other control characters as needed
-                    continue;
                 }
                 else
                 {
                     // Regular character
                     input.Append(key.Character);
-                    if (echoInput)
-                    {
-                        await connection.SendAsync(key.Character.ToString());
-                    }
+                    if (echoInput) await connection.SendAsync(key.Character.ToString());
                 }
             }
         }
@@ -106,7 +99,7 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         {
             _logger.Debug(ex, "Error reading line input");
         }
-        
+
         return input.ToString();
     }
 
@@ -120,15 +113,11 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         try
         {
             if (enabled)
-            {
                 // Send WILL ECHO to enable local echo
                 await connection.SendAsync("\xFF\xFB\x01"); // IAC WILL ECHO
-            }
             else
-            {
                 // Send WONT ECHO to disable local echo
                 await connection.SendAsync("\xFF\xFC\x01"); // IAC WONT ECHO
-            }
         }
         catch (Exception ex)
         {
@@ -141,33 +130,28 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         try
         {
             var sequence = new StringBuilder("\x1b");
-            
+
             // Read the next character(s) to determine the escape sequence
             var timeout = Task.Delay(100); // 100ms timeout for escape sequences
             var readTask = connection.ReadCharAsync();
-            
+
             var completedTask = await Task.WhenAny(readTask, timeout);
             if (completedTask == timeout)
-            {
                 // Timeout - just return ESC
                 return new KeyInput(SpecialKey.Escape);
-            }
-            
+
             var nextChar = readTask.Result;
             sequence.Append(nextChar);
-            
+
             // Handle common escape sequences
             if (nextChar == '[')
-            {
                 // ANSI escape sequence
                 return await ReadAnsiEscapeSequenceAsync(connection, sequence);
-            }
-            else if (nextChar == 'O')
-            {
+
+            if (nextChar == 'O')
                 // Function key sequence
                 return await ReadFunctionKeySequenceAsync(connection, sequence);
-            }
-            
+
             // Unknown escape sequence, return as ESC
             return new KeyInput(SpecialKey.Escape);
         }
@@ -184,30 +168,27 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         {
             // Read until we get a letter (end of ANSI sequence)
             var timeout = Task.Delay(200);
-            
+
             while (sequence.Length < 10) // Prevent infinite sequences
             {
                 var readTask = connection.ReadCharAsync();
                 var completedTask = await Task.WhenAny(readTask, timeout);
-                
+
                 if (completedTask == timeout)
                     break;
-                    
+
                 var ch = readTask.Result;
                 sequence.Append(ch);
-                
+
                 if (char.IsLetter(ch))
                     break;
             }
-            
+
             var escapeString = sequence.ToString();
-            
+
             // Check if we recognize this escape sequence
-            if (_escapeSequences.TryGetValue(escapeString, out var specialKey))
-            {
-                return new KeyInput(specialKey);
-            }
-            
+            if (_escapeSequences.TryGetValue(escapeString, out var specialKey)) return new KeyInput(specialKey);
+
             return new KeyInput(SpecialKey.None);
         }
         catch (Exception ex)
@@ -224,20 +205,17 @@ public class KeyboardHandlerService : IKeyboardHandlerService
             var timeout = Task.Delay(100);
             var readTask = connection.ReadCharAsync();
             var completedTask = await Task.WhenAny(readTask, timeout);
-            
+
             if (completedTask == timeout)
                 return new KeyInput(SpecialKey.None);
-                
+
             var ch = readTask.Result;
             sequence.Append(ch);
-            
+
             var escapeString = sequence.ToString();
-            
-            if (_escapeSequences.TryGetValue(escapeString, out var specialKey))
-            {
-                return new KeyInput(specialKey);
-            }
-            
+
+            if (_escapeSequences.TryGetValue(escapeString, out var specialKey)) return new KeyInput(specialKey);
+
             return new KeyInput(SpecialKey.None);
         }
         catch (Exception ex)
@@ -256,20 +234,20 @@ public class KeyboardHandlerService : IKeyboardHandlerService
             ["\x1b[B"] = SpecialKey.ArrowDown,
             ["\x1b[C"] = SpecialKey.ArrowRight,
             ["\x1b[D"] = SpecialKey.ArrowLeft,
-            
+
             // Home/End
             ["\x1b[H"] = SpecialKey.Home,
             ["\x1b[F"] = SpecialKey.End,
             ["\x1b[1~"] = SpecialKey.Home,
             ["\x1b[4~"] = SpecialKey.End,
-            
+
             // Page Up/Down
             ["\x1b[5~"] = SpecialKey.PageUp,
             ["\x1b[6~"] = SpecialKey.PageDown,
-            
+
             // Delete
             ["\x1b[3~"] = SpecialKey.Delete,
-            
+
             // Function keys (F1-F12)
             ["\x1bOP"] = SpecialKey.F1,
             ["\x1bOQ"] = SpecialKey.F2,

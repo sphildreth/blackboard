@@ -1,8 +1,5 @@
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
-using Blackboard.Core.Configuration;
 using Blackboard.Core.Models;
 using Serilog;
 
@@ -10,11 +7,11 @@ namespace Blackboard.Core.Services;
 
 public class AnsiScreenService : IAnsiScreenService
 {
-    private readonly string _screensDirectory;
-    private readonly ILogger _logger;
-    private readonly ITemplateVariableProcessor _templateProcessor;
-    private readonly ConcurrentDictionary<string, string> _screenCache;
     private readonly FileSystemWatcher? _fileWatcher;
+    private readonly ILogger _logger;
+    private readonly ConcurrentDictionary<string, string> _screenCache;
+    private readonly string _screensDirectory;
+    private readonly ITemplateVariableProcessor _templateProcessor;
 
     public AnsiScreenService(string screensDirectory, ILogger logger, ITemplateVariableProcessor templateProcessor)
     {
@@ -22,7 +19,7 @@ public class AnsiScreenService : IAnsiScreenService
         _logger = logger;
         _templateProcessor = templateProcessor;
         _screenCache = new ConcurrentDictionary<string, string>();
-        
+
         // Setup file watcher for hot-reload
         if (Directory.Exists(_screensDirectory))
         {
@@ -91,12 +88,12 @@ public class AnsiScreenService : IAnsiScreenService
         try
         {
             // Security level check
-            if (conditions.MinSecurityLevel.HasValue && 
-                ((int)(context.User?.SecurityLevel ?? SecurityLevel.User)) < conditions.MinSecurityLevel.Value)
+            if (conditions.MinSecurityLevel.HasValue &&
+                (int)(context.User?.SecurityLevel ?? SecurityLevel.User) < conditions.MinSecurityLevel.Value)
                 return false;
 
-            if (conditions.MaxSecurityLevel.HasValue && 
-                ((int)(context.User?.SecurityLevel ?? SecurityLevel.User)) > conditions.MaxSecurityLevel.Value)
+            if (conditions.MaxSecurityLevel.HasValue &&
+                (int)(context.User?.SecurityLevel ?? SecurityLevel.User) > conditions.MaxSecurityLevel.Value)
                 return false;
 
             // First time user check
@@ -135,16 +132,10 @@ public class AnsiScreenService : IAnsiScreenService
     private async Task<string> LoadScreenContentAsync(string screenName)
     {
         // Check cache first
-        if (_screenCache.TryGetValue(screenName, out var cachedContent))
-        {
-            return cachedContent;
-        }
+        if (_screenCache.TryGetValue(screenName, out var cachedContent)) return cachedContent;
 
         var filePath = GetScreenFilePath(screenName);
-        if (!File.Exists(filePath))
-        {
-            return string.Empty;
-        }
+        if (!File.Exists(filePath)) return string.Empty;
 
         // Read ANSI files using CP437 encoding to preserve box drawing characters
         // Read the ANSI file as raw bytes and convert using Latin-1 to preserve byte values
@@ -157,18 +148,18 @@ public class AnsiScreenService : IAnsiScreenService
     private string GetScreenFilePath(string screenName)
     {
         // Handle different naming conventions
-        var fileName = screenName.EndsWith(".ans", StringComparison.OrdinalIgnoreCase) 
-            ? screenName 
+        var fileName = screenName.EndsWith(".ans", StringComparison.OrdinalIgnoreCase)
+            ? screenName
             : $"{screenName}.ans";
 
         // Try subdirectories first
         var subDirs = new[] { "login", "menus", "system", "doors", "" };
         foreach (var subDir in subDirs)
         {
-            var directoryPath = string.IsNullOrEmpty(subDir) 
+            var directoryPath = string.IsNullOrEmpty(subDir)
                 ? _screensDirectory
                 : Path.Combine(_screensDirectory, subDir);
-                
+
             if (!Directory.Exists(directoryPath))
                 continue;
 
@@ -181,9 +172,9 @@ public class AnsiScreenService : IAnsiScreenService
             try
             {
                 var files = Directory.GetFiles(directoryPath, "*.ans", SearchOption.TopDirectoryOnly);
-                var matchingFile = files.FirstOrDefault(f => 
+                var matchingFile = files.FirstOrDefault(f =>
                     string.Equals(Path.GetFileName(f), fileName, StringComparison.OrdinalIgnoreCase));
-                
+
                 if (matchingFile != null)
                     return matchingFile;
             }

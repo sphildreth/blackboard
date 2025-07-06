@@ -1,9 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using BCrypt.Net;
-using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Blackboard.Core.Configuration;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 
 namespace Blackboard.Core.Services;
 
@@ -23,12 +22,12 @@ public class PasswordService : IPasswordService
         // Use PBKDF2 for secure password hashing
         var saltBytes = Convert.FromBase64String(salt);
         var hash = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-            password: password,
-            salt: saltBytes,
-            prf: KeyDerivationPrf.HMACSHA256,
-            iterationCount: 10000,
-            numBytesRequested: 256 / 8));
-        
+            password,
+            saltBytes,
+            KeyDerivationPrf.HMACSHA256,
+            10000,
+            256 / 8));
+
         return hash;
     }
 
@@ -86,10 +85,7 @@ public class PasswordService : IPasswordService
         password.Append(GetRandomChar("!@#$%^&*", rng));
 
         // Fill the rest randomly
-        for (int i = 4; i < length; i++)
-        {
-            password.Append(GetRandomChar(validChars, rng));
-        }
+        for (var i = 4; i < length; i++) password.Append(GetRandomChar(validChars, rng));
 
         // Shuffle the password
         return new string(password.ToString().OrderBy(x => GetRandomInt(rng)).ToArray());

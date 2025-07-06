@@ -4,8 +4,6 @@ namespace Blackboard.Core.Network;
 
 public interface ITelnetConnection
 {
-    event EventHandler? Disconnected;
-    
     EndPoint? RemoteEndPoint { get; }
     string RemoteEndPointString { get; }
     bool IsConnected { get; }
@@ -15,7 +13,8 @@ public interface ITelnetConnection
     string ClientSoftware { get; }
     string TerminalType { get; }
     DateTime ConnectedAt { get; }
-    
+    event EventHandler? Disconnected;
+
     Task InitializeAsync();
     Task SendAsync(string data);
     Task SendBytesAsync(byte[] data);

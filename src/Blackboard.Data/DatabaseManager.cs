@@ -1,14 +1,25 @@
-using Microsoft.Data.Sqlite;
-using Dapper;
-using Serilog;
 using Blackboard.Data.Configuration;
+using Dapper;
+using Microsoft.Data.Sqlite;
+using Serilog;
 
 namespace Blackboard.Data;
 
 public class DatabaseManager : IDatabaseManager
 {
+    private readonly IDatabaseConfiguration _config;
+
+    private readonly ILogger _logger;
+    private SqliteConnection? _connection;
+
+    public DatabaseManager(ILogger logger, IDatabaseConfiguration config)
+    {
+        _logger = logger;
+        _config = config;
+    }
+
     /// <summary>
-    /// Executes a query and maps the result to a list of type T using Dapper.
+    ///     Executes a query and maps the result to a list of type T using Dapper.
     /// </summary>
     public async Task<IEnumerable<T>> QueryAsync<T>(string sql, object? param = null)
     {
@@ -18,7 +29,7 @@ public class DatabaseManager : IDatabaseManager
     }
 
     /// <summary>
-    /// Executes a query and returns the first result using Dapper.
+    ///     Executes a query and returns the first result using Dapper.
     /// </summary>
     public async Task<T> QueryFirstAsync<T>(string sql, object? param = null)
     {
@@ -28,7 +39,7 @@ public class DatabaseManager : IDatabaseManager
     }
 
     /// <summary>
-    /// Executes a query and returns the first result or default using Dapper.
+    ///     Executes a query and returns the first result or default using Dapper.
     /// </summary>
     public async Task<T?> QueryFirstOrDefaultAsync<T>(string sql, object? param = null)
     {
@@ -38,7 +49,7 @@ public class DatabaseManager : IDatabaseManager
     }
 
     /// <summary>
-    /// Executes a command (INSERT, UPDATE, DELETE) using Dapper.
+    ///     Executes a command (INSERT, UPDATE, DELETE) using Dapper.
     /// </summary>
     public async Task<int> ExecuteAsync(string sql, object? param = null)
     {
@@ -47,22 +58,12 @@ public class DatabaseManager : IDatabaseManager
         return await _connection.ExecuteAsync(sql, param);
     }
 
-    private readonly ILogger _logger;
-    private readonly IDatabaseConfiguration _config;
-    private SqliteConnection? _connection;
-
-    public DatabaseManager(ILogger logger, IDatabaseConfiguration config)
-    {
-        _logger = logger;
-        _config = config;
-    }
-
     public async Task InitializeAsync()
     {
         try
         {
             _connection = new SqliteConnection(_config.ConnectionString);
-            
+
             if (_config.EnableWalMode)
             {
                 var connectionStringBuilder = new SqliteConnectionStringBuilder(_config.ConnectionString)
@@ -74,12 +75,9 @@ public class DatabaseManager : IDatabaseManager
             }
 
             await _connection.OpenAsync();
-            
+
             // Enable WAL mode if configured
-            if (_config.EnableWalMode)
-            {
-                await ExecuteNonQueryAsync("PRAGMA journal_mode=WAL;");
-            }
+            if (_config.EnableWalMode) await ExecuteNonQueryAsync("PRAGMA journal_mode=WAL;");
 
             // Set other pragmas for performance
             await ExecuteNonQueryAsync("PRAGMA synchronous=NORMAL;");
@@ -87,13 +85,78 @@ public class DatabaseManager : IDatabaseManager
             await ExecuteNonQueryAsync("PRAGMA temp_store=MEMORY;");
 
             await CreateTablesAsync();
-            
+
             _logger.Information("Database initialized successfully at {ConnectionString}", _config.ConnectionString);
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Failed to initialize database");
             throw;
+        }
+    }
+
+    public async Task<int> ExecuteNonQueryAsync(string sql, params SqliteParameter[] parameters)
+    {
+        using var command = await CreateCommandAsync(sql);
+
+        if (parameters != null) command.Parameters.AddRange(parameters);
+
+        return await command.ExecuteNonQueryAsync();
+    }
+
+    public async Task<object?> ExecuteScalarAsync(string sql, params SqliteParameter[] parameters)
+    {
+        using var command = await CreateCommandAsync(sql);
+
+        if (parameters != null) command.Parameters.AddRange(parameters);
+
+        return await command.ExecuteScalarAsync();
+    }
+
+    public async Task<SqliteDataReader> ExecuteReaderAsync(string sql, params SqliteParameter[] parameters)
+    {
+        var command = await CreateCommandAsync(sql);
+
+        if (parameters != null) command.Parameters.AddRange(parameters);
+
+        return await command.ExecuteReaderAsync();
+    }
+
+    public async Task BackupDatabaseAsync(string backupPath)
+    {
+        if (_connection == null)
+            throw new InvalidOperationException("Database not initialized");
+
+        try
+        {
+            // Ensure backup directory exists
+            var directory = Path.GetDirectoryName(backupPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory)) Directory.CreateDirectory(directory);
+
+            // Create backup connection
+            using var backupConnection = new SqliteConnection($"Data Source={backupPath}");
+            await backupConnection.OpenAsync();
+
+            // Perform backup
+            _connection.BackupDatabase(backupConnection);
+
+            _logger.Information("Database backed up to {BackupPath}", backupPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Failed to backup database to {BackupPath}", backupPath);
+            throw;
+        }
+    }
+
+    public async Task CloseAsync()
+    {
+        if (_connection != null)
+        {
+            await _connection.CloseAsync();
+            await _connection.DisposeAsync();
+            _connection = null;
+            _logger.Information("Database connection closed");
         }
     }
 
@@ -489,85 +552,8 @@ public class DatabaseManager : IDatabaseManager
         var command = _connection.CreateCommand();
         command.CommandText = sql;
         command.CommandTimeout = _config.ConnectionTimeoutSeconds;
-        
+
         return Task.FromResult(command);
-    }
-
-    public async Task<int> ExecuteNonQueryAsync(string sql, params SqliteParameter[] parameters)
-    {
-        using var command = await CreateCommandAsync(sql);
-        
-        if (parameters != null)
-        {
-            command.Parameters.AddRange(parameters);
-        }
-
-        return await command.ExecuteNonQueryAsync();
-    }
-
-    public async Task<object?> ExecuteScalarAsync(string sql, params SqliteParameter[] parameters)
-    {
-        using var command = await CreateCommandAsync(sql);
-        
-        if (parameters != null)
-        {
-            command.Parameters.AddRange(parameters);
-        }
-
-        return await command.ExecuteScalarAsync();
-    }
-
-    public async Task<SqliteDataReader> ExecuteReaderAsync(string sql, params SqliteParameter[] parameters)
-    {
-        var command = await CreateCommandAsync(sql);
-        
-        if (parameters != null)
-        {
-            command.Parameters.AddRange(parameters);
-        }
-
-        return await command.ExecuteReaderAsync();
-    }
-
-    public async Task BackupDatabaseAsync(string backupPath)
-    {
-        if (_connection == null)
-            throw new InvalidOperationException("Database not initialized");
-
-        try
-        {
-            // Ensure backup directory exists
-            var directory = Path.GetDirectoryName(backupPath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            // Create backup connection
-            using var backupConnection = new SqliteConnection($"Data Source={backupPath}");
-            await backupConnection.OpenAsync();
-            
-            // Perform backup
-            _connection.BackupDatabase(backupConnection);
-            
-            _logger.Information("Database backed up to {BackupPath}", backupPath);
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex, "Failed to backup database to {BackupPath}", backupPath);
-            throw;
-        }
-    }
-
-    public async Task CloseAsync()
-    {
-        if (_connection != null)
-        {
-            await _connection.CloseAsync();
-            await _connection.DisposeAsync();
-            _connection = null;
-            _logger.Information("Database connection closed");
-        }
     }
 
     public void Dispose()

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text.Json;
 using Blackboard.Core.DTOs;
 using Blackboard.Data;
 using Blackboard.Data.Configuration;
@@ -9,8 +8,8 @@ namespace Blackboard.Core.Services;
 
 public class SystemStatisticsService : ISystemStatisticsService
 {
-    private readonly IDatabaseManager _database;
     private readonly IDatabaseConfiguration _config;
+    private readonly IDatabaseManager _database;
     private readonly ILogger _logger;
     private readonly DateTime _systemStartTime;
 
@@ -180,7 +179,6 @@ public class SystemStatisticsService : ISystemStatisticsService
                 new { Since = DateTime.UtcNow.AddMinutes(-30) });
 
             if (recentFailedLogins > 5)
-            {
                 alerts.Add(new SystemAlertDto
                 {
                     Type = AlertType.Security,
@@ -190,7 +188,6 @@ public class SystemStatisticsService : ISystemStatisticsService
                     Timestamp = DateTime.UtcNow,
                     IsAcknowledged = false
                 });
-            }
 
             // Check for locked users
             var lockedUsers = await _database.QueryFirstOrDefaultAsync<int>(@"
@@ -200,7 +197,6 @@ public class SystemStatisticsService : ISystemStatisticsService
                 new { Now = DateTime.UtcNow });
 
             if (lockedUsers > 0)
-            {
                 alerts.Add(new SystemAlertDto
                 {
                     Type = AlertType.Security,
@@ -210,12 +206,10 @@ public class SystemStatisticsService : ISystemStatisticsService
                     Timestamp = DateTime.UtcNow,
                     IsAcknowledged = false
                 });
-            }
 
             // Check system resources
             var resources = await GetSystemResourcesAsync();
             if (resources.MemoryUsagePercent > 80)
-            {
                 alerts.Add(new SystemAlertDto
                 {
                     Type = AlertType.Resource,
@@ -225,10 +219,8 @@ public class SystemStatisticsService : ISystemStatisticsService
                     Timestamp = DateTime.UtcNow,
                     IsAcknowledged = false
                 });
-            }
 
             if (resources.DiskUsagePercent > 90)
-            {
                 alerts.Add(new SystemAlertDto
                 {
                     Type = AlertType.Resource,
@@ -238,7 +230,6 @@ public class SystemStatisticsService : ISystemStatisticsService
                     Timestamp = DateTime.UtcNow,
                     IsAcknowledged = false
                 });
-            }
 
             return alerts.OrderByDescending(a => a.Severity).ThenByDescending(a => a.Timestamp);
         }
@@ -254,18 +245,18 @@ public class SystemStatisticsService : ISystemStatisticsService
         try
         {
             var process = Process.GetCurrentProcess();
-            
+
             // Get memory usage
             var memoryUsed = process.WorkingSet64;
             var totalMemory = GC.GetTotalMemory(false);
-            
+
             // Get system memory info (approximation)
             var systemMemory = GetSystemMemory();
-            
+
             // Get disk space for database directory
             var dbPath = await GetDatabasePath();
             var driveInfo = new DriveInfo(Path.GetPathRoot(dbPath) ?? "/");
-            
+
             // Get active connections (sessions)
             var activeConnections = await _database.QueryFirstOrDefaultAsync<int>(
                 "SELECT COUNT(*) FROM UserSessions WHERE IsActive = 1 AND ExpiresAt > @Now",
@@ -298,13 +289,13 @@ public class SystemStatisticsService : ISystemStatisticsService
             var isConnected = await TestDatabaseConnection();
             var dbPath = await GetDatabasePath();
             var dbFileInfo = new FileInfo(dbPath);
-            
+
             // Get database version
             var version = await _database.QueryFirstOrDefaultAsync<string>("SELECT sqlite_version()") ?? "Unknown";
-            
+
             // Check WAL mode
             var walMode = await _database.QueryFirstOrDefaultAsync<string>("PRAGMA journal_mode") ?? "Unknown";
-            
+
             return new DatabaseStatusDto
             {
                 IsConnected = isConnected,
@@ -372,6 +363,7 @@ public class SystemStatisticsService : ISystemStatisticsService
                 if (pathEnd < 0) pathEnd = connectionString.Length;
                 return Task.FromResult(connectionString.Substring(pathStart, pathEnd - pathStart));
             }
+
             return Task.FromResult("/tmp/unknown.db");
         }
         catch
@@ -392,13 +384,10 @@ public class SystemStatisticsService : ISystemStatisticsService
                 if (memTotalLine != null)
                 {
                     var parts = memTotalLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length >= 2 && long.TryParse(parts[1], out var kb))
-                    {
-                        return kb * 1024; // Convert KB to bytes
-                    }
+                    if (parts.Length >= 2 && long.TryParse(parts[1], out var kb)) return kb * 1024; // Convert KB to bytes
                 }
             }
-            
+
             // Fallback to GC memory (not accurate for system memory)
             return GC.GetTotalMemory(false) * 4; // Rough estimate
         }
@@ -431,7 +420,7 @@ public class SystemStatisticsService : ISystemStatisticsService
                 SELECT COUNT(*) 
                 FROM Messages 
                 WHERE CreatedAt >= @Today AND CreatedAt < @Tomorrow";
-            
+
             return await _database.QueryFirstOrDefaultAsync<int>(sql, new { Today = today, Tomorrow = tomorrow });
         }
         catch (Exception ex)
@@ -450,7 +439,7 @@ public class SystemStatisticsService : ISystemStatisticsService
                 FROM FileTransfers 
                 WHERE IsUpload = 0 AND IsSuccessful = 1 
                 AND StartTime >= @Today AND StartTime < @Tomorrow";
-            
+
             return await _database.QueryFirstOrDefaultAsync<int>(sql, new { Today = today, Tomorrow = tomorrow });
         }
         catch (Exception ex)
@@ -467,12 +456,9 @@ public class SystemStatisticsService : ISystemStatisticsService
             // Try to get from runtime configuration first
             const string sql = "SELECT Value FROM RuntimeConfiguration WHERE Key = 'network.maxConcurrentConnections'";
             var configValue = await _database.QueryFirstOrDefaultAsync<string>(sql);
-            
-            if (!string.IsNullOrEmpty(configValue) && int.TryParse(configValue, out int maxConn))
-            {
-                return maxConn;
-            }
-            
+
+            if (!string.IsNullOrEmpty(configValue) && int.TryParse(configValue, out var maxConn)) return maxConn;
+
             // Fallback to default value from database config if available
             return 10; // Default fallback
         }
@@ -498,15 +484,12 @@ public class SystemStatisticsService : ISystemStatisticsService
                 WHERE ds.SessionId = @SessionId AND ds.Status = 'running'
                 ORDER BY ds.StartTime DESC 
                 LIMIT 1";
-            
+
             var doorName = await _database.QueryFirstOrDefaultAsync<string>(doorSql, new { SessionId = sessionId });
-            if (!string.IsNullOrEmpty(doorName))
-            {
-                return $"Playing {doorName}";
-            }
+            if (!string.IsNullOrEmpty(doorName)) return $"Playing {doorName}";
 
             // Add more activity tracking as needed (messages, files, etc.)
-            
+
             return "Online";
         }
         catch (Exception ex)
@@ -525,7 +508,7 @@ public class SystemStatisticsService : ISystemStatisticsService
                 SELECT MAX(Timestamp) 
                 FROM SystemLogs 
                 WHERE Message LIKE '%backup%completed%' OR Message LIKE '%backup%successful%'";
-            
+
             var lastBackup = await _database.QueryFirstOrDefaultAsync<DateTime?>(sql);
             return lastBackup;
         }

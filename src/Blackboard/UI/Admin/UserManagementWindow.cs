@@ -1,44 +1,44 @@
 using System.Collections.ObjectModel;
-using Terminal.Gui.App;
-using Terminal.Gui.Views;
-using Terminal.Gui.ViewBase;
-using Blackboard.Core.Services;
 using Blackboard.Core.DTOs;
 using Blackboard.Core.Models;
+using Blackboard.Core.Services;
 using Serilog;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace Blackboard.UI.Admin;
 
 public class UserManagementWindow : Window
 {
-    private readonly IUserService _userService;
     private readonly IAuditService _auditService;
     private readonly ILogger _logger;
-    
-    private ListView? _usersList;
-    private TextField? _searchField;
-    private Label? _statusLabel;
+    private readonly IUserService _userService;
+    private Button? _deleteButton;
     private Button? _editButton;
     private Button? _lockButton;
-    private Button? _unlockButton;
-    private Button? _deleteButton;
     private Button? _refreshButton;
-    
-    private List<UserProfileDto> _users = new();
+    private TextField? _searchField;
     private UserProfileDto? _selectedUser;
+    private Label? _statusLabel;
+    private Button? _unlockButton;
+
+    private List<UserProfileDto> _users = new();
+
+    private ListView? _usersList;
 
     public UserManagementWindow(IUserService userService, IAuditService auditService, ILogger logger)
     {
         _userService = userService;
         _auditService = auditService;
         _logger = logger;
-        
+
         Title = "║ User Management ║";
         X = 0;
         Y = 0;
         Width = 80;
         Height = 25;
-        
+
         InitializeComponent();
         LoadUsers();
     }
@@ -51,10 +51,10 @@ public class UserManagementWindow : Window
         searchFrame.Y = 0;
         searchFrame.Width = Dim.Fill();
         searchFrame.Height = 3;
-        
-        searchFrame.Add(ThemeManager.CreateStyledLabel("Search Users", "", 0, 0));
-        
-        _searchField = new TextField()
+
+        searchFrame.Add(ThemeManager.CreateStyledLabel("Search Users"));
+
+        _searchField = new TextField
         {
             X = 1,
             Y = 1,
@@ -62,17 +62,17 @@ public class UserManagementWindow : Window
             Height = 1
         };
         _searchField.TextChanged += OnSearchTextChanged;
-        
+
         var searchButton = ThemeManager.CreateBorlandButton("Search", "🔍 ");
         searchButton.X = 32;
         searchButton.Y = 1;
         searchButton.MouseClick += (s, e) => SearchUsers();
-        
+
         _refreshButton = ThemeManager.CreateBorlandButton("Refresh", "🔄 ");
         _refreshButton.X = 42;
         _refreshButton.Y = 1;
         _refreshButton.MouseClick += (s, e) => LoadUsers();
-        
+
         searchFrame.Add(_searchField, searchButton, _refreshButton);
 
         // Enhanced users list
@@ -81,10 +81,10 @@ public class UserManagementWindow : Window
         usersFrame.Y = Pos.Bottom(searchFrame);
         usersFrame.Width = Dim.Percent(70);
         usersFrame.Height = 18;
-        
-        usersFrame.Add(ThemeManager.CreateStyledLabel("Users", "", 0, 0));
-        
-        _usersList = new ListView()
+
+        usersFrame.Add(ThemeManager.CreateStyledLabel("Users"));
+
+        _usersList = new ListView
         {
             X = 1,
             Y = 1,
@@ -92,11 +92,11 @@ public class UserManagementWindow : Window
             Height = 16
         };
         _usersList.SelectedItemChanged += OnUserSelected;
-        
+
         usersFrame.Add(_usersList);
 
         // Action buttons panel
-        var actionsFrame = new FrameView()
+        var actionsFrame = new FrameView
         {
             X = Pos.Right(usersFrame),
             Y = Pos.Bottom(searchFrame),
@@ -104,8 +104,8 @@ public class UserManagementWindow : Window
             Height = 18
         };
         actionsFrame.Add(new Label { X = 0, Y = 0, Text = "Actions" });
-        
-        _editButton = new Button()
+
+        _editButton = new Button
         {
             X = 1,
             Y = 2,
@@ -113,8 +113,8 @@ public class UserManagementWindow : Window
             Enabled = false
         };
         _editButton.MouseClick += (s, e) => EditUser();
-        
-        _lockButton = new Button()
+
+        _lockButton = new Button
         {
             X = 1,
             Y = 4,
@@ -122,8 +122,8 @@ public class UserManagementWindow : Window
             Enabled = false
         };
         _lockButton.MouseClick += (s, e) => LockUser();
-        
-        _unlockButton = new Button()
+
+        _unlockButton = new Button
         {
             X = 1,
             Y = 6,
@@ -131,8 +131,8 @@ public class UserManagementWindow : Window
             Enabled = false
         };
         _unlockButton.MouseClick += (s, e) => UnlockUser();
-        
-        _deleteButton = new Button()
+
+        _deleteButton = new Button
         {
             X = 1,
             Y = 8,
@@ -140,8 +140,8 @@ public class UserManagementWindow : Window
             Enabled = false
         };
         _deleteButton.MouseClick += (s, e) => DeleteUser();
-        
-        var auditButton = new Button()
+
+        var auditButton = new Button
         {
             X = 1,
             Y = 10,
@@ -149,19 +149,19 @@ public class UserManagementWindow : Window
             Enabled = false
         };
         auditButton.MouseClick += (s, e) => ViewAuditLog();
-        
-        var closeButton = new Button()
+
+        var closeButton = new Button
         {
             X = 1,
             Y = 14,
             Text = "Close"
         };
         closeButton.MouseClick += (s, e) => Close();
-        
+
         actionsFrame.Add(_editButton, _lockButton, _unlockButton, _deleteButton, auditButton, closeButton);
 
         // Status bar
-        _statusLabel = new Label()
+        _statusLabel = new Label
         {
             X = 0,
             Y = Pos.Bottom(usersFrame),
@@ -193,7 +193,7 @@ public class UserManagementWindow : Window
     {
         try
         {
-            var searchTerm = _searchField?.Text?.ToString()?.Trim();
+            var searchTerm = _searchField?.Text?.Trim();
             if (string.IsNullOrEmpty(searchTerm))
             {
                 LoadUsers();
@@ -221,17 +221,14 @@ public class UserManagementWindow : Window
     {
         if (_usersList != null)
         {
-            var userItems = _users.Select(u => 
+            var userItems = _users.Select(u =>
                 $"{u.Handle,-20} {u.SecurityLevel,-12} {(u.IsLocked ? "[LOCKED]" : u.IsActive ? "[ACTIVE]" : "[INACTIVE]"),-10} {u.LastLoginAt?.ToString("MM/dd/yy") ?? "Never"}"
             ).ToList();
-            
-            if (userItems.Count == 0)
-            {
-                userItems.Add("No users found");
-            }
-            
+
+            if (userItems.Count == 0) userItems.Add("No users found");
+
             var observableItems = new ObservableCollection<string>(userItems);
-            _usersList.SetSource<string>(observableItems);
+            _usersList.SetSource(observableItems);
         }
     }
 
@@ -252,7 +249,7 @@ public class UserManagementWindow : Window
     private void UpdateButtonStates()
     {
         var hasSelection = _selectedUser != null;
-        
+
         if (_editButton != null) _editButton.Enabled = hasSelection;
         if (_lockButton != null) _lockButton.Enabled = hasSelection && !_selectedUser?.IsLocked == true;
         if (_unlockButton != null) _unlockButton.Enabled = hasSelection && _selectedUser?.IsLocked == true;
@@ -262,20 +259,20 @@ public class UserManagementWindow : Window
     private void EditUser()
     {
         if (_selectedUser == null) return;
-        
+
         var editDialog = new UserEditDialog(_selectedUser, _userService, _logger);
-        editDialog.UserUpdated += (s, e) => 
+        editDialog.UserUpdated += (s, e) =>
         {
             LoadUsers(); // Refresh the list
         };
-        
+
         Application.Run(editDialog);
     }
 
     private async void LockUser()
     {
         if (_selectedUser == null) return;
-        
+
         try
         {
             var success = await _userService.LockUserAsync(_selectedUser.Id, TimeSpan.FromHours(24), "Locked by admin", 1, "127.0.0.1");
@@ -299,7 +296,7 @@ public class UserManagementWindow : Window
     private async void UnlockUser()
     {
         if (_selectedUser == null) return;
-        
+
         try
         {
             var success = await _userService.UnlockUserAsync(_selectedUser.Id, 1, "127.0.0.1");
@@ -323,14 +320,13 @@ public class UserManagementWindow : Window
     private async void DeleteUser()
     {
         if (_selectedUser == null) return;
-        
+
         // Show confirmation dialog
-        var result = MessageBox.Query("Confirm Delete", 
-            $"Are you sure you want to deactivate user '{_selectedUser.Handle}'?\n\nThis will:\n- Deactivate the user account\n- End all active sessions\n- Prevent future logins\n\nThis action can be reversed by an administrator.", 
+        var result = MessageBox.Query("Confirm Delete",
+            $"Are you sure you want to deactivate user '{_selectedUser.Handle}'?\n\nThis will:\n- Deactivate the user account\n- End all active sessions\n- Prevent future logins\n\nThis action can be reversed by an administrator.",
             "Yes", "No");
-        
+
         if (result == 0) // Yes
-        {
             try
             {
                 var success = await _userService.DeactivateUserAsync(_selectedUser.Id, "Deactivated by admin", 1, "127.0.0.1");
@@ -349,13 +345,12 @@ public class UserManagementWindow : Window
                 _logger.Error(ex, "Error deactivating user {UserId}", _selectedUser.Id);
                 _statusLabel!.Text = $"Error deactivating user {_selectedUser.Handle}";
             }
-        }
     }
 
     private void ViewAuditLog()
     {
         if (_selectedUser == null) return;
-        
+
         var auditDialog = new UserAuditDialog(_selectedUser, _auditService, _logger);
         Application.Run(auditDialog);
     }
@@ -369,39 +364,39 @@ public class UserManagementWindow : Window
 // Simple user edit dialog
 public class UserEditDialog : Dialog
 {
+    private readonly ILogger _logger;
     private readonly UserProfileDto _user;
     private readonly IUserService _userService;
-    private readonly ILogger _logger;
-    
-    private TextField? _handleField;
     private TextField? _emailField;
     private TextField? _firstNameField;
+
+    private TextField? _handleField;
     private TextField? _lastNameField;
     private TextField? _locationField;
     private ComboBox? _securityLevelCombo;
-    
-    public event EventHandler? UserUpdated;
 
-    public UserEditDialog(UserProfileDto user, IUserService userService, ILogger logger) : base()
+    public UserEditDialog(UserProfileDto user, IUserService userService, ILogger logger)
     {
         _user = user;
         _userService = userService;
         _logger = logger;
-        
+
         Title = "Edit User";
         _logger = logger;
-        
+
         Width = 60;
         Height = 20;
-        
+
         InitializeComponent();
     }
+
+    public event EventHandler? UserUpdated;
 
     private void InitializeComponent()
     {
         // Handle
-        Add(new Label() { X = 1, Y = 1, Text = "Handle:" });
-        _handleField = new TextField()
+        Add(new Label { X = 1, Y = 1, Text = "Handle:" });
+        _handleField = new TextField
         {
             X = 15,
             Y = 1,
@@ -411,8 +406,8 @@ public class UserEditDialog : Dialog
         Add(_handleField);
 
         // Email
-        Add(new Label() { X = 1, Y = 3, Text = "Email:" });
-        _emailField = new TextField()
+        Add(new Label { X = 1, Y = 3, Text = "Email:" });
+        _emailField = new TextField
         {
             X = 15,
             Y = 3,
@@ -422,8 +417,8 @@ public class UserEditDialog : Dialog
         Add(_emailField);
 
         // First Name
-        Add(new Label() { X = 1, Y = 5, Text = "First Name:" });
-        _firstNameField = new TextField()
+        Add(new Label { X = 1, Y = 5, Text = "First Name:" });
+        _firstNameField = new TextField
         {
             X = 15,
             Y = 5,
@@ -433,8 +428,8 @@ public class UserEditDialog : Dialog
         Add(_firstNameField);
 
         // Last Name
-        Add(new Label() { X = 1, Y = 7, Text = "Last Name:" });
-        _lastNameField = new TextField()
+        Add(new Label { X = 1, Y = 7, Text = "Last Name:" });
+        _lastNameField = new TextField
         {
             X = 15,
             Y = 7,
@@ -444,8 +439,8 @@ public class UserEditDialog : Dialog
         Add(_lastNameField);
 
         // Location
-        Add(new Label() { X = 1, Y = 9, Text = "Location:" });
-        _locationField = new TextField()
+        Add(new Label { X = 1, Y = 9, Text = "Location:" });
+        _locationField = new TextField
         {
             X = 15,
             Y = 9,
@@ -455,15 +450,15 @@ public class UserEditDialog : Dialog
         Add(_locationField);
 
         // Security Level
-        Add(new Label() { X = 1, Y = 11, Text = "Security Level:" });
-        _securityLevelCombo = new ComboBox()
+        Add(new Label { X = 1, Y = 11, Text = "Security Level:" });
+        _securityLevelCombo = new ComboBox
         {
             X = 15,
             Y = 11,
             Width = 15,
             Height = 5
         };
-        
+
         var securityLevels = new ObservableCollection<string>(
             Enum.GetValues<SecurityLevel>().Select(sl => sl.ToString())
         );
@@ -472,22 +467,22 @@ public class UserEditDialog : Dialog
         Add(_securityLevelCombo);
 
         // Buttons
-        var saveButton = new Button()
+        var saveButton = new Button
         {
             X = 5,
             Y = 15,
             Text = "Save"
         };
         saveButton.MouseClick += (s, e) => SaveUser();
-        
-        var cancelButton = new Button()
+
+        var cancelButton = new Button
         {
             X = 15,
             Y = 15,
             Text = "Cancel"
         };
         cancelButton.MouseClick += (s, e) => Close();
-        
+
         Add(saveButton, cancelButton);
     }
 
@@ -497,23 +492,20 @@ public class UserEditDialog : Dialog
         {
             var updateDto = new UserUpdateDto
             {
-                Email = _emailField?.Text?.ToString(),
-                FirstName = _firstNameField?.Text?.ToString(),
-                LastName = _lastNameField?.Text?.ToString(),
-                Location = _locationField?.Text?.ToString()
+                Email = _emailField?.Text,
+                FirstName = _firstNameField?.Text,
+                LastName = _lastNameField?.Text,
+                Location = _locationField?.Text
             };
-            
+
             var success = await _userService.UpdateUserProfileAsync(_user.Id, updateDto, "127.0.0.1");
-            
+
             if (success)
             {
                 // Update security level if changed
                 var selectedSecurityLevel = (SecurityLevel)(_securityLevelCombo?.SelectedItem - 1 ?? 0);
-                if (selectedSecurityLevel != _user.SecurityLevel)
-                {
-                    await _userService.SetUserSecurityLevelAsync(_user.Id, selectedSecurityLevel, 1, "127.0.0.1");
-                }
-                
+                if (selectedSecurityLevel != _user.SecurityLevel) await _userService.SetUserSecurityLevelAsync(_user.Id, selectedSecurityLevel, 1, "127.0.0.1");
+
                 UserUpdated?.Invoke(this, EventArgs.Empty);
                 Close();
             }
@@ -538,46 +530,46 @@ public class UserEditDialog : Dialog
 // Simple audit log viewer dialog
 public class UserAuditDialog : Dialog
 {
-    private readonly UserProfileDto _user;
     private readonly IAuditService _auditService;
     private readonly ILogger _logger;
-    
+    private readonly UserProfileDto _user;
+
     private ListView? _auditList;
 
-    public UserAuditDialog(UserProfileDto user, IAuditService auditService, ILogger logger) : base()
+    public UserAuditDialog(UserProfileDto user, IAuditService auditService, ILogger logger)
     {
         _user = user;
         _auditService = auditService;
         _logger = logger;
-        
+
         Title = $"Audit Log - {user.Handle}";
         _logger = logger;
-        
+
         Width = 70;
         Height = 20;
-        
+
         InitializeComponent();
         LoadAuditLog();
     }
 
     private void InitializeComponent()
     {
-        _auditList = new ListView()
+        _auditList = new ListView
         {
             X = 1,
             Y = 1,
             Width = 65,
             Height = 15
         };
-        
-        var closeButton = new Button()
+
+        var closeButton = new Button
         {
             X = 30,
             Y = 17,
             Text = "Close"
         };
         closeButton.MouseClick += (s, e) => Application.RequestStop();
-        
+
         Add(_auditList, closeButton);
     }
 
@@ -585,19 +577,16 @@ public class UserAuditDialog : Dialog
     {
         try
         {
-            var auditLogs = await _auditService.GetUserAuditLogsAsync(_user.Id, 50);
-            
-            var auditItems = auditLogs.Select(log => 
+            var auditLogs = await _auditService.GetUserAuditLogsAsync(_user.Id);
+
+            var auditItems = auditLogs.Select(log =>
                 $"{log.CreatedAt:MM/dd/yy HH:mm} {log.Action,-20} {log.IpAddress ?? "N/A"}"
             ).ToList();
-            
-            if (auditItems.Count == 0)
-            {
-                auditItems.Add("No audit logs found for this user");
-            }
-            
+
+            if (auditItems.Count == 0) auditItems.Add("No audit logs found for this user");
+
             var observableItems = new ObservableCollection<string>(auditItems);
-            _auditList!.SetSource<string>(observableItems);
+            _auditList!.SetSource(observableItems);
         }
         catch (Exception ex)
         {

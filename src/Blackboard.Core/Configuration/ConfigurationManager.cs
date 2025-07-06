@@ -1,5 +1,7 @@
-using YamlDotNet.Serialization;
 using Serilog;
+using YamlDotNet.Core;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace Blackboard.Core.Configuration;
 
@@ -10,13 +12,11 @@ public class ConfigurationManager
     public const string ScreensPath = "screens";
     public const string DatabaseBackupPath = "database/backup";
     public const string LogsPath = "logs";
-    
+
     private readonly string _configFilePath;
     private readonly ILogger _logger;
     private SystemConfiguration? _configuration;
     private FileSystemWatcher? _fileWatcher;
-    
-    public event EventHandler<SystemConfiguration>? ConfigurationChanged;
 
     public ConfigurationManager(string configFilePath, ILogger logger)
     {
@@ -27,6 +27,8 @@ public class ConfigurationManager
     }
 
     public SystemConfiguration Configuration => _configuration ?? new SystemConfiguration();
+
+    public event EventHandler<SystemConfiguration>? ConfigurationChanged;
 
     private void LoadConfiguration()
     {
@@ -44,7 +46,7 @@ public class ConfigurationManager
             _logger.Debug("YAML file content:\n{YamlContent}", yaml);
 
             var deserializer = new DeserializerBuilder()
-                .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)
+                .WithNamingConvention(CamelCaseNamingConvention.Instance)
                 .IgnoreUnmatchedProperties()
                 .Build();
 
@@ -58,9 +60,10 @@ public class ConfigurationManager
             {
                 _configuration = config;
             }
+
             _logger.Information("Configuration loaded successfully from {FilePath}", _configFilePath);
         }
-        catch (YamlDotNet.Core.YamlException yamlEx)
+        catch (YamlException yamlEx)
         {
             _logger.Error(yamlEx, "YAML parsing error in {FilePath}", _configFilePath);
             _configuration = new SystemConfiguration();
@@ -83,17 +86,14 @@ public class ConfigurationManager
         try
         {
             var serializer = new SerializerBuilder()
-                .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)
+                .WithNamingConvention(CamelCaseNamingConvention.Instance)
                 .Build();
 
             var yaml = serializer.Serialize(_configuration);
-            
+
             // Ensure directory exists
             var directory = Path.GetDirectoryName(_configFilePath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory)) Directory.CreateDirectory(directory);
 
             File.WriteAllText(_configFilePath, yaml);
             _logger.Information("Configuration saved to {FilePath}", _configFilePath);
@@ -135,11 +135,11 @@ public class ConfigurationManager
         {
             // Debounce file changes
             Thread.Sleep(100);
-            
+
             _logger.Information("Configuration file changed, reloading...");
             var oldConfig = _configuration;
             LoadConfiguration();
-            
+
             if (_configuration != null)
             {
                 ConfigurationChanged?.Invoke(this, _configuration);

@@ -10,19 +10,20 @@ public class SystemSettings
     public string PreEnterCode { get; set; } = string.Empty;
     public int MaxUsers { get; set; } = 100;
     public string TimeZone { get; set; } = "UTC";
+
     /// <summary>
-    /// The root folder for the application's main storage point (menus, doors, etc.)
+    ///     The root folder for the application's main storage point (menus, doors, etc.)
     /// </summary>
     public string RootPath { get; set; } = "~/bbs";
-   
+
     /// <summary>
-    /// Whether the terminal server should start automatically at application startup
+    ///     Whether the terminal server should start automatically at application startup
     /// </summary>
     public bool TerminalServerAutoStart { get; set; } = true;
-    
+
     /// <summary>
-    /// The UI theme to use for the application interface
-    /// Note: Currently uses "Borland" theme with classic 1990s IDE aesthetic and modern emoji icons
+    ///     The UI theme to use for the application interface
+    ///     Note: Currently uses "Borland" theme with classic 1990s IDE aesthetic and modern emoji icons
     /// </summary>
     public string Theme { get; set; } = "Borland";
 }

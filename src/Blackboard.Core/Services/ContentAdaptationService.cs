@@ -6,36 +6,34 @@ using Serilog;
 namespace Blackboard.Core.Services;
 
 /// <summary>
-/// Service for adapting content based on terminal capabilities
-/// Handles conversion between CP437, UTF-8, and plain text formats
+///     Service for adapting content based on terminal capabilities
+///     Handles conversion between CP437, UTF-8, and plain text formats
 /// </summary>
 public interface IContentAdaptationService
 {
     /// <summary>
-    /// Adapt ANSI content based on terminal capabilities
+    ///     Adapt ANSI content based on terminal capabilities
     /// </summary>
     Task<string> AdaptAnsiContentAsync(string content, ITelnetConnection connection);
-    
+
     /// <summary>
-    /// Convert CP437 content to UTF-8 with Unicode box drawing characters
+    ///     Convert CP437 content to UTF-8 with Unicode box drawing characters
     /// </summary>
     string ConvertCP437ToUtf8(string cp437Content);
-    
+
     /// <summary>
-    /// Strip ANSI codes and convert to plain text
+    ///     Strip ANSI codes and convert to plain text
     /// </summary>
     string ConvertToPlainText(string ansiContent);
-    
+
     /// <summary>
-    /// Get the best encoding for a given connection
+    ///     Get the best encoding for a given connection
     /// </summary>
     Encoding GetBestEncoding(ITelnetConnection connection);
 }
 
 public class ContentAdaptationService : IContentAdaptationService
 {
-    private readonly ILogger _logger;
-    
     // CP437 to Unicode mapping for box drawing characters
     private static readonly Dictionary<byte, string> CP437ToUnicode = new()
     {
@@ -70,8 +68,10 @@ public class ContentAdaptationService : IContentAdaptationService
         { 0xD6, "╓" }, // Double left mixed
         { 0xB7, "╖" }, // Double right mixed
         { 0xD3, "╙" }, // Double left mixed
-        { 0xBD, "╜" }, // Double right mixed
+        { 0xBD, "╜" } // Double right mixed
     };
+
+    private readonly ILogger _logger;
 
     public ContentAdaptationService(ILogger logger)
     {
@@ -84,23 +84,17 @@ public class ContentAdaptationService : IContentAdaptationService
         {
             // Decision tree for content adaptation
             if (!connection.SupportsAnsi)
-            {
                 // Terminal doesn't support ANSI - convert to plain text
                 return Task.FromResult(ConvertToPlainText(content));
-            }
-            
+
             if (connection.SupportsCP437)
-            {
                 // Terminal supports CP437 - send as-is (already in CP437)
                 return Task.FromResult(content);
-            }
-            
+
             if (connection.IsModernTerminal)
-            {
                 // Modern terminal - convert CP437 box drawing to Unicode
                 return Task.FromResult(ConvertCP437ToUtf8(content));
-            }
-            
+
             // Fallback: assume basic ANSI support
             return Task.FromResult(content);
         }
@@ -121,25 +115,17 @@ public class ContentAdaptationService : IContentAdaptationService
             // Convert CP437 bytes to Unicode characters
             var cp437Bytes = Encoding.GetEncoding(437).GetBytes(cp437Content);
             var result = new StringBuilder();
-            
+
             foreach (var b in cp437Bytes)
-            {
                 if (CP437ToUnicode.TryGetValue(b, out var unicodeChar))
-                {
                     result.Append(unicodeChar);
-                }
                 else if (b >= 32 && b <= 126)
-                {
                     // Standard ASCII - keep as-is
                     result.Append((char)b);
-                }
                 else if (b == 10 || b == 13)
-                {
                     // Line endings
                     result.Append((char)b);
-                }
                 else
-                {
                     // Other characters - try to convert or substitute
                     try
                     {
@@ -150,9 +136,7 @@ public class ContentAdaptationService : IContentAdaptationService
                     {
                         result.Append('?'); // Substitute with question mark
                     }
-                }
-            }
-            
+
             return result.ToString();
         }
         catch (Exception ex)
@@ -171,10 +155,10 @@ public class ContentAdaptationService : IContentAdaptationService
         {
             // Remove ANSI escape sequences
             var plainText = StripAnsiCodes(ansiContent);
-            
+
             // Convert box drawing characters to ASCII equivalents
             plainText = ConvertBoxDrawingToAscii(plainText);
-            
+
             return plainText;
         }
         catch (Exception ex)
@@ -187,7 +171,6 @@ public class ContentAdaptationService : IContentAdaptationService
     public Encoding GetBestEncoding(ITelnetConnection connection)
     {
         if (connection.SupportsCP437)
-        {
             try
             {
                 return Encoding.GetEncoding(437);
@@ -196,13 +179,9 @@ public class ContentAdaptationService : IContentAdaptationService
             {
                 // Fallback if CP437 not available
             }
-        }
-        
-        if (connection.IsModernTerminal)
-        {
-            return Encoding.UTF8;
-        }
-        
+
+        if (connection.IsModernTerminal) return Encoding.UTF8;
+
         // Default fallback
         return Encoding.ASCII;
     }
@@ -211,14 +190,14 @@ public class ContentAdaptationService : IContentAdaptationService
     {
         if (string.IsNullOrEmpty(text))
             return text;
-            
+
         // Remove ANSI escape sequences
         var ansiPattern = @"\x1b\[[0-9;]*[a-zA-Z]";
         var result = Regex.Replace(text, ansiPattern, "");
-        
+
         // Remove other escape sequences
         result = Regex.Replace(result, @"\x1b\[[0-9;]*", "");
-        
+
         return result;
     }
 
@@ -228,7 +207,7 @@ public class ContentAdaptationService : IContentAdaptationService
             return text;
 
         var result = text;
-        
+
         // Convert Unicode box drawing to ASCII
         result = result.Replace("┌", "+");
         result = result.Replace("┐", "+");
@@ -241,7 +220,7 @@ public class ContentAdaptationService : IContentAdaptationService
         result = result.Replace("┼", "+");
         result = result.Replace("─", "-");
         result = result.Replace("│", "|");
-        
+
         // Double-line characters
         result = result.Replace("╒", "+");
         result = result.Replace("╕", "+");
@@ -253,7 +232,7 @@ public class ContentAdaptationService : IContentAdaptationService
         result = result.Replace("╜", "+");
         result = result.Replace("═", "=");
         result = result.Replace("║", "|");
-        
+
         return result;
     }
 }

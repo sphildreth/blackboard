@@ -1,13 +1,12 @@
-using System.IO.Pipes;
 using Blackboard.Core.DTOs;
 using Blackboard.Core.Network;
 
 namespace Blackboard.Core.Services;
 
 /// <summary>
-/// FOSSIL (Fido/Opus/SEAdog Standard Interface Layer) emulation service.
-/// Provides a bridge between legacy DOS door games expecting FOSSIL drivers
-/// and modern telnet connections, similar to NetFoss functionality.
+///     FOSSIL (Fido/Opus/SEAdog Standard Interface Layer) emulation service.
+///     Provides a bridge between legacy DOS door games expecting FOSSIL drivers
+///     and modern telnet connections, similar to NetFoss functionality.
 /// </summary>
 public interface IFossilEmulationService
 {

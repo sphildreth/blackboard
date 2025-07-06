@@ -21,7 +21,8 @@ security:
   maxLoginAttempts: 3
   lockoutDurationMinutes: 30
   passwordMinLength: 8
-  requirePasswordComplexity: true
+  requirePasswordComplexity: false
+  requireEmailAddress: false
   passwordExpirationDays: 90
   enableAuditLogging: true
   enableEncryption: true
@@ -30,7 +31,7 @@ database:
   connectionString: "Data Source={RootPath}/database/blackboard.db"
   enableWalMode: true
   connectionTimeoutSeconds: 30
-  enableBackup: true  
+  enableBackup: true
 
 logging:
   logLevel: "Debug"
