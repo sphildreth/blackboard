@@ -1,4 +1,4 @@
-screen: "menus/mainmenu.ans"
+screen: "menus/mainmenu.asc"
 prompt: "Enter your choice: "
 options:
   m:
@@ -36,6 +36,10 @@ options:
   h:
     label: "Help"
     action: "help"
+    screen: ""
+  t:
+    label: "Terminal Settings"
+    action: "terminal"
     screen: ""
   l:
     label: "Logoff"

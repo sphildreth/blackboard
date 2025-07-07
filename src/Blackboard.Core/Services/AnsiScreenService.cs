@@ -20,10 +20,10 @@ public class AnsiScreenService : IAnsiScreenService
         _templateProcessor = templateProcessor;
         _screenCache = new ConcurrentDictionary<string, string>();
 
-        // Setup file watcher for hot-reload
+        // Setup file watcher for hot-reload (watch both ASCII and ANSI files)
         if (Directory.Exists(_screensDirectory))
         {
-            _fileWatcher = new FileSystemWatcher(_screensDirectory, "*.ans")
+            _fileWatcher = new FileSystemWatcher(_screensDirectory, "*.*")
             {
                 IncludeSubdirectories = true,
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName
@@ -35,15 +35,15 @@ public class AnsiScreenService : IAnsiScreenService
         }
     }
 
-    public async Task<string> RenderScreenAsync(string screenName, UserContext context)
+    public async Task<string> RenderScreenAsync(string screenName, UserContext context, bool preferAnsi = false)
     {
         try
         {
-            var screenContent = await LoadScreenContentAsync(screenName);
+            var screenContent = await LoadScreenContentAsync(screenName, preferAnsi);
             if (string.IsNullOrEmpty(screenContent))
             {
                 _logger.Warning("Screen {ScreenName} not found, using fallback", screenName);
-                screenContent = await GetFallbackScreenAsync(screenName);
+                screenContent = await GetFallbackScreenAsync(screenName, preferAnsi);
             }
 
             // Process template variables
@@ -58,14 +58,18 @@ public class AnsiScreenService : IAnsiScreenService
 
     public Task<bool> ScreenExistsAsync(string screenName)
     {
-        var filePath = GetScreenFilePath(screenName);
-        return Task.FromResult(File.Exists(filePath));
+        // Check for both ASCII and ANSI variants
+        var asciiPath = GetScreenFilePath(screenName, false);
+        var ansiPath = GetScreenFilePath(screenName, true);
+        return Task.FromResult(File.Exists(asciiPath) || File.Exists(ansiPath));
     }
 
-    public async Task<string> GetFallbackScreenAsync(string screenName)
+    public async Task<string> GetFallbackScreenAsync(string screenName, bool preferAnsi = false)
     {
-        // Try to load a default screen
-        var defaultPath = Path.Combine(_screensDirectory, "defaults", "default.ans");
+        // Try to load a default screen - prefer ASCII unless ANSI is requested
+        var defaultFileName = preferAnsi ? "default.ans" : "default.asc";
+        var defaultPath = Path.Combine(_screensDirectory, "defaults", defaultFileName);
+        
         if (File.Exists(defaultPath))
         {
             // Read as raw bytes and convert using Latin-1 to preserve byte values
@@ -73,8 +77,18 @@ public class AnsiScreenService : IAnsiScreenService
             return Encoding.GetEncoding("ISO-8859-1").GetString(fileBytes);
         }
 
+        // Fallback to the other format if primary doesn't exist
+        var fallbackFileName = preferAnsi ? "default.asc" : "default.ans";
+        var fallbackPath = Path.Combine(_screensDirectory, "defaults", fallbackFileName);
+        
+        if (File.Exists(fallbackPath))
+        {
+            var fileBytes = await File.ReadAllBytesAsync(fallbackPath);
+            return Encoding.GetEncoding("ISO-8859-1").GetString(fileBytes);
+        }
+
         // Return a simple text fallback
-        return $"=== {screenName.ToUpper()} ===\r\n[ANSI screen not available]\r\n";
+        return $"=== {screenName.ToUpper()} ===\r\n[Screen not available]\r\n";
     }
 
     public void ClearCache()
@@ -129,28 +143,35 @@ public class AnsiScreenService : IAnsiScreenService
         }
     }
 
-    private async Task<string> LoadScreenContentAsync(string screenName)
+    private async Task<string> LoadScreenContentAsync(string screenName, bool preferAnsi = false)
     {
+        // Create cache key that includes preference
+        var cacheKey = $"{screenName}_{(preferAnsi ? "ansi" : "ascii")}";
+        
         // Check cache first
-        if (_screenCache.TryGetValue(screenName, out var cachedContent)) return cachedContent;
+        if (_screenCache.TryGetValue(cacheKey, out var cachedContent)) return cachedContent;
 
-        var filePath = GetScreenFilePath(screenName);
+        var filePath = GetScreenFilePath(screenName, preferAnsi);
         if (!File.Exists(filePath)) return string.Empty;
 
-        // Read ANSI files using CP437 encoding to preserve box drawing characters
-        // Read the ANSI file as raw bytes and convert using Latin-1 to preserve byte values
+        // Read files using Latin-1 encoding to preserve byte values (works for both ASCII and ANSI)
         var fileBytes = await File.ReadAllBytesAsync(filePath);
         var content = Encoding.GetEncoding("ISO-8859-1").GetString(fileBytes);
-        _screenCache.TryAdd(screenName, content);
+        _screenCache.TryAdd(cacheKey, content);
         return content;
     }
 
-    private string GetScreenFilePath(string screenName)
+    private string GetScreenFilePath(string screenName, bool preferAnsi = false)
     {
+        // Determine file extensions to try based on preference
+        var primaryExtension = preferAnsi ? ".ans" : ".asc";
+        var fallbackExtension = preferAnsi ? ".asc" : ".ans";
+        
         // Handle different naming conventions
-        var fileName = screenName.EndsWith(".ans", StringComparison.OrdinalIgnoreCase)
-            ? screenName
-            : $"{screenName}.ans";
+        var baseName = screenName.EndsWith(".ans", StringComparison.OrdinalIgnoreCase) ||
+                      screenName.EndsWith(".asc", StringComparison.OrdinalIgnoreCase)
+            ? Path.GetFileNameWithoutExtension(screenName)
+            : screenName;
 
         // Try subdirectories first
         var subDirs = new[] { "login", "menus", "system", "doors", "" };
@@ -163,17 +184,33 @@ public class AnsiScreenService : IAnsiScreenService
             if (!Directory.Exists(directoryPath))
                 continue;
 
-            // First try exact match (for performance)
-            var exactPath = Path.Combine(directoryPath, fileName);
-            if (File.Exists(exactPath))
-                return exactPath;
+            // First try preferred format
+            var primaryFileName = $"{baseName}{primaryExtension}";
+            var primaryPath = Path.Combine(directoryPath, primaryFileName);
+            if (File.Exists(primaryPath))
+                return primaryPath;
 
-            // Then try case-insensitive search
+            // Then try fallback format
+            var fallbackFileName = $"{baseName}{fallbackExtension}";
+            var fallbackPath = Path.Combine(directoryPath, fallbackFileName);
+            if (File.Exists(fallbackPath))
+                return fallbackPath;
+
+            // Try case-insensitive search for both formats
             try
             {
-                var files = Directory.GetFiles(directoryPath, "*.ans", SearchOption.TopDirectoryOnly);
+                var files = Directory.GetFiles(directoryPath, "*.*", SearchOption.TopDirectoryOnly);
+                
+                // First search for preferred format
                 var matchingFile = files.FirstOrDefault(f =>
-                    string.Equals(Path.GetFileName(f), fileName, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(Path.GetFileName(f), primaryFileName, StringComparison.OrdinalIgnoreCase));
+
+                if (matchingFile != null)
+                    return matchingFile;
+
+                // Then search for fallback format
+                matchingFile = files.FirstOrDefault(f =>
+                    string.Equals(Path.GetFileName(f), fallbackFileName, StringComparison.OrdinalIgnoreCase));
 
                 if (matchingFile != null)
                     return matchingFile;
@@ -184,16 +221,26 @@ public class AnsiScreenService : IAnsiScreenService
             }
         }
 
-        // Default to root screens directory (for backwards compatibility)
-        return Path.Combine(_screensDirectory, fileName);
+        // Default to preferred format in root screens directory (for backwards compatibility)
+        return Path.Combine(_screensDirectory, $"{baseName}{primaryExtension}");
     }
 
     private void OnScreenFileChanged(object sender, FileSystemEventArgs e)
     {
-        // Remove from cache to force reload
-        var screenName = Path.GetFileNameWithoutExtension(e.Name ?? "");
-        _screenCache.TryRemove(screenName, out _);
-        _logger.Debug("Screen file {FileName} changed, removed from cache", e.Name);
+        // Remove from cache to force reload - clear both ASCII and ANSI cache entries
+        var fileName = e.Name ?? "";
+        var screenName = Path.GetFileNameWithoutExtension(fileName);
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        
+        // Only process .asc and .ans files
+        if (extension != ".asc" && extension != ".ans")
+            return;
+            
+        // Clear both cache entries for this screen
+        _screenCache.TryRemove($"{screenName}_ascii", out _);
+        _screenCache.TryRemove($"{screenName}_ansi", out _);
+        
+        _logger.Debug("Screen file {FileName} changed, removed from cache", fileName);
     }
 
     public void Dispose()

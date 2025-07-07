@@ -10,6 +10,7 @@ public interface ITelnetConnection
     bool SupportsAnsi { get; }
     bool SupportsCP437 { get; }
     bool IsModernTerminal { get; }
+    bool UserRequestedAnsi { get; }
     string ClientSoftware { get; }
     string TerminalType { get; }
     DateTime ConnectedAt { get; }
@@ -23,5 +24,7 @@ public interface ITelnetConnection
     Task<string> ReadLineAsync();
     Task<char> ReadCharAsync();
     Task DisconnectAsync();
+    void EnableAnsiMode();
+    void DisableAnsiMode();
     void Dispose();
 }

@@ -74,14 +74,15 @@ public class ScreenSequenceService : IScreenSequenceService
                 return false;
             }
 
-            // Render and send the screen with content adaptation
-            var screenContent = await _ansiScreenService.RenderScreenAsync(screenName, context);
+            // Render and send the screen - prefer ANSI only if user requested it
+            var preferAnsi = connection.UserRequestedAnsi;
+            var screenContent = await _ansiScreenService.RenderScreenAsync(screenName, context, preferAnsi);
 
             // Apply content adaptation based on terminal capabilities
             // This would require injecting IContentAdaptationService - for now, use SendAnsiAsync which handles basic adaptation
             await connection.SendAnsiAsync(screenContent);
 
-            _logger.Debug("Successfully showed screen {ScreenName}", screenName);
+            _logger.Debug("Successfully showed screen {ScreenName} (ANSI: {PreferAnsi})", screenName, preferAnsi);
             return true;
         }
         catch (Exception ex)

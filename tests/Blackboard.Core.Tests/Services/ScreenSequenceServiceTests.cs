@@ -32,7 +32,7 @@ namespace Blackboard.Core.Tests.Services
                 .ReturnsAsync(true);
             _ansiScreenServiceMock.Setup(x => x.EvaluateConditions(It.IsAny<ScreenConditions>(), It.IsAny<UserContext>()))
                 .Returns(true);
-            _ansiScreenServiceMock.Setup(x => x.RenderScreenAsync(It.IsAny<string>(), It.IsAny<UserContext>()))
+            _ansiScreenServiceMock.Setup(x => x.RenderScreenAsync(It.IsAny<string>(), It.IsAny<UserContext>(), It.IsAny<bool>()))
                 .ReturnsAsync("Screen content");
 
             // Act
@@ -63,17 +63,17 @@ namespace Blackboard.Core.Tests.Services
                 
             _ansiScreenServiceMock.Setup(x => x.EvaluateConditions(It.IsAny<ScreenConditions>(), It.IsAny<UserContext>()))
                 .Returns(true);
-            _ansiScreenServiceMock.Setup(x => x.RenderScreenAsync(It.IsAny<string>(), It.IsAny<UserContext>()))
+            _ansiScreenServiceMock.Setup(x => x.RenderScreenAsync(It.IsAny<string>(), It.IsAny<UserContext>(), It.IsAny<bool>()))
                 .ReturnsAsync("Screen content");
 
             // Act
             await _service.ShowSequenceAsync("LOGIN", connectionMock.Object, userContext);
 
             // Assert
-            _ansiScreenServiceMock.Verify(x => x.RenderScreenAsync("CONNECT", userContext), Times.Once);
-            _ansiScreenServiceMock.Verify(x => x.RenderScreenAsync("LOGON1", userContext), Times.Never);
-            _ansiScreenServiceMock.Verify(x => x.RenderScreenAsync("LOGON2", userContext), Times.Once);
-            _ansiScreenServiceMock.Verify(x => x.RenderScreenAsync("LOGON3", userContext), Times.Once);
+            _ansiScreenServiceMock.Verify(x => x.RenderScreenAsync("CONNECT", userContext, It.IsAny<bool>()), Times.Once);
+            _ansiScreenServiceMock.Verify(x => x.RenderScreenAsync("LOGON1", userContext, It.IsAny<bool>()), Times.Never);
+            _ansiScreenServiceMock.Verify(x => x.RenderScreenAsync("LOGON2", userContext, It.IsAny<bool>()), Times.Once);
+            _ansiScreenServiceMock.Verify(x => x.RenderScreenAsync("LOGON3", userContext, It.IsAny<bool>()), Times.Once);
         }
 
         [Fact]
@@ -107,7 +107,7 @@ namespace Blackboard.Core.Tests.Services
                 .ReturnsAsync(true);
             _ansiScreenServiceMock.Setup(x => x.EvaluateConditions(It.IsAny<ScreenConditions>(), userContext))
                 .Returns(true);
-            _ansiScreenServiceMock.Setup(x => x.RenderScreenAsync("TEST", userContext))
+            _ansiScreenServiceMock.Setup(x => x.RenderScreenAsync("TEST", userContext, It.IsAny<bool>()))
                 .ReturnsAsync("Screen content");
 
             // Act

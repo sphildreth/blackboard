@@ -316,9 +316,21 @@ public class BbsSessionHandler
 
             var menuConfig = await MenuConfigLoader.LoadAsync(menuConfigPath);
 
-            // Load and send the screen file
-            var screenContent = await MenuConfigLoader.LoadScreenAsync(screensDir, menuConfig.Screen);
-            await connection.SendLineAsync(screenContent);
+            // Load and send the screen file (ASCII preferred, ANSI if user requested it)
+            var preferAnsi = connection.UserRequestedAnsi;
+            var screenContent = await MenuConfigLoader.LoadScreenAsync(screensDir, menuConfig.Screen, preferAnsi);
+            
+            // Send the screen content using the appropriate method
+            if (screenContent.Contains("\x1b[") || screenContent.Contains("["))
+            {
+                // Content contains ANSI codes, use SendAnsiAsync which handles ASCII/ANSI detection
+                await connection.SendAnsiAsync(screenContent);
+            }
+            else
+            {
+                // Pure ASCII content, send directly
+                await connection.SendAsync(screenContent);
+            }
 
             // Show prompt and wait for input
             await connection.SendAsync(menuConfig.Prompt ?? "Choice: ");
@@ -364,6 +376,9 @@ public class BbsSessionHandler
                             break;
                         case "files":
                             await ShowFileMenu(connection, user);
+                            break;
+                        case "terminal":
+                            await ShowTerminalSettings(connection);
                             break;
                         // Add more actions as needed
                     }
@@ -1308,5 +1323,79 @@ public class BbsSessionHandler
             _logger.Error(ex, "Error getting BBS name from configuration");
             return Task.FromResult("Blackboard"); // Default fallback
         }
+    }
+
+    private async Task ShowTerminalSettings(TelnetConnection connection)
+    {
+        while (true)
+        {
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("=== TERMINAL SETTINGS ===");
+            await connection.SendLineAsync($"Current mode: {(connection.UserRequestedAnsi ? "ANSI" : "ASCII")}");
+            await connection.SendLineAsync($"Terminal type: {connection.TerminalType}");
+            await connection.SendLineAsync($"Client: {connection.ClientSoftware}");
+            await connection.SendLineAsync("");
+            await connection.SendLineAsync("Options:");
+            
+            if (connection.UserRequestedAnsi)
+            {
+                await connection.SendLineAsync("1. Switch to ASCII mode (recommended for basic terminals)");
+            }
+            else
+            {
+                await connection.SendLineAsync("1. Enable ANSI mode (colors and graphics)");
+            }
+            
+            await connection.SendLineAsync("2. Test terminal display");
+            await connection.SendLineAsync("3. Back to main menu");
+            await connection.SendAsync("Choice: ");
+
+            var input = (await _keyboardHandler.ReadLineAsync(connection) ?? "").Trim();
+            switch (input)
+            {
+                case "1":
+                    if (connection.UserRequestedAnsi)
+                    {
+                        connection.DisableAnsiMode();
+                        await connection.SendLineAsync("ASCII mode enabled. Screens will now display in plain text.");
+                        await connection.SendLineAsync("Note: You may need to reconnect to see the change take full effect.");
+                    }
+                    else
+                    {
+                        connection.EnableAnsiMode();
+                        await connection.SendLineAsync("ANSI mode enabled. Screens will now display with colors and graphics.");
+                        await connection.SendLineAsync("Note: Make sure your terminal supports ANSI escape sequences.");
+                    }
+                    break;
+                case "2":
+                    await ShowTerminalTest(connection);
+                    break;
+                case "3":
+                    return;
+                default:
+                    await connection.SendLineAsync("Invalid choice. Please try again.");
+                    break;
+            }
+        }
+    }
+
+    private async Task ShowTerminalTest(TelnetConnection connection)
+    {
+        // Load the test screen with the current terminal settings
+        var preferAnsi = connection.UserRequestedAnsi;
+        var testScreen = await MenuConfigLoader.LoadScreenAsync(_screensDir, "login/test", preferAnsi);
+        
+        if (testScreen.Contains("\x1b[") || testScreen.Contains("["))
+        {
+            await connection.SendAnsiAsync(testScreen);
+        }
+        else
+        {
+            await connection.SendAsync(testScreen);
+        }
+        
+        await connection.SendLineAsync("");
+        await connection.SendLineAsync("Press any key to return to terminal settings...");
+        await _keyboardHandler.ReadLineAsync(connection);
     }
 }

@@ -39,15 +39,17 @@ public class TelnetConnection : ITelnetConnection
     public EndPoint? RemoteEndPoint => _tcpClient?.Client?.RemoteEndPoint;
     public string RemoteEndPointString => RemoteEndPoint?.ToString() ?? "Unknown";
     public bool IsConnected => _isConnected && _tcpClient?.Connected == true;
-    public bool SupportsAnsi { get; private set; } = true;
+    public bool SupportsAnsi { get; private set; } = false; // Default to ASCII mode
 
-    public bool SupportsCP437 { get; private set; } = true;
+    public bool SupportsCP437 { get; private set; } = false;
 
     public bool IsModernTerminal { get; private set; }
 
     public string ClientSoftware { get; private set; } = "Unknown";
 
-    public string TerminalType { get; private set; } = "ANSI";
+    public string TerminalType { get; private set; } = "ASCII"; // Default to ASCII mode
+
+    public bool UserRequestedAnsi { get; private set; } = false; // Track user preference
 
     public DateTime ConnectedAt { get; }
 
@@ -64,11 +66,11 @@ public class TelnetConnection : ITelnetConnection
             // Send a small delay to allow negotiations to complete
             await Task.Delay(100);
 
-            // Test ANSI support by sending a query
-            await TestAnsiSupportAsync();
+            // Default to ASCII mode - let user explicitly request ANSI if they want it
+            await DetectClientCapabilitiesAsync();
 
-            _logger.Debug("Telnet connection initialized for {RemoteEndPoint} - Terminal: {TerminalType}, ANSI: {SupportsAnsi}",
-                RemoteEndPoint, TerminalType, SupportsAnsi);
+            _logger.Debug("Telnet connection initialized for {RemoteEndPoint} - Terminal: {TerminalType}, ANSI: {SupportsAnsi}, UserRequestedAnsi: {UserRequestedAnsi}",
+                RemoteEndPoint, TerminalType, SupportsAnsi, UserRequestedAnsi);
         }
         catch (Exception ex)
         {
@@ -102,13 +104,14 @@ public class TelnetConnection : ITelnetConnection
 
     public async Task SendAnsiAsync(string ansiSequence)
     {
-        _logger.Information("SendAnsiAsync - SupportsAnsi: {SupportsAnsi}, IsModernTerminal: {IsModernTerminal}, SupportsCP437: {SupportsCP437}, ClientSoftware: {ClientSoftware}",
-            SupportsAnsi, IsModernTerminal, SupportsCP437, ClientSoftware);
+        _logger.Information("SendAnsiAsync - UserRequestedAnsi: {UserRequestedAnsi}, SupportsAnsi: {SupportsAnsi}, IsModernTerminal: {IsModernTerminal}, SupportsCP437: {SupportsCP437}, ClientSoftware: {ClientSoftware}",
+            UserRequestedAnsi, SupportsAnsi, IsModernTerminal, SupportsCP437, ClientSoftware);
 
-        if (!SupportsAnsi)
+        // Only send ANSI if user explicitly requested it AND terminal supports it
+        if (!UserRequestedAnsi || !SupportsAnsi)
         {
-            // Strip ANSI codes for non-ANSI terminals
-            _logger.Information("Stripping ANSI codes for non-ANSI terminal");
+            // Strip ANSI codes for ASCII mode
+            _logger.Information("Stripping ANSI codes - ASCII mode active");
             var plainText = StripAnsiCodes(ansiSequence);
             await SendAsync(plainText);
             return;
@@ -461,35 +464,36 @@ public class TelnetConnection : ITelnetConnection
                 _logger.Information("No terminal device attributes response received");
             }
 
-            // Test for UTF-8 support by checking locale
-            // Modern terminals typically support UTF-8, older BBS clients prefer CP437
+            // Heuristics for client detection
             var remoteEndPointStr = RemoteEndPointString.ToLower();
             _logger.Information("Remote endpoint: {RemoteEndPoint}", remoteEndPointStr);
 
-            // Heuristics for client detection
+            // Detect dedicated BBS clients
             if (remoteEndPointStr.Contains("syncterm") ||
                 remoteEndPointStr.Contains("netrunner") ||
                 remoteEndPointStr.Contains("qodem"))
             {
-                SupportsCP437 = true;
+                // BBS clients can support ANSI but don't enable by default
                 IsModernTerminal = false;
                 ClientSoftware = "BBS Terminal";
-                _logger.Information("Detected BBS terminal client");
+                _logger.Information("Detected BBS terminal client - ANSI capabilities available but not enabled by default");
             }
             else
             {
-                // Assume modern terminal (telnet, ssh client, etc.)
+                // Modern terminal (telnet, ssh client, etc.)
                 IsModernTerminal = true;
                 ClientSoftware = "Modern Terminal";
-                _logger.Information("Detected modern terminal");
-
-                // Modern terminals may not properly display CP437 characters
-                // Test with a CP437 specific character
-                await TestCP437SupportAsync();
+                _logger.Information("Detected modern terminal - ASCII mode by default");
             }
 
-            _logger.Information("Detection complete - SupportsAnsi: {SupportsAnsi}, IsModernTerminal: {IsModernTerminal}, SupportsCP437: {SupportsCP437}",
-                SupportsAnsi, IsModernTerminal, SupportsCP437);
+            // Default to ASCII mode - user must explicitly request ANSI
+            SupportsAnsi = false;
+            UserRequestedAnsi = false;
+            TerminalType = "ASCII";
+            SupportsCP437 = false;
+
+            _logger.Information("Detection complete - SupportsAnsi: {SupportsAnsi}, IsModernTerminal: {IsModernTerminal}, UserRequestedAnsi: {UserRequestedAnsi}",
+                SupportsAnsi, IsModernTerminal, UserRequestedAnsi);
         }
         catch (Exception ex)
         {
@@ -593,6 +597,78 @@ public class TelnetConnection : ITelnetConnection
         }
     }
 
+    /// <summary>
+    ///     Converts a CP437 byte to its Unicode equivalent
+    /// </summary>
+    private static char ConvertCP437Byte(byte b)
+    {
+        // CP437 character mapping for extended ASCII (128-255)
+        return b switch
+        {
+            // Box drawing characters
+            179 => '│', // Single vertical line
+            180 => '┤', // Single vertical and left
+            191 => '┐', // Single down and left
+            192 => '└', // Single up and right
+            193 => '┴', // Single up and horizontal
+            194 => '┬', // Single down and horizontal
+            195 => '├', // Single vertical and right
+            196 => '─', // Single horizontal line
+            197 => '┼', // Single vertical and horizontal
+            217 => '┘', // Single up and left
+            218 => '┌', // Single down and right
+
+            // Double line box drawing
+            186 => '║', // Double vertical line
+            187 => '╗', // Double down and left
+            188 => '╝', // Double up and left
+            200 => '╚', // Double up and right
+            201 => '╔', // Double down and right
+            202 => '╩', // Double up and horizontal
+            203 => '╦', // Double down and horizontal
+            204 => '╠', // Double vertical and right
+            205 => '═', // Double horizontal line
+            206 => '╬', // Double vertical and horizontal
+            185 => '╣', // Double vertical and left
+
+            // Block characters
+            176 => '░', // Light shade
+            177 => '▒', // Medium shade
+            178 => '▓', // Dark shade
+            219 => '█', // Full block
+            220 => '▄', // Lower half block
+            221 => '▌', // Left half block
+            222 => '▐', // Right half block
+            223 => '▀', // Upper half block
+
+            // Arrow characters
+            16 => '►', // Right-pointing triangle
+            17 => '◄', // Left-pointing triangle
+            30 => '▲', // Up-pointing triangle
+            31 => '▼', // Down-pointing triangle
+
+            // Other special characters commonly used in ANSI art
+            1 => '☺', // White smiling face
+            2 => '☻', // Black smiling face
+            3 => '♥', // Black heart suit
+            4 => '♦', // Black diamond suit
+            5 => '♣', // Black club suit
+            6 => '♠', // Black spade suit
+            7 => '•', // Bullet
+            8 => '◘', // Inverse bullet
+            9 => '○', // White circle
+            10 => '◙', // Inverse white circle
+            11 => '♂', // Male sign
+            12 => '♀', // Female sign
+            13 => '♪', // Eighth note
+            14 => '♫', // Beamed eighth notes
+            15 => '☼', // White sun with rays
+
+            // For all other characters, use the Unicode equivalent or fallback
+            _ => (char)b
+        };
+    }    
+    
     private string StripAnsiCodes(string text)
     {
         if (string.IsNullOrEmpty(text))
@@ -705,6 +781,22 @@ public class TelnetConnection : ITelnetConnection
             _logger.Error(ex, "Error converting CP437 to Unicode");
             return cp437Content; // Return original on error
         }
+    }
+
+    public void EnableAnsiMode()
+    {
+        UserRequestedAnsi = true;
+        SupportsAnsi = true;
+        TerminalType = "ANSI";
+        _logger.Information("ANSI mode enabled for connection {RemoteEndPoint}", RemoteEndPoint);
+    }
+
+    public void DisableAnsiMode()
+    {
+        UserRequestedAnsi = false;
+        SupportsAnsi = false;
+        TerminalType = "ASCII";
+        _logger.Information("ANSI mode disabled for connection {RemoteEndPoint}", RemoteEndPoint);
     }
 }
 

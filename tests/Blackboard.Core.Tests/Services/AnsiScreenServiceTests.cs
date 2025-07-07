@@ -171,7 +171,7 @@ namespace Blackboard.Core.Tests.Services
                 .ReturnsAsync(processedContent);
 
             // Act
-            var result = await _service.RenderScreenAsync(screenName, userContext);
+            var result = await _service.RenderScreenAsync(screenName, userContext, false);
 
             // Assert
             Assert.Equal(processedContent, result);
@@ -183,7 +183,7 @@ namespace Blackboard.Core.Tests.Services
         {
             // Arrange
             var screenName = "nonexistent";
-            var expectedFallbackContent = "=== NONEXISTENT ===\r\n[ANSI screen not available]\r\n";
+            var expectedFallbackContent = "=== NONEXISTENT ===\r\n[Screen not available]\r\n";
             
             var userContext = new UserContext();
 
@@ -192,7 +192,7 @@ namespace Blackboard.Core.Tests.Services
                 .ReturnsAsync((string content, UserContext ctx) => content);
 
             // Act
-            var result = await _service.RenderScreenAsync(screenName, userContext);
+            var result = await _service.RenderScreenAsync(screenName, userContext, false);
 
             // Assert
             Assert.Equal(expectedFallbackContent, result);
