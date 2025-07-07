@@ -20,7 +20,7 @@ public class KeyboardHandlerService : IKeyboardHandlerService
         try
         {
             var ch = await connection.ReadCharAsync();
-
+            
             // Handle escape sequences (special keys)
             if (ch == '\x1b') // ESC
                 return await ReadEscapeSequenceAsync(connection);
@@ -51,12 +51,27 @@ public class KeyboardHandlerService : IKeyboardHandlerService
             while (connection.IsConnected)
             {
                 var key = await ReadKeyAsync(connection);
+                
+                // Skip null characters completely
+                if (key.Character == '\0' && !key.IsSpecial)
+                {
+                    continue;
+                }
 
                 if (key.IsSpecial)
                 {
                     switch (key.SpecialKey)
                     {
                         case SpecialKey.Enter:
+                            // If input is empty, consume any lingering newlines and continue waiting
+                            if (input.Length == 0)
+                            {
+                                if (echoInput)
+                                    await connection.SendAsync("\r\n");
+                                continue;
+                            }
+                            
+                            // Return the accumulated input
                             if (echoInput)
                                 await connection.SendAsync("\r\n");
                             return input.ToString();
@@ -67,7 +82,6 @@ public class KeyboardHandlerService : IKeyboardHandlerService
                                 input.Length--;
                                 if (echoInput) await connection.SendAsync("\b \b"); // Backspace, space, backspace
                             }
-
                             break;
 
                         case SpecialKey.Escape:
@@ -78,14 +92,14 @@ public class KeyboardHandlerService : IKeyboardHandlerService
                                 await connection.SendAsync(new string(' ', input.Length));
                                 await connection.SendAsync(new string('\b', input.Length));
                             }
-
                             input.Clear();
                             break;
                     }
                 }
                 else if (char.IsControl(key.Character))
                 {
-                    // Handle other control characters as needed
+                    // Skip control characters
+                    continue;
                 }
                 else
                 {

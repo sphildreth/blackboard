@@ -127,6 +127,7 @@ public class BbsSessionHandler
             await connection.SendLineAsync("");
             await connection.SendLineAsync("=== LOGIN ===");
             await connection.SendAsync("Handle: ");
+            
             var handle = await _keyboardHandler.ReadLineAsync(connection);
 
             if (string.IsNullOrWhiteSpace(handle))
